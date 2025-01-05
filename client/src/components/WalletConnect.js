@@ -10,6 +10,10 @@ import {
   Step,
   StepLabel,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   FormControlLabel,
   Checkbox,
   CircularProgress,
@@ -59,17 +63,29 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   },
 }));
 
-const steps = ["Connect Wallet", "Verify Account", "Complete Profile"];
+const StyledFormControl = styled(FormControl)(({ theme }) => ({
+  "& .MuiOutlinedInput-root": {
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderRadius: "12px",
+    "&:hover": {
+      backgroundColor: "rgba(255, 255, 255, 0.8)",
+    },
+  },
+}));
+
+const steps = ["Connect Wallet", "Registration", "Complete Profile"];
 
 const WalletConnect = ({ onConnect }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [account, setAccount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [userDetails, setUserDetails] = useState({
+  const [userData, setUserData] = useState({
+    name: "",
     age: "",
-    agreeToTerms: false,
     email: "",
+    role: "",
+    agreeToTerms: false,
   });
 
   const connectWallet = async () => {
@@ -86,7 +102,7 @@ const WalletConnect = ({ onConnect }) => {
 
       const account = accounts[0];
       setAccount(account);
-      setActiveStep(1); // Move to verification step after connecting
+      setActiveStep(1);
     } catch (err) {
       console.error("Error connecting wallet:", err);
       setError("Failed to connect wallet");
@@ -95,32 +111,48 @@ const WalletConnect = ({ onConnect }) => {
     }
   };
 
-  const handleVerification = () => {
-    if (!userDetails.age || parseInt(userDetails.age) < 18) {
-      setError("You must be 18 or older to use this platform");
-      return;
-    }
-    if (!userDetails.agreeToTerms) {
-      setError("You must agree to the terms and conditions");
-      return;
-    }
-    setError("");
-    setActiveStep(2);
+  const handleInputChange = (e) => {
+    const { name, value, checked } = e.target;
+    setUserData((prev) => ({
+      ...prev,
+      [name]: name === "agreeToTerms" ? checked : value,
+    }));
   };
 
-  const handleRegistrationComplete = async () => {
+  const validateRegistration = () => {
+    if (!userData.name || !userData.age || !userData.role) {
+      setError("Please fill in all required fields");
+      return false;
+    }
+    if (parseInt(userData.age) < 18) {
+      setError("You must be 18 or older to register");
+      return false;
+    }
+    if (!userData.agreeToTerms) {
+      setError("You must agree to the terms and conditions");
+      return false;
+    }
+    return true;
+  };
+
+  const handleRegistration = () => {
+    if (validateRegistration()) {
+      setError("");
+      setActiveStep(2);
+    }
+  };
+
+  const handleComplete = async () => {
     try {
       setLoading(true);
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
 
-      // Here you would typically make an API call to save user details
-      // For now, we'll just connect
       onConnect({
         account,
         provider,
         signer,
-        userDetails,
+        userData,
       });
     } catch (err) {
       console.error("Error completing registration:", err);
@@ -133,7 +165,7 @@ const WalletConnect = ({ onConnect }) => {
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", (accounts) => {
         setAccount(accounts[0]);
-        setActiveStep(0); // Reset to first step if account changes
+        setActiveStep(0);
       });
     }
 
@@ -159,35 +191,51 @@ const WalletConnect = ({ onConnect }) => {
         );
       case 1:
         return (
-          <Box sx={{ mt: 3 }}>
+          <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 3 }}>
+            <StyledTextField
+              fullWidth
+              label="Full Name"
+              name="name"
+              value={userData.name}
+              onChange={handleInputChange}
+              required
+            />
             <StyledTextField
               fullWidth
               label="Age"
+              name="age"
               type="number"
-              value={userDetails.age}
-              onChange={(e) =>
-                setUserDetails({ ...userDetails, age: e.target.value })
-              }
-              sx={{ mb: 3 }}
+              value={userData.age}
+              onChange={handleInputChange}
+              required
             />
+            <StyledFormControl fullWidth required>
+              <InputLabel>Role</InputLabel>
+              <Select
+                name="role"
+                value={userData.role}
+                onChange={handleInputChange}
+                label="Role"
+              >
+                <MenuItem value="patient">Patient</MenuItem>
+                <MenuItem value="provider">Healthcare Provider</MenuItem>
+                <MenuItem value="researcher">Researcher</MenuItem>
+              </Select>
+            </StyledFormControl>
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={userDetails.agreeToTerms}
-                  onChange={(e) =>
-                    setUserDetails({
-                      ...userDetails,
-                      agreeToTerms: e.target.checked,
-                    })
-                  }
+                  name="agreeToTerms"
+                  checked={userData.agreeToTerms}
+                  onChange={handleInputChange}
                 />
               }
               label="I agree to the terms and conditions"
             />
             <ConnectButton
               fullWidth
-              onClick={handleVerification}
-              sx={{ mt: 3 }}
+              onClick={handleRegistration}
+              disabled={loading}
             >
               Continue
             </ConnectButton>
@@ -195,18 +243,20 @@ const WalletConnect = ({ onConnect }) => {
         );
       case 2:
         return (
-          <Box sx={{ mt: 3 }}>
+          <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 3 }}>
             <StyledTextField
               fullWidth
               label="Email (optional)"
+              name="email"
               type="email"
-              value={userDetails.email}
-              onChange={(e) =>
-                setUserDetails({ ...userDetails, email: e.target.value })
-              }
-              sx={{ mb: 3 }}
+              value={userData.email}
+              onChange={handleInputChange}
             />
-            <ConnectButton fullWidth onClick={handleRegistrationComplete}>
+            <ConnectButton
+              fullWidth
+              onClick={handleComplete}
+              disabled={loading}
+            >
               Complete Registration
             </ConnectButton>
           </Box>
