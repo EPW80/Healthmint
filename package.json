@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^2.1.15",
+    "concurrently": "^9.1.0",
+    "dotenv": "^16.4.7",
+    "nodemon": "^3.1.9",
+    "truffle": "^5.11.5"
+  },
+  "scripts": {
+    "client": "cd client && npm start",
+    "server": "cd server && nodemon server.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "kill-ports": "kill-port 3000 3001 5000 5001"
+  }
+}
