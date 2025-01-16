@@ -1,3 +1,4 @@
+// store.js is the file that creates the Redux store and combines all the reducers into one.
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
 import dataReducer from "./slices/dataSlice";
@@ -5,6 +6,7 @@ import profileReducer from "./slices/profileSlice";
 import uiReducer from "./slices/uiSlice";
 import userReducer from "./slices/userSlice";
 
+// Create the Redux store with all reducers combined.
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -16,7 +18,6 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Ignore non-serializable values in the Redux state
         ignoredActions: [
           "auth/setWalletConnection",
           "user/setWalletConnection",

@@ -2,10 +2,10 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   userData: {
-    name: null,
-    age: null,
-    email: null,
-    role: null,
+    name: "",
+    age: "",
+    email: "",
+    role: "",
     address: null,
     agreeToTerms: false,
   },
@@ -27,28 +27,58 @@ const initialState = {
     totalUploads: 0,
     totalPurchases: 0,
     earnings: "0",
-  }
+  },
 };
 
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setUserData: (state, action) => {
-      state.userData = { ...state.userData, ...action.payload };
+    // Set user form data
+    setFormData: (state, action) => {
+      state.userData = {
+        ...state.userData,
+        ...action.payload,
+      };
     },
+
+    // Set user data from backend
+    setUserData: (state, action) => {
+      state.userData = {
+        ...state.userData,
+        ...action.payload,
+      };
+    },
+
+    // Clear user data
+    clearUserData: (state) => {
+      state.userData = initialState.userData;
+      state.registration.isComplete = false;
+    },
+
+    // Registration steps
     setRegistrationStep: (state, action) => {
       state.registration.step = action.payload;
     },
+
     completeRegistration: (state) => {
       state.registration.isComplete = true;
     },
+
+    // Wallet connection
     setWalletConnection: (state, action) => {
-      state.wallet = { ...state.wallet, ...action.payload };
+      state.wallet = {
+        ...state.wallet,
+        ...action.payload,
+        isConnected: true,
+      };
     },
+
     disconnectWallet: (state) => {
       state.wallet = initialState.wallet;
     },
+
+    // User activity
     addTransaction: (state, action) => {
       state.transactions.unshift({
         id: Date.now(),
@@ -56,24 +86,36 @@ const userSlice = createSlice({
         timestamp: new Date().toISOString(),
       });
     },
+
+    // Profile settings
     updateProfileSettings: (state, action) => {
-      state.profileSettings = { ...state.profileSettings, ...action.payload };
+      state.profileSettings = {
+        ...state.profileSettings,
+        ...action.payload,
+      };
     },
+
     incrementUploads: (state) => {
       state.profileSettings.totalUploads += 1;
     },
+
     incrementPurchases: (state) => {
       state.profileSettings.totalPurchases += 1;
     },
+
     updateEarnings: (state, action) => {
       state.profileSettings.earnings = action.payload;
     },
-    clearUserData: () => initialState,
+
+    // Reset entire state
+    resetState: () => initialState,
   },
 });
 
 export const {
-  setUserData,
+  setFormData, // For form data
+  setUserData, // For backend user data
+  clearUserData, // Clear user data
   setRegistrationStep,
   completeRegistration,
   setWalletConnection,
@@ -83,7 +125,7 @@ export const {
   incrementUploads,
   incrementPurchases,
   updateEarnings,
-  clearUserData,
+  resetState, // Reset entire state
 } = userSlice.actions;
 
 // Selectors

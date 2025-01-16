@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
 import {
   Box,
@@ -19,6 +21,19 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+
+// Redux imports with corrected paths
+import {
+  setWalletConnection,
+  clearWalletConnection,
+} from "../redux/slices/authSlice";
+
+import {
+  setUserData, // Changed from setformData
+  clearUserData, // Changed from clearformData
+} from "../redux/slices/userSlice";
+
+import { addNotification } from "../redux/slices/uiSlice";
 
 // Styled components
 const GlassContainer = styled(Paper)(({ theme }) => ({
@@ -76,11 +91,13 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
 const steps = ["Connect Wallet", "Registration", "Complete Profile"];
 
 const WalletConnect = ({ onConnect }) => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [activeStep, setActiveStep] = useState(0);
   const [account, setAccount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [userData, setUserData] = useState({
+  const [formData, setFormData] = useState({
     name: "",
     age: "",
     email: "",
@@ -88,24 +105,193 @@ const WalletConnect = ({ onConnect }) => {
     agreeToTerms: false,
   });
 
+  const handleDisconnect = () => {
+    setAccount("");
+    setActiveStep(0);
+    setFormData({
+      name: "",
+      age: "",
+      email: "",
+      role: "",
+      agreeToTerms: false,
+    });
+    dispatch(clearWalletConnection());
+    dispatch(clearUserData());
+    dispatch(
+      addNotification({
+        type: "info",
+        message: "Wallet disconnected",
+      })
+    );
+    navigate("/login");
+  };
+
+  const handleNewUser = (account) => {
+    setActiveStep(1);
+    dispatch(
+      addNotification({
+        type: "info",
+        message: "Please complete registration",
+      })
+    );
+  };
+
+  const handleExistingUser = (account, provider, signer, userData) => {
+    dispatch(
+      setUserData({
+        address: account,
+        ...userData,
+      })
+    );
+
+    dispatch(
+      setWalletConnection({
+        isConnected: true,
+        address: account,
+        provider,
+        signer,
+        walletType: "metamask",
+      })
+    );
+
+    if (typeof onConnect === "function") {
+      onConnect({
+        account,
+        provider,
+        signer,
+        userData,
+      });
+    }
+
+    navigate("/");
+  };
+
+  const setupWalletListeners = () => {
+    const handleAccountChange = (accounts) => {
+      if (accounts.length === 0) {
+        handleDisconnect();
+      } else {
+        const newAccount = accounts[0];
+        dispatch(setUserData({ address: newAccount }));
+        dispatch(
+          addNotification({
+            type: "info",
+            message: "Account changed",
+          })
+        );
+      }
+    };
+
+    const handleChainChange = () => {
+      dispatch(
+        addNotification({
+          type: "warning",
+          message: "Network changed. Please reconnect your wallet.",
+        })
+      );
+      handleDisconnect();
+      window.location.reload();
+    };
+
+    window.ethereum.on("accountsChanged", handleAccountChange);
+    window.ethereum.on("chainChanged", handleChainChange);
+    window.ethereum.on("disconnect", handleDisconnect);
+
+    return () => {
+      if (window.ethereum?.removeListener) {
+        window.ethereum.removeListener("accountsChanged", handleAccountChange);
+        window.ethereum.removeListener("chainChanged", handleChainChange);
+        window.ethereum.removeListener("disconnect", handleDisconnect);
+      }
+    };
+  };
+
   const connectWallet = async () => {
     if (!window.ethereum) {
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Please install MetaMask to continue",
+        })
+      );
       setError("Please install MetaMask to continue");
       return;
     }
 
     try {
       setLoading(true);
+      setError("");
+
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
 
       const account = accounts[0];
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
       setAccount(account);
-      setActiveStep(1);
-    } catch (err) {
-      console.error("Error connecting wallet:", err);
-      setError("Failed to connect wallet");
+
+      try {
+        const response = await fetch(
+          `${
+            process.env.REACT_APP_API_URL || "http://localhost:5000"
+          }/api/auth/wallet/connect`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              address: account,
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(
+            data.message || "Server error during wallet connection"
+          );
+        }
+
+        const { user, isNewUser } = data.data;
+
+        if (isNewUser) {
+          handleNewUser(account);
+        } else {
+          handleExistingUser(account, provider, signer, user);
+        }
+
+        setupWalletListeners();
+
+        dispatch(
+          addNotification({
+            type: "success",
+            message: data.message || "Wallet connected successfully",
+          })
+        );
+      } catch (serverError) {
+        console.error("Server connection error:", serverError);
+        dispatch(
+          addNotification({
+            type: "error",
+            message:
+              serverError.message || "Failed to verify wallet with server",
+          })
+        );
+        setError(serverError.message || "Failed to verify wallet with server");
+      }
+    } catch (error) {
+      console.error("Wallet connection error:", error);
+      dispatch(
+        addNotification({
+          type: "error",
+          message: error.message || "Failed to connect wallet",
+        })
+      );
+      setError(error.message || "Failed to connect wallet. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -113,22 +299,22 @@ const WalletConnect = ({ onConnect }) => {
 
   const handleInputChange = (e) => {
     const { name, value, checked } = e.target;
-    setUserData((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: name === "agreeToTerms" ? checked : value,
     }));
   };
 
   const validateRegistration = () => {
-    if (!userData.name || !userData.age || !userData.role) {
+    if (!formData.name || !formData.age || !formData.role) {
       setError("Please fill in all required fields");
       return false;
     }
-    if (parseInt(userData.age) < 18) {
+    if (parseInt(formData.age) < 18) {
       setError("You must be 18 or older to register");
       return false;
     }
-    if (!userData.agreeToTerms) {
+    if (!formData.agreeToTerms) {
       setError("You must agree to the terms and conditions");
       return false;
     }
@@ -148,32 +334,91 @@ const WalletConnect = ({ onConnect }) => {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
 
-      onConnect({
-        account,
-        provider,
-        signer,
-        userData,
-      });
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_URL || "http://localhost:5000"
+        }/api/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            address: account,
+            ...formData,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Registration failed");
+      }
+
+      const data = await response.json();
+
+      dispatch(
+        setUserData({
+          address: account,
+          ...data.user,
+        })
+      );
+
+      dispatch(
+        setWalletConnection({
+          isConnected: true,
+          address: account,
+          provider,
+          signer,
+        })
+      );
+
+      if (typeof onConnect === "function") {
+        onConnect({
+          account,
+          provider,
+          signer,
+          userData: data.user,
+        });
+      }
+
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Registration completed successfully",
+        })
+      );
+
+      navigate("/");
     } catch (err) {
       console.error("Error completing registration:", err);
       setError("Failed to complete registration");
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Registration failed",
+        })
+      );
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", (accounts) => {
+      const handleAccountsChanged = (accounts) => {
         setAccount(accounts[0]);
         setActiveStep(0);
-      });
-    }
+      };
 
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener("accountsChanged", setAccount);
-      }
-    };
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
+      };
+    }
   }, []);
 
   const renderStepContent = (step) => {
@@ -196,7 +441,7 @@ const WalletConnect = ({ onConnect }) => {
               fullWidth
               label="Full Name"
               name="name"
-              value={userData.name}
+              value={formData.name}
               onChange={handleInputChange}
               required
             />
@@ -205,7 +450,7 @@ const WalletConnect = ({ onConnect }) => {
               label="Age"
               name="age"
               type="number"
-              value={userData.age}
+              value={formData.age}
               onChange={handleInputChange}
               required
             />
@@ -213,7 +458,7 @@ const WalletConnect = ({ onConnect }) => {
               <InputLabel>Role</InputLabel>
               <Select
                 name="role"
-                value={userData.role}
+                value={formData.role}
                 onChange={handleInputChange}
                 label="Role"
               >
@@ -226,7 +471,7 @@ const WalletConnect = ({ onConnect }) => {
               control={
                 <Checkbox
                   name="agreeToTerms"
-                  checked={userData.agreeToTerms}
+                  checked={formData.agreeToTerms}
                   onChange={handleInputChange}
                 />
               }
@@ -249,7 +494,7 @@ const WalletConnect = ({ onConnect }) => {
               label="Email (optional)"
               name="email"
               type="email"
-              value={userData.email}
+              value={formData.email}
               onChange={handleInputChange}
             />
             <ConnectButton
@@ -352,5 +597,4 @@ const WalletConnect = ({ onConnect }) => {
     </Box>
   );
 };
-
 export default WalletConnect;

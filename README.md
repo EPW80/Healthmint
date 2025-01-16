@@ -4,180 +4,161 @@ Healthmint is a blockchain-based marketplace that enables secure trading of heal
 
 ## Features
 
-- **Secure Authentication**
+### Secure Authentication
 
-  - MetaMask wallet integration
-  - Age verification system
-  - User profile management
+- MetaMask wallet integration
+- Age verification system (18+)
+- User profile management with role-based access
 
-- **Data Management**
+### Data Management
 
-  - Upload health records securely to IPFS
-  - Set custom pricing for data
-  - Manage data access permissions
-  - View transaction history
+- Upload health records securely
+- Set custom pricing for data
+- Manage data access permissions
+- Track transaction history
 
-- **Marketplace Features**
+### Marketplace Features
 
-  - Browse available health records
-  - Filter by age, category, and verification status
-  - Purchase data using ETH
-  - Verify data authenticity
+- Browse available health records
+- Filter by age, verification status, and category
+- Purchase data using ETH
+- Verify data authenticity
 
-- **Security & Privacy**
-  - Age verification (18+)
-  - Data encryption
-  - Smart contract-based access control
-  - Transparent transaction tracking
+### Security & Privacy
+
+- Secure wallet connection
+- Age verification enforcement
+- Smart contract-based access control
+- Transparent transaction tracking
 
 ## Technology Stack
 
-- **Frontend**
+### Frontend
 
-  - React.js
-  - Material-UI
-  - Redux Toolkit
-  - Web3.js/Ethers.js
+- React.js with Hooks
+- Material-UI components
+- Redux Toolkit for state management
+- Ethers.js for blockchain integration
 
-- **Backend**
+### Backend
 
-  - Node.js
-  - Express
-  - MongoDB
+- Node.js/Express server
+- MongoDB database
+- JWT authentication
 
-- **Blockchain & Storage**
-  - Ethereum (Sepolia Testnet)
-  - IPFS/Piñata
-  - Infura
+### Blockchain & Storage
+
+- Ethereum (Sepolia Testnet)
+- Smart Contracts (Solidity)
+- Truffle framework
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v16 or higher)
 - npm/yarn
+- MongoDB (v6.0 or higher)
 - MetaMask browser extension
-- MongoDB (local or Atlas)
+- Git
 
 ## Installation
 
-1. Clone the repository:
+### Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/healthmint.git
-cd healthmint
+git clone https://github.com/EPW80/Healthmint.git
+cd Healthmint
 ```
 
-2. Install dependencies:
+### Install dependencies:
 
 ```bash
-# Install root dependencies
-npm install
-
-# Install client dependencies
-cd client
-npm install
-
-# Install server dependencies
-cd ../server
-npm install
+# Install all dependencies (root, client, and server)
+npm run install-all
 ```
 
-3. Configure environment variables:
+### Configure environment variables:
 
-Create `.env` files in both client and server directories:
+Create `.env` files:
+
+**server/.env**
 
 ```env
-# client/.env
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_INFURA_PROJECT_ID=your_infura_project_id
-REACT_APP_PINATA_API_KEY=your_pinata_api_key
-REACT_APP_PINATA_SECRET_KEY=your_pinata_secret_key
-
-# server/.env
 PORT=5000
-MONGODB_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
+MONGODB_URI=mongodb://localhost:27017/healthmint
+JWT_SECRET=<your_generated_jwt_secret>
 ```
 
-4. Start the development servers:
+**client/.env**
+
+```env
+REACT_APP_API_URL=http://localhost:5000
+```
+
+### Start MongoDB:
 
 ```bash
-# From root directory
+sudo systemctl start mongod
+sudo systemctl enable mongod
+```
+
+### Start the development servers:
+
+```bash
 npm run dev
-```
-
-## Smart Contract Deployment
-
-1. Install Truffle globally:
-
-```bash
-npm install -g truffle
-```
-
-2. Configure your network in `truffle-config.js`
-
-3. Deploy contracts:
-
-```bash
-truffle migrate --network sepolia
 ```
 
 ## Project Structure
 
 ```
-healthmint/
+Healthmint/
 ├── client/                 # React frontend
-│   ├── public/
-│   └── src/
-│       ├── components/     # React components
-│       ├── redux/         # Redux state management
-│       ├── contracts/     # Contract ABIs
-│       └── utils/         # Helper functions
-├── server/                # Node.js backend
-│   ├── config/           # Server configuration
-│   ├── controllers/      # Route controllers
-│   ├── models/          # MongoDB models
-│   └── routes/          # API routes
-├── contracts/            # Solidity smart contracts
-└── migrations/           # Truffle migrations
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── redux/         # Redux state management
+│   │   └── utils/         # Helper functions
+├── server/                 # Node.js backend
+│   ├── config/            # Server configuration
+│   ├── controllers/       # Route controllers
+│   ├── models/            # MongoDB models
+│   ├── routes/            # API routes
+│   └── services/          # Business logic
+├── contracts/              # Solidity smart contracts
+├── migrations/             # Truffle migrations
+└── truffle-config.js       # Truffle configuration
 ```
+
+## Development Scripts
+
+- `npm run dev`: Start both client and server in development mode
+- `npm run client`: Start only the React client
+- `npm run server`: Start only the Node.js server
+- `npm run install-all`: Install dependencies for all parts of the application
+- `npm run clean`: Remove all `node_modules` folders
 
 ## Usage
 
-1. Connect your MetaMask wallet
-2. Complete age verification
-3. Upload health data or browse available records
-4. Purchase data using ETH
-5. View transaction history and manage your data
-
-## Security Considerations
-
-- All uploaded data is encrypted before being stored on IPFS
-- Smart contracts are audited for security vulnerabilities
-- Age verification is required for all users
-- Data access is controlled by smart contracts
+1. Ensure MongoDB is running
+2. Start the application with `npm run dev`
+3. Connect your MetaMask wallet
+4. Complete the registration process
+5. Browse or upload health records
+6. Manage your data and transactions
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-<!-- ## Support
-
-For support, email support@healthmint.com or create an issue in the repository.
-
-## Authors
-
-- Your Name (@yourgithub) -->
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
-- OpenZeppelin for smart contract libraries
-- IPFS team for decentralized storage
-- Ethereum community for blockchain infrastructure
+- Built with React and Material-UI
+- Powered by Ethereum blockchain
+- MongoDB for data storage
+- Express.js backend framework

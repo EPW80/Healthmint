@@ -1,5 +1,7 @@
+//uiSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
+// Initial state for the UI slice
 const initialState = {
   loading: false,
   error: null,
@@ -19,6 +21,7 @@ const initialState = {
   },
 };
 
+// ui slice reducer
 const uiSlice = createSlice({
   name: "ui",
   initialState,

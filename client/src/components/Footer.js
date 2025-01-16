@@ -13,7 +13,7 @@ const GlassFooter = styled(Box)(({ theme }) => ({
   width: "100%",
   padding: theme.spacing(2, 0),
   zIndex: 1000,
-  boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
+  boxShadow: "0 -30px 30px rgba(0, 0, 0, 0.05)",
 }));
 
 const SocialIcon = styled(IconButton)(({ theme }) => ({
@@ -45,13 +45,25 @@ const Footer = () => {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Link href="#" color="text.secondary" sx={{ mx: 2 }}>
+            <Link
+              href="https://github.com/EPW80/Healthmint/blob/main/LICENSE"
+              color="text.secondary"
+              sx={{ mx: 2 }}
+            >
               Privacy Policy
             </Link>
-            <Link href="#" color="text.secondary" sx={{ mx: 2 }}>
+            <Link
+              href="https://github.com/EPW80/Healthmint/blob/main/LICENSE"
+              color="text.secondary"
+              sx={{ mx: 2 }}
+            >
               Terms of Service
             </Link>
-            <Link href="#" color="text.secondary" sx={{ mx: 2 }}>
+            <Link
+              href="erikpw009@gmail.com"
+              color="text.secondary"
+              sx={{ mx: 2 }}
+            >
               Contact
             </Link>
           </Box>
@@ -69,7 +81,7 @@ const Footer = () => {
               color="primary"
               aria-label="close"
               component="a"
-              href="#"
+              href="https://github.com/EPW80/Healthmint/tree/main"
             >
               <CloseIcon />
             </SocialIcon>

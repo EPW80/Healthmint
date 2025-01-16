@@ -1,3 +1,4 @@
+// dataSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
@@ -21,6 +22,7 @@ const initialState = {
   transactions: [], // Transaction history
 };
 
+// data slice reducer
 const dataSlice = createSlice({
   name: "data",
   initialState,
