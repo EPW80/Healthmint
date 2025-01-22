@@ -1,6 +1,7 @@
 # Dependencies
 /node_modules
 /client/node_modules
+/client/src/contracts
 /server/node_modules
 
 # Environment files

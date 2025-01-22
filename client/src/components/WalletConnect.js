@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
+import { networkConfig, addSepoliaToMetaMask } from "../config/network";
 import {
   Box,
   Button,
@@ -206,6 +207,59 @@ const WalletConnect = ({ onConnect }) => {
     };
   };
 
+  const checkNetwork = async () => {
+    if (!window.ethereum) return false;
+
+    try {
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+
+      if (chainId !== networkConfig.requiredNetwork.chainId) {
+        dispatch(
+          addNotification({
+            type: "info",
+            message: "Please switch to Sepolia network",
+          })
+        );
+
+        const success = await addSepoliaToMetaMask();
+        if (!success) {
+          dispatch(
+            addNotification({
+              type: "error",
+              message:
+                "Failed to switch to Sepolia network. Please switch manually in MetaMask.",
+            })
+          );
+          return false;
+        }
+
+        // Verify the switch was successful
+        const newChainId = await window.ethereum.request({
+          method: "eth_chainId",
+        });
+        if (newChainId !== networkConfig.requiredNetwork.chainId) {
+          dispatch(
+            addNotification({
+              type: "error",
+              message: "Network switch was not successful. Please try again.",
+            })
+          );
+          return false;
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error("Error checking network:", error);
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Error checking network: " + error.message,
+        })
+      );
+      return false;
+    }
+  };
+
   const connectWallet = async () => {
     if (!window.ethereum) {
       dispatch(
@@ -219,6 +273,12 @@ const WalletConnect = ({ onConnect }) => {
     }
 
     try {
+      // Add network check here to use the function
+      const isCorrectNetwork = await checkNetwork();
+      if (!isCorrectNetwork) {
+        return;
+      }
+
       setLoading(true);
       setError("");
 

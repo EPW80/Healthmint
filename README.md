@@ -73,14 +73,14 @@ cd Healthmint
 
 ```bash
 # Install all dependencies (root, client, and server)
-npm run install-all
+npm install
 ```
 
 ### Configure environment variables:
 
 Create `.env` files:
 
-**server/.env**
+**root/.env**
 
 ```env
 PORT=5000
