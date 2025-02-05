@@ -1,5 +1,31 @@
 // EncryptionUpload.js
 export class EncryptionUpload {
+
+    // accepted file types
+    acceptedFileTypes = {
+        'application/pdf': ['.pdf']
+    };
+
+    validContentType(file){
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+        const isValidFile = Object.entries(this.acceptedFileTypes).some(([mimeType, extensions]) => {
+            return file.type === mimeType || extensions.includes(fileExtension);
+        });
+
+        if (!isValidFile) {
+            const validExtension = Object.values(this.acceptedFileTypes).flat();
+            throw new Error(
+                `Invalid file type. Valid file types are: ${validExtensions.join(',')}`
+            );
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            throw new Error('File size must be 10MB or less');
+        }
+        return true;
+    }
+
     async generateEncryptionKey() {
         return await crypto.subtle.generateKey(
         {
@@ -38,11 +64,15 @@ export class EncryptionUpload {
                 initialVector: Array.from(initialVector),
                 key: base64,
                 filename: file.name,
-                contentType: file.type
+                contentType: file.type,
+                fileSize: file.size
             };
         } catch (err) {
             console.error('Encryption error:', err);
             throw new Error('Failed to encrypt the file you are uploading.');
         }
+    }
+    getAcceptedFileTypes() {
+        return Object.values(this.acceptedFileTypes).flat();
     }
 }
