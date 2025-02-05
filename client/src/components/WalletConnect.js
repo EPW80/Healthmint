@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import PropTypes from "prop-types";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
-import { networkConfig, addSepoliaToMetaMask } from "../config/network";
+import { networkConfig } from "../config/network";
 import {
   Box,
-  Button,
-  Typography,
   Container,
+  Typography,
   Paper,
   Stepper,
   Step,
   StepLabel,
+  Button,
   TextField,
   FormControl,
   InputLabel,
@@ -20,29 +21,50 @@ import {
   FormControlLabel,
   Checkbox,
   CircularProgress,
+  Alert,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-
-// Redux imports with corrected paths
 import {
-  setWalletConnection,
+  Wallet as WalletIcon,
+  User as UserIcon,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
+
+// Redux actions
+import {
+  updateWalletConnection,
   clearWalletConnection,
 } from "../redux/slices/authSlice";
 
-import {
-  setUserData, // Changed from setformData
-  clearUserData, // Changed from clearformData
-} from "../redux/slices/userSlice";
+import { updateUserProfile, clearUserProfile } from "../redux/slices/userSlice";
 
 import { addNotification } from "../redux/slices/uiSlice";
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
+// Constants
+const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
+const MIN_AGE = 18;
+const MAX_AGE = 120;
+
+const ROLES = [
+  { value: "patient", label: "Patient" },
+  { value: "provider", label: "Healthcare Provider" },
+  { value: "researcher", label: "Researcher" },
+];
+
 // Styled components
 const GlassContainer = styled(Paper)(({ theme }) => ({
-  background: "rgba(255, 255, 255, 0.7)",
+  background: "rgba(255, 255, 255, 0.8)",
   backdropFilter: "blur(10px)",
   borderRadius: "24px",
   padding: theme.spacing(6),
   width: "100%",
+  maxWidth: "500px",
+  margin: "0 auto",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   border: "1px solid rgba(255, 255, 255, 0.3)",
   transition: "transform 0.3s ease, box-shadow 0.3s ease",
@@ -57,15 +79,15 @@ const ConnectButton = styled(Button)(({ theme }) => ({
   padding: "16px",
   fontSize: "1.1rem",
   fontWeight: "bold",
-  background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+  background: theme.palette.primary.gradient,
   boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
   transition: "all 0.3s ease",
   "&:hover": {
-    background: "linear-gradient(45deg, #1976D2 30%, #2196F3 90%)",
+    background: theme.palette.primary.gradientDark,
     transform: "scale(1.02)",
   },
   "&:disabled": {
-    background: "#grey",
+    background: theme.palette.action.disabledBackground,
   },
 }));
 
@@ -73,8 +95,12 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   "& .MuiOutlinedInput-root": {
     backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderRadius: "12px",
+    transition: "all 0.2s ease",
     "&:hover": {
       backgroundColor: "rgba(255, 255, 255, 0.8)",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "rgba(255, 255, 255, 0.9)",
     },
   },
 }));
@@ -83,17 +109,24 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
   "& .MuiOutlinedInput-root": {
     backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderRadius: "12px",
+    transition: "all 0.2s ease",
     "&:hover": {
       backgroundColor: "rgba(255, 255, 255, 0.8)",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "rgba(255, 255, 255, 0.9)",
     },
   },
 }));
 
-const steps = ["Connect Wallet", "Registration", "Complete Profile"];
-
 const WalletConnect = ({ onConnect }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const cleanupRef = useRef();
+
+  // State
   const [activeStep, setActiveStep] = useState(0);
   const [account, setAccount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -106,7 +139,26 @@ const WalletConnect = ({ onConnect }) => {
     agreeToTerms: false,
   });
 
-  const handleDisconnect = () => {
+  const handleExistingUser = useCallback(
+    (account, provider, signer, userData) => {
+      dispatch(updateUserProfile({ address: account, ...userData }));
+      dispatch(
+        updateWalletConnection({
+          isConnected: true,
+          address: account,
+          provider,
+          signer,
+          walletType: "metamask",
+        })
+      );
+      onConnect?.({ account, provider, signer, userData });
+      navigate("/");
+    },
+    [dispatch, navigate, onConnect]
+  );
+
+  // Core wallet functions
+  const handleDisconnect = useCallback(() => {
     setAccount("");
     setActiveStep(0);
     setFormData({
@@ -117,7 +169,7 @@ const WalletConnect = ({ onConnect }) => {
       agreeToTerms: false,
     });
     dispatch(clearWalletConnection());
-    dispatch(clearUserData());
+    dispatch(clearUserProfile());
     dispatch(
       addNotification({
         type: "info",
@@ -125,55 +177,18 @@ const WalletConnect = ({ onConnect }) => {
       })
     );
     navigate("/login");
-  };
+  }, [dispatch, navigate]);
 
-  const handleNewUser = (account) => {
-    setActiveStep(1);
-    dispatch(
-      addNotification({
-        type: "info",
-        message: "Please complete registration",
-      })
-    );
-  };
+  // Handle wallet events
+  const setupWalletListeners = useCallback(() => {
+    if (!window.ethereum?.removeListener) return;
 
-  const handleExistingUser = (account, provider, signer, userData) => {
-    dispatch(
-      setUserData({
-        address: account,
-        ...userData,
-      })
-    );
-
-    dispatch(
-      setWalletConnection({
-        isConnected: true,
-        address: account,
-        provider,
-        signer,
-        walletType: "metamask",
-      })
-    );
-
-    if (typeof onConnect === "function") {
-      onConnect({
-        account,
-        provider,
-        signer,
-        userData,
-      });
-    }
-
-    navigate("/");
-  };
-
-  const setupWalletListeners = () => {
     const handleAccountChange = (accounts) => {
       if (accounts.length === 0) {
         handleDisconnect();
       } else {
         const newAccount = accounts[0];
-        dispatch(setUserData({ address: newAccount }));
+        dispatch(updateUserProfile({ address: newAccount }));
         dispatch(
           addNotification({
             type: "info",
@@ -198,248 +213,226 @@ const WalletConnect = ({ onConnect }) => {
     window.ethereum.on("chainChanged", handleChainChange);
     window.ethereum.on("disconnect", handleDisconnect);
 
-    return () => {
-      if (window.ethereum?.removeListener) {
-        window.ethereum.removeListener("accountsChanged", handleAccountChange);
-        window.ethereum.removeListener("chainChanged", handleChainChange);
-        window.ethereum.removeListener("disconnect", handleDisconnect);
-      }
+    cleanupRef.current = () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountChange);
+      window.ethereum.removeListener("chainChanged", handleChainChange);
+      window.ethereum.removeListener("disconnect", handleDisconnect);
     };
-  };
+  }, [dispatch, handleDisconnect]);
 
-  const checkNetwork = async () => {
-    if (!window.ethereum) return false;
-
+  // Update callApi function to properly format requests
+  const callApi = async (endpoint, method = "GET", data = null) => {
     try {
-      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      const options = {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      };
 
-      if (chainId !== networkConfig.requiredNetwork.chainId) {
-        dispatch(
-          addNotification({
-            type: "info",
-            message: "Please switch to Sepolia network",
-          })
-        );
-
-        const success = await addSepoliaToMetaMask();
-        if (!success) {
-          dispatch(
-            addNotification({
-              type: "error",
-              message:
-                "Failed to switch to Sepolia network. Please switch manually in MetaMask.",
-            })
-          );
-          return false;
-        }
-
-        // Verify the switch was successful
-        const newChainId = await window.ethereum.request({
-          method: "eth_chainId",
-        });
-        if (newChainId !== networkConfig.requiredNetwork.chainId) {
-          dispatch(
-            addNotification({
-              type: "error",
-              message: "Network switch was not successful. Please try again.",
-            })
-          );
-          return false;
-        }
+      if (data) {
+        options.body = JSON.stringify(data);
       }
-      return true;
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || "API call failed");
+      }
+
+      return responseData;
     } catch (error) {
-      console.error("Error checking network:", error);
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Error checking network: " + error.message,
-        })
-      );
-      return false;
+      console.error("API Call Error:", error);
+      throw error;
     }
   };
 
-  const connectWallet = async () => {
+  // Connect wallet
+  const connectWallet = useCallback(async () => {
+    // Check for MetaMask installation
     if (!window.ethereum) {
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Please install MetaMask to continue",
-        })
-      );
-      setError("Please install MetaMask to continue");
+      const error = "Please install MetaMask to continue";
+      setError(error);
+      dispatch(addNotification({ type: "error", message: error }));
       return;
     }
 
     try {
-      // Add network check here to use the function
-      const isCorrectNetwork = await checkNetwork();
-      if (!isCorrectNetwork) {
-        return;
-      }
-
       setLoading(true);
       setError("");
 
+      // Network validation
+      const validateNetwork = async () => {
+        const chainId = await window.ethereum.request({
+          method: "eth_chainId",
+        });
+        if (!chainId) {
+          throw new Error("Could not detect network");
+        }
+
+        // Ensure chainId is in hex format
+        const currentChainId =
+          typeof chainId === "number" ? `0x${chainId.toString(16)}` : chainId;
+
+        if (currentChainId !== networkConfig.requiredNetwork.chainId) {
+          dispatch(
+            addNotification({
+              type: "info",
+              message: "Switching to Sepolia network...",
+            })
+          );
+
+          try {
+            // Try switching to Sepolia
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: networkConfig.requiredNetwork.chainId }],
+            });
+          } catch (switchError) {
+            // Handle network addition if needed
+            if (switchError.code === 4902 || switchError.code === -32603) {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: networkConfig.requiredNetwork.chainId,
+                    chainName: "Sepolia",
+                    nativeCurrency: {
+                      name: "ETH",
+                      symbol: "ETH",
+                      decimals: 18,
+                    },
+                    rpcUrls: [
+                      process.env.REACT_APP_INFURA_PROJECT_ID
+                        ? `https://sepolia.infura.io/v3/${process.env.REACT_APP_INFURA_PROJECT_ID}`
+                        : "https://rpc.sepolia.org",
+                      "https://rpc.sepolia.org",
+                    ].filter(Boolean),
+                    blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                  },
+                ],
+              });
+            } else {
+              throw new Error(
+                switchError.code === 4001
+                  ? "Please switch to Sepolia network to continue"
+                  : "Failed to switch network"
+              );
+            }
+          }
+        }
+      };
+
+      // Validate and switch network if needed
+      await validateNetwork();
+
+      // Request account access
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
 
-      const account = accounts[0];
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      if (!accounts?.length) {
+        throw new Error("Please connect your wallet to continue");
+      }
 
+      const account = accounts[0];
       setAccount(account);
 
-      try {
-        const response = await fetch(
-          `${
-            process.env.REACT_APP_API_URL || "http://localhost:5000"
-          }/api/auth/wallet/connect`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              address: account,
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(
-            data.message || "Server error during wallet connection"
-          );
-        }
-
-        const { user, isNewUser } = data.data;
-
-        if (isNewUser) {
-          handleNewUser(account);
-        } else {
-          handleExistingUser(account, provider, signer, user);
-        }
-
-        setupWalletListeners();
-
-        dispatch(
-          addNotification({
-            type: "success",
-            message: data.message || "Wallet connected successfully",
-          })
-        );
-      } catch (serverError) {
-        console.error("Server connection error:", serverError);
-        dispatch(
-          addNotification({
-            type: "error",
-            message:
-              serverError.message || "Failed to verify wallet with server",
-          })
-        );
-        setError(serverError.message || "Failed to verify wallet with server");
-      }
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error.message || "Failed to connect wallet",
-        })
-      );
-      setError(error.message || "Failed to connect wallet. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "agreeToTerms" ? checked : value,
-    }));
-  };
-
-  const validateRegistration = () => {
-    if (!formData.name || !formData.age || !formData.role) {
-      setError("Please fill in all required fields");
-      return false;
-    }
-    if (parseInt(formData.age) < 18) {
-      setError("You must be 18 or older to register");
-      return false;
-    }
-    if (!formData.agreeToTerms) {
-      setError("You must agree to the terms and conditions");
-      return false;
-    }
-    return true;
-  };
-
-  const handleRegistration = () => {
-    if (validateRegistration()) {
-      setError("");
-      setActiveStep(2);
-    }
-  };
-
-  const handleComplete = async () => {
-    try {
-      setLoading(true);
+      // Initialize provider
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
 
-      const response = await fetch(
-        `${
-          process.env.REACT_APP_API_URL || "http://localhost:5000"
-        }/api/auth/register`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            address: account,
-            ...formData,
-          }),
-        }
-      );
+      // Get current network details
+      const network = await provider.getNetwork();
 
-      if (!response.ok) {
-        throw new Error("Registration failed");
+      // Verify network after connection
+      const requiredChainId = parseInt(
+        networkConfig.requiredNetwork.chainId,
+        16
+      );
+      if (network.chainId !== requiredChainId) {
+        throw new Error("Please switch to Sepolia network");
       }
 
-      const data = await response.json();
+      // Prepare API request
+      const payload = {
+        address: account,
+        chainId: network.chainId,
+        timestamp: new Date().toISOString(),
+      };
 
-      dispatch(
-        setUserData({
-          address: account,
-          ...data.user,
-        })
+      // Connect wallet on backend
+      const response = await callApi(
+        "/api/auth/wallet/connect",
+        "POST",
+        payload
       );
 
-      dispatch(
-        setWalletConnection({
-          isConnected: true,
-          address: account,
-          provider,
-          signer,
-        })
-      );
+      if (!response?.success) {
+        throw new Error(response?.message || "Failed to connect wallet");
+      }
 
-      if (typeof onConnect === "function") {
-        onConnect({
+      if (response.data?.isNewUser) {
+        setActiveStep(1);
+        dispatch(
+          addNotification({
+            type: "info",
+            message: "Please complete registration",
+          })
+        );
+      } else {
+        await handleExistingUser(
           account,
           provider,
           signer,
-          userData: data.user,
-        });
+          response.data?.user
+        );
       }
+
+      // Setup wallet event listeners
+      setupWalletListeners();
+    } catch (error) {
+      console.error("Wallet connection error:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      });
+
+      const errorMessage =
+        error.code === 4001
+          ? "User rejected wallet connection"
+          : error.message || "Failed to connect wallet";
+
+      setError(errorMessage);
+      dispatch(
+        addNotification({
+          type: "error",
+          message: errorMessage,
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch, handleExistingUser, setupWalletListeners]); // Removed networkConfig from dependencies
+
+  // Complete registration
+  const handleComplete = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      const response = await callApi("/api/auth/register", "POST", {
+        address: account,
+        ...formData,
+      });
+
+      await handleExistingUser(account, provider, signer, response.user);
 
       dispatch(
         addNotification({
@@ -447,129 +440,198 @@ const WalletConnect = ({ onConnect }) => {
           message: "Registration completed successfully",
         })
       );
-
-      navigate("/");
-    } catch (err) {
-      console.error("Error completing registration:", err);
-      setError("Failed to complete registration");
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Registration failed",
-        })
-      );
+    } catch (error) {
+      console.error("Error completing registration:", error);
+      setError(error.message || "Failed to complete registration");
     } finally {
       setLoading(false);
     }
-  };
+  }, [account, formData, dispatch, handleExistingUser]);
 
-  useEffect(() => {
-    if (window.ethereum) {
-      const handleAccountsChanged = (accounts) => {
-        setAccount(accounts[0]);
-        setActiveStep(0);
-      };
-
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
-
-      return () => {
-        window.ethereum.removeListener(
-          "accountsChanged",
-          handleAccountsChanged
-        );
-      };
+  // Form validation
+  const validateForm = useCallback(() => {
+    if (!formData.name?.trim() || !formData.age || !formData.role) {
+      throw new Error("Please fill in all required fields");
     }
+
+    const age = parseInt(formData.age);
+    if (isNaN(age) || age < MIN_AGE || age > MAX_AGE) {
+      throw new Error(`Age must be between ${MIN_AGE} and ${MAX_AGE}`);
+    }
+
+    if (!formData.agreeToTerms) {
+      throw new Error("You must agree to the terms and conditions");
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      throw new Error("Please enter a valid email address");
+    }
+
+    return true;
+  }, [formData]);
+
+  // Handle registration
+  const handleRegistration = useCallback(() => {
+    try {
+      validateForm();
+      setError("");
+      setActiveStep(2);
+    } catch (error) {
+      setError(error.message);
+    }
+  }, [validateForm]);
+
+  // Handle input changes
+  const handleInputChange = useCallback((e) => {
+    const { name, value, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "agreeToTerms" ? checked : value,
+    }));
   }, []);
 
-  const renderStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <ConnectButton
-            variant="contained"
-            fullWidth
-            onClick={connectWallet}
-            disabled={loading}
-          >
-            {loading ? "Connecting..." : "Connect MetaMask"}
-          </ConnectButton>
-        );
-      case 1:
-        return (
-          <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 3 }}>
-            <StyledTextField
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
+  }, []);
+
+  // Render step content
+  const renderStepContent = useCallback(
+    (step) => {
+      switch (step) {
+        case 0:
+          return (
+            <ConnectButton
+              variant="contained"
               fullWidth
-              label="Full Name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-            />
-            <StyledTextField
-              fullWidth
-              label="Age"
-              name="age"
-              type="number"
-              value={formData.age}
-              onChange={handleInputChange}
-              required
-            />
-            <StyledFormControl fullWidth required>
-              <InputLabel>Role</InputLabel>
-              <Select
-                name="role"
-                value={formData.role}
+              onClick={connectWallet}
+              disabled={loading}
+              startIcon={!loading && <WalletIcon />}
+            >
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Connect MetaMask"
+              )}
+            </ConnectButton>
+          );
+
+        case 1:
+          return (
+            <Box
+              sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 3 }}
+            >
+              <StyledTextField
+                fullWidth
+                label="Full Name"
+                name="name"
+                value={formData.name}
                 onChange={handleInputChange}
-                label="Role"
-              >
-                <MenuItem value="patient">Patient</MenuItem>
-                <MenuItem value="provider">Healthcare Provider</MenuItem>
-                <MenuItem value="researcher">Researcher</MenuItem>
-              </Select>
-            </StyledFormControl>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  name="agreeToTerms"
-                  checked={formData.agreeToTerms}
+                required
+                disabled={loading}
+              />
+              <StyledTextField
+                fullWidth
+                label="Age"
+                name="age"
+                type="number"
+                value={formData.age}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+                inputProps={{
+                  min: MIN_AGE,
+                  max: MAX_AGE,
+                }}
+                helperText={`Age must be between ${MIN_AGE} and ${MAX_AGE}`}
+              />
+              <StyledFormControl fullWidth required disabled={loading}>
+                <InputLabel>Role</InputLabel>
+                <Select
+                  name="role"
+                  value={formData.role}
                   onChange={handleInputChange}
-                />
-              }
-              label="I agree to the terms and conditions"
-            />
-            <ConnectButton
-              fullWidth
-              onClick={handleRegistration}
-              disabled={loading}
+                  label="Role"
+                >
+                  {ROLES.map((role) => (
+                    <MenuItem key={role.value} value={role.value}>
+                      {role.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </StyledFormControl>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="agreeToTerms"
+                    checked={formData.agreeToTerms}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                  />
+                }
+                label="I agree to the terms and conditions"
+              />
+              <ConnectButton
+                fullWidth
+                onClick={handleRegistration}
+                disabled={loading}
+                startIcon={!loading && <UserIcon />}
+              >
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  "Continue"
+                )}
+              </ConnectButton>
+            </Box>
+          );
+
+        case 2:
+          return (
+            <Box
+              sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 3 }}
             >
-              Continue
-            </ConnectButton>
-          </Box>
-        );
-      case 2:
-        return (
-          <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 3 }}>
-            <StyledTextField
-              fullWidth
-              label="Email (optional)"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-            <ConnectButton
-              fullWidth
-              onClick={handleComplete}
-              disabled={loading}
-            >
-              Complete Registration
-            </ConnectButton>
-          </Box>
-        );
-      default:
-        return null;
-    }
-  };
+              <StyledTextField
+                fullWidth
+                label="Email (optional)"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                disabled={loading}
+                helperText="Optional - We'll use this to send important updates"
+              />
+              <ConnectButton
+                fullWidth
+                onClick={handleComplete}
+                disabled={loading}
+                startIcon={!loading && <CheckCircle />}
+              >
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  "Complete Registration"
+                )}
+              </ConnectButton>
+            </Box>
+          );
+
+        default:
+          return null;
+      }
+    },
+    [
+      formData,
+      handleInputChange,
+      handleRegistration,
+      handleComplete,
+      loading,
+      connectWallet,
+    ]
+  );
 
   return (
     <Box
@@ -579,12 +641,14 @@ const WalletConnect = ({ onConnect }) => {
         alignItems: "center",
         background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
         padding: 3,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       <Container maxWidth="sm">
-        <GlassContainer>
+        <GlassContainer elevation={3}>
           <Typography
-            variant="h3"
+            variant={isMobile ? "h4" : "h3"}
             component="h1"
             gutterBottom
             align="center"
@@ -599,8 +663,13 @@ const WalletConnect = ({ onConnect }) => {
             Welcome to Healthmint
           </Typography>
 
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
+          <Stepper
+            activeStep={activeStep}
+            sx={{ mb: 4 }}
+            alternativeLabel={!isMobile}
+            orientation={isMobile ? "vertical" : "horizontal"}
+          >
+            {STEPS.map((label, index) => (
               <Step key={label}>
                 <StepLabel>{label}</StepLabel>
               </Step>
@@ -608,18 +677,14 @@ const WalletConnect = ({ onConnect }) => {
           </Stepper>
 
           {error && (
-            <Typography
-              color="error"
-              align="center"
-              sx={{
-                mb: 3,
-                p: 2,
-                borderRadius: 2,
-                backgroundColor: "rgba(211, 47, 47, 0.1)",
-              }}
+            <Alert
+              severity="error"
+              sx={{ mb: 3 }}
+              onClose={() => setError("")}
+              icon={<AlertCircle />}
             >
               {error}
-            </Typography>
+            </Alert>
           )}
 
           {renderStepContent(activeStep)}
@@ -632,10 +697,14 @@ const WalletConnect = ({ onConnect }) => {
                 borderRadius: 2,
                 backgroundColor: "rgba(33, 150, 243, 0.1)",
                 border: "1px solid rgba(33, 150, 243, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
               }}
             >
+              <WalletIcon size={16} />
               <Typography
-                align="center"
                 sx={{
                   color: "primary.main",
                   fontWeight: 500,
@@ -646,15 +715,14 @@ const WalletConnect = ({ onConnect }) => {
               </Typography>
             </Box>
           )}
-
-          {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-              <CircularProgress />
-            </Box>
-          )}
         </GlassContainer>
       </Container>
     </Box>
   );
 };
+
+WalletConnect.propTypes = {
+  onConnect: PropTypes.func,
+};
+
 export default WalletConnect;

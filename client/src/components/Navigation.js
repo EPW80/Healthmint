@@ -1,58 +1,247 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import AppBar from "@mui/material/AppBar";
-import Box from "@mui/material/Box";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import { Chip, IconButton, Menu, MenuItem } from "@mui/material";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import React, { useState, useCallback } from "react";
+import PropTypes from "prop-types";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import {
+  AppBar,
+  Box,
+  Toolbar,
+  Typography,
+  Button,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  useTheme,
+  useMediaQuery,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
+  Tooltip,
+} from "@mui/material";
+import {
+  Home,
+  Upload,
+  Search,
+  Settings,
+  LogOut,
+  Menu as MenuIcon,
+  User,
+} from "lucide-react";
+
+const NavButton = ({ to, icon: Icon, label, onClick, mobile }) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+
+  const content = (
+    <>
+      {Icon && <Icon size={20} style={{ marginRight: mobile ? 16 : 8 }} />}
+      {label}
+    </>
+  );
+
+  if (mobile) {
+    return (
+      <ListItem
+        button
+        component={Link}
+        to={to}
+        onClick={onClick}
+        selected={isActive}
+        sx={{
+          "&.Mui-selected": {
+            backgroundColor: "primary.main",
+            color: "white",
+            "&:hover": {
+              backgroundColor: "primary.dark",
+            },
+          },
+        }}
+      >
+        <ListItemIcon sx={{ color: isActive ? "white" : "inherit" }}>
+          <Icon size={20} />
+        </ListItemIcon>
+        <ListItemText primary={label} />
+      </ListItem>
+    );
+  }
+
+  return (
+    <Tooltip title={label}>
+      <Button
+        component={Link}
+        to={to}
+        color="inherit"
+        sx={{
+          minWidth: "auto",
+          px: 2,
+          backgroundColor: isActive
+            ? "rgba(255, 255, 255, 0.1)"
+            : "transparent",
+          "&:hover": {
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+          },
+        }}
+        onClick={onClick}
+      >
+        {content}
+      </Button>
+    </Tooltip>
+  );
+};
+
+NavButton.propTypes = {
+  to: PropTypes.string.isRequired,
+  icon: PropTypes.elementType,
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func,
+  mobile: PropTypes.bool,
+};
 
 const Navigation = ({ account, onLogout }) => {
   const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const isMenuOpen = Boolean(menuAnchorEl);
 
-  const handleMenu = (event) => {
-    setAnchorEl(event.currentTarget);
+  const handleMobileMenuToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
+  const handleMenuOpen = (event) => {
+    setMenuAnchorEl(event.currentTarget);
   };
 
-  const handleLogout = () => {
-    handleClose();
-    onLogout();
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
+  const handleLogout = useCallback(() => {
+    handleMenuClose();
+    onLogout?.();
     navigate("/login");
-  };
+  }, [onLogout, navigate]);
+
+  const navigationItems = [
+    { to: "/", label: "Home", icon: Home },
+    { to: "/upload", label: "Upload Data", icon: Upload },
+    { to: "/browse", label: "Browse Data", icon: Search },
+    { to: "/profile", label: "Profile Settings", icon: Settings },
+  ];
+
+  const renderMobileDrawer = (
+    <Drawer
+      variant="temporary"
+      anchor="left"
+      open={mobileOpen}
+      onClose={handleMobileMenuToggle}
+      ModalProps={{
+        keepMounted: true, // Better open performance on mobile
+      }}
+      sx={{
+        "& .MuiDrawer-paper": {
+          width: 240,
+          boxSizing: "border-box",
+          backgroundColor: theme.palette.background.default,
+        },
+      }}
+    >
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h6" component="div">
+          Healthmint
+        </Typography>
+      </Box>
+      <Divider />
+      <List>
+        {navigationItems.map((item) => (
+          <NavButton
+            key={item.to}
+            {...item}
+            mobile
+            onClick={handleMobileMenuToggle}
+          />
+        ))}
+      </List>
+      {account && (
+        <>
+          <Divider />
+          <List>
+            <ListItem>
+              <Chip
+                label={`${account.slice(0, 6)}...${account.slice(-4)}`}
+                color="secondary"
+                sx={{ width: "100%" }}
+              />
+            </ListItem>
+            <ListItem button onClick={handleLogout}>
+              <ListItemIcon>
+                <LogOut size={20} />
+              </ListItemIcon>
+              <ListItemText primary="Logout" />
+            </ListItem>
+          </List>
+        </>
+      )}
+    </Drawer>
+  );
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
+      <AppBar
+        position="static"
+        sx={{
+          backdropFilter: "blur(10px)",
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+        }}
+      >
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleMobileMenuToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+
+          <Typography
+            variant="h6"
+            component={Link}
+            to="/"
+            sx={{
+              flexGrow: 1,
+              textDecoration: "none",
+              color: "inherit",
+              fontWeight: "bold",
+              "&:hover": {
+                opacity: 0.8,
+              },
+            }}
+          >
             Healthmint
           </Typography>
-          <Button color="inherit" component={Link} to="/">
-            Home
-          </Button>
-          <Button color="inherit" component={Link} to="/upload">
-            Upload Data
-          </Button>
-          <Button color="inherit" component={Link} to="/browse">
-            Browse Data
-          </Button>
-          <MenuItem component={Link} to="/profile" onClick={handleClose}>
-            Profile Settings
-          </MenuItem>
+
+          {!isMobile && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {navigationItems.map((item) => (
+                <NavButton key={item.to} {...item} />
+              ))}
+            </Box>
+          )}
+
           {account && (
-            <>
+            <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
               <Chip
                 label={`${account.slice(0, 6)}...${account.slice(-4)}`}
                 color="secondary"
                 sx={{
-                  ml: 2,
                   color: "white",
                   backgroundColor: "rgba(255, 255, 255, 0.2)",
                   "&:hover": {
@@ -60,21 +249,23 @@ const Navigation = ({ account, onLogout }) => {
                   },
                 }}
               />
-              <IconButton
-                size="large"
-                edge="end"
-                color="inherit"
-                aria-label="account"
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={handleMenu}
-                sx={{ ml: 1 }}
-              >
-                <AccountCircleIcon />
-              </IconButton>
+              <Tooltip title="Account settings">
+                <IconButton
+                  size="large"
+                  edge="end"
+                  color="inherit"
+                  aria-label="account menu"
+                  aria-controls="menu-appbar"
+                  aria-haspopup="true"
+                  onClick={handleMenuOpen}
+                  sx={{ ml: 1 }}
+                >
+                  <User />
+                </IconButton>
+              </Tooltip>
               <Menu
                 id="menu-appbar"
-                anchorEl={anchorEl}
+                anchorEl={menuAnchorEl}
                 anchorOrigin={{
                   vertical: "bottom",
                   horizontal: "right",
@@ -84,17 +275,38 @@ const Navigation = ({ account, onLogout }) => {
                   vertical: "top",
                   horizontal: "right",
                 }}
-                open={open}
-                onClose={handleClose}
+                open={isMenuOpen}
+                onClose={handleMenuClose}
               >
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                <MenuItem
+                  component={Link}
+                  to="/profile"
+                  onClick={handleMenuClose}
+                >
+                  <ListItemIcon>
+                    <Settings size={20} />
+                  </ListItemIcon>
+                  <ListItemText>Profile Settings</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <LogOut size={20} />
+                  </ListItemIcon>
+                  <ListItemText>Logout</ListItemText>
+                </MenuItem>
               </Menu>
-            </>
+            </Box>
           )}
         </Toolbar>
       </AppBar>
+      {isMobile && renderMobileDrawer}
     </Box>
   );
+};
+
+Navigation.propTypes = {
+  account: PropTypes.string,
+  onLogout: PropTypes.func,
 };
 
 export default Navigation;
