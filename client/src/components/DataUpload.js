@@ -7,6 +7,7 @@ import {
   Typography,
   Paper,
   Container,
+  Alert,
 } from "@mui/material";
 import { EncryptionUpload } from "./EncryptionUpload";
 
@@ -14,18 +15,35 @@ const DataUpload = () => {
   const [fileData, setFileData] = useState(null);
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const encryptionUpload = new EncryptionUpload();
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    setFileData(file);
+    //setFileData(file);
+    setError("");
+
+    try {
+      if (file) {
+        encryptionUpload.validContentType(file);
+        setFileData(file);
+      }
+    } catch (err) {
+      setError(err.message);
+      event.target.value = '';
+      setFileData(null);
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
+    setError("");
 
     try {
+      if (!fileData) {
+        throw new Error("Please select a file");
+      }
       // Here add the blockchain integration later
       // Encrypting file before uploading
       const encryptingFile = await encryptionUpload.encryptFile(fileData);
@@ -50,6 +68,8 @@ const DataUpload = () => {
       setLoading(false);
     }
   };
+
+  const acceptedTypes = encryptionUpload.getAcceptedFileTypes().join(', ');
 
   return (
     <Container maxWidth="sm">

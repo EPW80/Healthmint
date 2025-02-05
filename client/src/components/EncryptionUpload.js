@@ -16,7 +16,7 @@ export class EncryptionUpload {
         if (!isValidFile) {
             const validExtension = Object.values(this.acceptedFileTypes).flat();
             throw new Error(
-                `Invalid file type. Valid file types are: ${validExtensions.join(',')}`
+                `Invalid file type. Valid file types are: ${validExtension.join(',')}`
             );
         }
 
