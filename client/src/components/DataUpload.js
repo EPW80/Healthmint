@@ -8,11 +8,13 @@ import {
   Paper,
   Container,
 } from "@mui/material";
+import { EncryptionUpload } from "./EncryptionUpload";
 
 const DataUpload = () => {
   const [fileData, setFileData] = useState(null);
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
+  const encryptionUpload = new EncryptionUpload();
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -25,13 +27,20 @@ const DataUpload = () => {
 
     try {
       // Here add the blockchain integration later
-      console.log("File:", fileData);
+      // Encrypting file before uploading
+      const encryptingFile = await encryptionUpload.encryptFile(fileData);
+
+      console.log("Encrypted Package:", {
+        filename: encryptingFile.filename,
+        contentType: encryptingFile.contentType,
+        encryptedSize: encryptingFile.encrypted.byteLength,
+      });
       console.log("Price:", price);
 
       // Mock API call for now
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      alert("Data uploaded successfully!");
+      alert("Data encrypted and ploaded successfully!");
       setFileData(null);
       setPrice("");
     } catch (error) {
