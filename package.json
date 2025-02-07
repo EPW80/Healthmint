@@ -6,13 +6,15 @@
   "scripts": {
     "start": "node server/server.js",
     "client": "cd client && npm start",
-    "server": "cd server && nodemon server.js",
+    "server": "cd server && nodemon server.js --ignore client/",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "install-all": "npm install && cd client && npm install && cd ../server && npm install",
-    "kill-ports": "npx kill-port 3000 3001 5000 5001",
-    "clean": "rm -rf node_modules && cd client && rm -rf node_modules && cd ../server && rm -rf node_modules"
+    "kill-ports": "npx kill-port 3000 5000",
+    "clean": "rm -rf node_modules && cd client && rm -rf node_modules && cd ../server && rm -rf node_modules",
+    "build": "cd client && npm run build"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^4.9.3",
     "@truffle/hdwallet-provider": "^2.1.15",
     "dotenv": "^16.4.7",
     "truffle": "^5.11.5"

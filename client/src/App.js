@@ -20,12 +20,12 @@ import ProfileSettings from "./components/ProfileSettings";
 
 // Redux actions and selectors
 import {
-  setWalletConnection,
+  updateWalletConnection,
   clearWalletConnection,
   selectWallet,
 } from "./redux/slices/authSlice";
 
-import { setUserData, clearUserData } from "./redux/slices/userSlice";
+import { clearUserProfile, updateUserProfile } from "./redux/slices/userSlice";
 import { addNotification } from "./redux/slices/uiSlice";
 
 // Protected Route Component
@@ -35,7 +35,7 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -45,31 +45,33 @@ const ProtectedRoute = ({ children }) => {
 function AppContent() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, account: address } = useSelector((state) => state.auth);
+  const { isAuthenticated, account: address } = useSelector(
+    (state) => state.auth
+  );
   const { isConnected } = useSelector(selectWallet);
   const userData = useSelector((state) => state.user.userData);
 
   useEffect(() => {
-    if (isAuthenticated && window.location.pathname === '/login') {
-      navigate('/', { replace: true });
+    if (isAuthenticated && window.location.pathname === "/login") {
+      navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
   const handleConnect = async (walletData) => {
     try {
       dispatch(
-        setWalletConnection({
+        updateWalletConnection({
           isConnected: true,
           address: walletData.account,
           provider: walletData.provider,
           signer: walletData.signer,
-          walletType: walletData.walletType || 'metamask',
+          walletType: walletData.walletType || "metamask",
         })
       );
 
       if (walletData.userData) {
         dispatch(
-          setUserData({
+          updateUserProfile({
             address: walletData.account,
             ...walletData.userData,
           })
@@ -82,7 +84,7 @@ function AppContent() {
           })
         );
 
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
       }
     } catch (error) {
       console.error("Connection error:", error);
@@ -97,14 +99,14 @@ function AppContent() {
 
   const handleLogout = () => {
     dispatch(clearWalletConnection());
-    dispatch(clearUserData());
+    dispatch(clearUserProfile());
     dispatch(
       addNotification({
         type: "info",
         message: "Successfully logged out",
       })
     );
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   return (

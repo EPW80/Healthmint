@@ -1,4 +1,4 @@
-// authSlice.js
+// src/redux/slices/authSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
@@ -14,20 +14,18 @@ const initialState = {
     isSupported: false,
   },
   wallet: {
-    type: null, // 'metamask', 'walletconnect', etc.
+    type: "metamask", // Default wallet type
     isConnecting: false,
     isConnected: false,
   },
 };
 
-// network reducer helper
+// Network reducer helper
 const getNetworkName = (chainId) => {
   const networks = {
     "0x1": "Ethereum Mainnet",
-    "0x3": "Ropsten",
-    "0x4": "Rinkeby",
+    "0xaa36a7": "Sepolia",
     "0x5": "Goerli",
-    "0x2a": "Kovan",
   };
   return networks[chainId] || "Unknown Network";
 };
@@ -36,7 +34,7 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setWalletConnection: (state, action) => {
+    updateWalletConnection: (state, action) => {
       state.isAuthenticated = true;
       state.account = action.payload.address;
       state.provider = action.payload.provider;
@@ -79,7 +77,7 @@ const authSlice = createSlice({
     },
 
     updateNetwork: (state, action) => {
-      const supportedNetworks = ["0x1"]; // Ethereum Mainnet
+      const supportedNetworks = ["0x1", "0xaa36a7"]; // Ethereum Mainnet and Sepolia
       const chainId = action.payload;
 
       state.network = {
@@ -95,7 +93,7 @@ const authSlice = createSlice({
 
 // Action creators
 export const {
-  setWalletConnection,
+  updateWalletConnection,
   startWalletConnection,
   clearWalletConnection,
   setLoading,

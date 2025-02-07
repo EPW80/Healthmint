@@ -1,121 +1,305 @@
 const mongoose = require("mongoose");
+const hipaaCompliance = require("../middleware/hipaaCompliance");
 
-const userSchema = new mongoose.Schema({
-  address: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  age: {
-    type: Number,
-    required: true,
-    min: [18, 'Must be at least 18 years old']
-  },
-  email: {
-    type: String,
-    required: false,
-    unique: true,
-    sparse: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
-  },
-  role: {
-    type: String,
-    required: true,
-    enum: ['patient', 'provider', 'researcher'],
-    default: 'patient'
-  },
-  profileImageHash: {
-    type: String,
-    required: false
-  },
-  statistics: {
-    totalUploads: {
-      type: Number,
-      default: 0
+const userSchema = new mongoose.Schema(
+  {
+    // Non-PHI Fields (not encrypted)
+    address: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
-    totalPurchases: {
-      type: Number,
-      default: 0
+
+    // Protected Health Information (PHI) - Encrypted
+    protectedInfo: {
+      name: {
+        encryptedData: String,
+        iv: String,
+        authTag: String,
+      },
+      email: {
+        encryptedData: String,
+        iv: String,
+        authTag: String,
+        verified: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      age: {
+        encryptedData: String,
+        iv: String,
+        authTag: String,
+      },
     },
-    dataQualityScore: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100
-    }
-  },
-  settings: {
-    emailNotifications: {
-      type: Boolean,
-      default: true
+
+    role: {
+      type: String,
+      required: true,
+      enum: ["patient", "provider", "researcher"],
+      default: "patient",
     },
-    twoFactorEnabled: {
-      type: Boolean,
-      default: false
-    }
+
+    profileImageHash: {
+      type: String,
+      required: false,
+    },
+
+    statistics: {
+      totalUploads: {
+        type: Number,
+        default: 0,
+      },
+      totalPurchases: {
+        type: Number,
+        default: 0,
+      },
+      dataQualityScore: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100,
+      },
+    },
+
+    security: {
+      twoFactorEnabled: {
+        type: Boolean,
+        default: false,
+      },
+      twoFactorSecret: String,
+      lastLogin: {
+        type: Date,
+        default: Date.now,
+      },
+      lastActive: Date,
+      failedLoginAttempts: {
+        type: Number,
+        default: 0,
+      },
+      lockoutUntil: Date,
+      passwordLastChanged: Date,
+    },
+
+    settings: {
+      emailNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      dataRetentionPeriod: {
+        type: Number,
+        default: 6 * 365 * 24 * 60 * 60 * 1000, // 6 years in milliseconds
+      },
+    },
+
+    // Access Control
+    accessControl: [
+      {
+        grantedTo: {
+          type: String,
+          required: true,
+        },
+        accessLevel: {
+          type: String,
+          enum: ["read", "write", "admin"],
+          required: true,
+        },
+        grantedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        expiresAt: {
+          type: Date,
+          required: true,
+        },
+        purpose: String,
+      },
+    ],
+
+    // Audit Trail
+    auditLog: [
+      {
+        action: {
+          type: String,
+          required: true,
+          enum: [
+            "create",
+            "read",
+            "update",
+            "delete",
+            "login",
+            "logout",
+            "access_granted",
+            "access_revoked",
+          ],
+        },
+        performedBy: {
+          type: String,
+          required: true,
+        },
+        performedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        ipAddress: String,
+        userAgent: String,
+        details: String,
+      },
+    ],
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+      immutable: true,
+    },
+
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  lastLogin: {
-    type: Date,
-    default: Date.now
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    immutable: true
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true // Automatically manage updatedAt
+);
+
+// Pre-save middleware to encrypt PHI
+userSchema.pre("save", async function (next) {
+  try {
+    if (this.isModified("protectedInfo")) {
+      // Encrypt name if modified
+      if (this.isModified("protectedInfo.name")) {
+        const nameEncrypted = hipaaCompliance.encrypt(this.protectedInfo.name);
+        this.protectedInfo.name = nameEncrypted;
+      }
+
+      // Encrypt email if modified
+      if (this.isModified("protectedInfo.email")) {
+        const emailEncrypted = hipaaCompliance.encrypt(
+          this.protectedInfo.email.toLowerCase()
+        );
+        this.protectedInfo.email = emailEncrypted;
+      }
+
+      // Encrypt age if modified
+      if (this.isModified("protectedInfo.age")) {
+        const ageEncrypted = hipaaCompliance.encrypt(
+          this.protectedInfo.age.toString()
+        );
+        this.protectedInfo.age = ageEncrypted;
+      }
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Pre-save middleware to handle any necessary modifications
-userSchema.pre('save', function(next) {
-  // Convert email to lowercase before saving
-  if (this.email) {
-    this.email = this.email.toLowerCase();
-  }
-  
-  // Convert wallet address to lowercase
-  if (this.address) {
-    this.address = this.address.toLowerCase();
-  }
+// Method to decrypt PHI fields
+userSchema.methods.decryptField = async function (fieldName) {
+  try {
+    const encryptedField = this.protectedInfo[fieldName];
+    if (!encryptedField || !encryptedField.encryptedData) {
+      return null;
+    }
 
-  next();
-});
+    return hipaaCompliance.decrypt(
+      encryptedField.encryptedData,
+      encryptedField.iv,
+      encryptedField.authTag
+    );
+  } catch (error) {
+    throw new Error(`Failed to decrypt ${fieldName}`);
+  }
+};
 
-// Instance method to get public profile
-userSchema.methods.getPublicProfile = function() {
+// Method to get public profile (no PHI)
+userSchema.methods.getPublicProfile = function () {
   const userObject = this.toObject();
-  
+
   // Remove sensitive/private information
+  delete userObject.protectedInfo;
+  delete userObject.security;
   delete userObject.settings;
+  delete userObject.accessControl;
+  delete userObject.auditLog;
   delete userObject.__v;
-  
+
   return userObject;
 };
 
+// Method to get full profile (with decrypted PHI)
+userSchema.methods.getFullProfile = async function (requestedBy) {
+  const hasAccess = this.verifyAccess(requestedBy, "read");
+  if (!hasAccess) {
+    throw new Error("Unauthorized access attempt");
+  }
+
+  const profile = this.toObject();
+
+  // Decrypt PHI fields
+  profile.name = await this.decryptField("name");
+  profile.email = await this.decryptField("email");
+  profile.age = parseInt(await this.decryptField("age"));
+
+  delete profile.protectedInfo;
+  delete profile.__v;
+
+  return profile;
+};
+
+// Method to add audit log
+userSchema.methods.addAuditLog = async function (
+  action,
+  performedBy,
+  details = {}
+) {
+  this.auditLog.push({
+    action,
+    performedBy,
+    performedAt: new Date(),
+    ipAddress: details.ipAddress,
+    userAgent: details.userAgent,
+    details: JSON.stringify(details),
+  });
+
+  await this.save();
+};
+
+// Method to verify access
+userSchema.methods.verifyAccess = function (requestedBy, requiredLevel) {
+  // Owner always has full access
+  if (this.address === requestedBy) {
+    return true;
+  }
+
+  // Check access control list
+  const access = this.accessControl.find(
+    (access) =>
+      access.grantedTo === requestedBy &&
+      access.accessLevel === requiredLevel &&
+      access.expiresAt > new Date()
+  );
+
+  return !!access;
+};
+
 // Static method to find by wallet address
-userSchema.statics.findByAddress = function(address) {
+userSchema.statics.findByAddress = function (address) {
   return this.findOne({ address: address.toLowerCase() });
 };
 
-// Create indexes
-userSchema.index({ address: 1 });
-userSchema.index({ email: 1 }, { sparse: true });
+// Indexes for performance and security
 userSchema.index({ role: 1 });
+userSchema.index({
+  "accessControl.grantedTo": 1,
+  "accessControl.expiresAt": 1,
+});
+userSchema.index({ "security.lastActive": 1 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;

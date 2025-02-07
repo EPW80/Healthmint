@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import PropTypes from "prop-types";
 import {
   Box,
   Container,
@@ -11,10 +12,21 @@ import {
   FormControlLabel,
   Checkbox,
   Paper,
+  Alert,
+  CircularProgress,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { CheckCircle, AlertCircle } from "lucide-react";
+import axios from "axios";
 
-// styled components
+// API endpoint (should come from environment config)
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+// Styled components remain the same...
 const StyledCard = styled(Card)(({ theme }) => ({
   background: "rgba(255, 255, 255, 0.9)",
   backdropFilter: "blur(10px)",
@@ -51,305 +63,193 @@ const PurchaseButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-// Separate mock data into its own constant
-const MOCK_HEALTH_DATA = [
-  {
-    id: 1,
-    owner: "0x123...abc",
-    price: "0.1",
-    description: "Complete Health Records 2023",
-    verified: true,
-    age: 35,
-    category: "General Health",
-  },
-  {
-    id: 2,
-    owner: "0x456...def",
-    price: "0.2",
-    description: "Medical History - Cardiovascular",
-    verified: false,
-    age: 45,
-    category: "Cardiology",
-  },
-  {
-    id: 3,
-    owner: "0x789...ghi",
-    price: "0.15",
-    description: "Annual Physical Results",
-    verified: true,
-    age: 28,
-    category: "Physical Exam",
-  },
-  {
-    id: 4,
-    owner: "0xabc...123",
-    price: "0.25",
-    description: "Lab Results & Blood Work",
-    verified: true,
-    age: 41,
-    category: "Laboratory",
-  },
-  {
-    id: 5,
-    owner: "0xdef...456",
-    price: "0.18",
-    description: "Vaccination Records",
-    verified: false,
-    age: 32,
-    category: "Immunization",
-  },
-  {
-    id: 6,
-    owner: "0xfed...789",
-    price: "0.3",
-    description: "Genetic Testing Results",
-    verified: true,
-    age: 29,
-    category: "Genetics",
-  },
-  {
-    id: 7,
-    owner: "0x321...cba",
-    price: "0.12",
-    description: "Mental Health Assessment",
-    verified: false,
-    age: 38,
-    category: "Psychology",
-  },
-  {
-    id: 8,
-    owner: "0x654...fed",
-    price: "0.22",
-    description: "Dental Records 2023",
-    verified: true,
-    age: 42,
-    category: "Dental",
-  },
-  {
-    id: 9,
-    owner: "0x987...hig",
-    price: "0.17",
-    description: "Vision Test Results",
-    verified: true,
-    age: 33,
-    category: "Ophthalmology",
-  },
-  {
-    id: 10,
-    owner: "0xcba...321",
-    price: "0.28",
-    description: "Allergy Test Results",
-    verified: false,
-    age: 27,
-    category: "Allergy",
-  },
-  {
-    id: 11,
-    owner: "0xaaa...111",
-    price: "0.35",
-    description: "Sleep Study Data",
-    verified: true,
-    age: 51,
-    category: "Neurology",
-  },
-  {
-    id: 12,
-    owner: "0xbbb...222",
-    price: "0.19",
-    description: "Physical Therapy Records",
-    verified: false,
-    age: 44,
-    category: "Physical Therapy",
-  },
-  {
-    id: 13,
-    owner: "0xccc...333",
-    price: "0.24",
-    description: "Nutritional Assessment",
-    verified: true,
-    age: 31,
-    category: "Nutrition",
-  },
-  {
-    id: 14,
-    owner: "0xddd...444",
-    price: "0.16",
-    description: "Dermatology Records",
-    verified: true,
-    age: 36,
-    category: "Dermatology",
-  },
-  {
-    id: 15,
-    owner: "0xeee...555",
-    price: "0.27",
-    description: "Orthopedic Evaluation",
-    verified: false,
-    age: 48,
-    category: "Orthopedics",
-  },
-  {
-    id: 16,
-    owner: "0xfff...666",
-    price: "0.21",
-    description: "Respiratory Function Tests",
-    verified: true,
-    age: 39,
-    category: "Pulmonology",
-  },
-  {
-    id: 17,
-    owner: "0xggg...777",
-    price: "0.31",
-    description: "Endocrine System Analysis",
-    verified: true,
-    age: 43,
-    category: "Endocrinology",
-  },
-  {
-    id: 18,
-    owner: "0xhhh...888",
-    price: "0.23",
-    description: "Pregnancy Health Records",
-    verified: true,
-    age: 34,
-    category: "Obstetrics",
-  },
-  {
-    id: 19,
-    owner: "0xiii...999",
-    price: "0.26",
-    description: "Pediatric Growth Data",
-    verified: false,
-    age: 25,
-    category: "Pediatrics",
-  },
-  {
-    id: 20,
-    owner: "0xjjj...000",
-    price: "0.29",
-    description: "Sports Medicine Assessment",
-    verified: true,
-    age: 30,
-    category: "Sports Medicine",
-  },
-  {
-    id: 21,
-    owner: "0xkkk...111",
-    price: "0.33",
-    description: "Rheumatology Assessment",
-    verified: true,
-    age: 52,
-    category: "Rheumatology",
-  },
-  {
-    id: 22,
-    owner: "0xlll...222",
-    price: "0.28",
-    description: "Oncology Treatment Records",
-    verified: true,
-    age: 47,
-    category: "Oncology",
-  },
-  {
-    id: 23,
-    owner: "0xmmm...333",
-    price: "0.20",
-    description: "Gastroenterology Evaluation",
-    verified: false,
-    age: 39,
-    category: "Gastroenterology",
-  },
-  {
-    id: 24,
-    owner: "0xnnn...444",
-    price: "0.25",
-    description: "Urology Testing Results",
-    verified: true,
-    age: 55,
-    category: "Urology",
-  },
-  {
-    id: 25,
-    owner: "0xooo...555",
-    price: "0.22",
-    description: "Infectious Disease Records",
-    verified: false,
-    age: 28,
-    category: "Infectious Disease",
-  },
+const LoadingContainer = styled(Box)({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: "200px",
+});
+
+// Categories from backend
+const CATEGORIES = [
+  "All",
+  "General Health",
+  "Cardiology",
+  "Physical Exam",
+  "Laboratory",
+  "Immunization",
+  "Genetics",
+  "Psychology",
+  "Dental",
+  "Ophthalmology",
+  "Allergy",
+  "Neurology",
+  "Physical Therapy",
+  "Nutrition",
+  "Dermatology",
+  "Orthopedics",
+  "Pulmonology",
+  "Endocrinology",
+  "Obstetrics",
+  "Pediatrics",
+  "Sports Medicine",
 ];
 
-const DataBrowser = () => {
+const DataBrowser = ({ onPurchase }) => {
   const [healthData, setHealthData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     minAge: "",
     maxAge: "",
     verifiedOnly: false,
+    category: "All",
+    priceRange: "all",
   });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Simulate loading data from an API
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setHealthData(MOCK_HEALTH_DATA);
-      } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Fetch data from API
+  const fetchHealthData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    loadData();
+      const response = await axios.get(`${API_URL}/data/browse`, {
+        params: {
+          minAge: filters.minAge || undefined,
+          maxAge: filters.maxAge || undefined,
+          verified: filters.verifiedOnly || undefined,
+          category: filters.category === "All" ? undefined : filters.category,
+          priceRange:
+            filters.priceRange === "all" ? undefined : filters.priceRange,
+        },
+      });
+
+      setHealthData(response.data.data || []);
+    } catch (err) {
+      console.error("Error fetching health data:", err);
+      setError(
+        err.response?.data?.message ||
+          "Failed to load health data. Please try again later."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  // Fetch data on mount and when filters change
+  useEffect(() => {
+    fetchHealthData();
+  }, [fetchHealthData]);
+
+  // Handle filter changes
+  const handleFilterChange = useCallback((name, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   }, []);
 
-  const filteredData = healthData.filter((data) => {
-    if (filters.verifiedOnly && !data.verified) return false;
-    if (filters.minAge && data.age < parseInt(filters.minAge)) return false;
-    if (filters.maxAge && data.age > parseInt(filters.maxAge)) return false;
-    return true;
-  });
+  // Memoized filtered data (client-side filtering for performance)
+  const filteredData = useMemo(() => {
+    if (!healthData.length) return [];
 
-  const handlePurchase = async (id) => {
-    try {
-      console.log("Purchasing data with ID:", id);
-      alert("Purchase successful!");
-    } catch (error) {
-      console.error("Error purchasing data:", error);
-      alert("Error making purchase. Please try again.");
-    }
-  };
+    return healthData.filter((data) => {
+      if (filters.verifiedOnly && !data.verified) return false;
+      if (filters.minAge && data.age < parseInt(filters.minAge)) return false;
+      if (filters.maxAge && data.age > parseInt(filters.maxAge)) return false;
+      if (filters.category !== "All" && data.category !== filters.category)
+        return false;
 
+      const price = parseFloat(data.price);
+      switch (filters.priceRange) {
+        case "low":
+          return price <= 0.1;
+        case "medium":
+          return price > 0.1 && price <= 0.25;
+        case "high":
+          return price > 0.25;
+        default:
+          return true;
+      }
+    });
+  }, [healthData, filters]);
+
+  // Handle purchase
+  const handlePurchase = useCallback(
+    async (id) => {
+      try {
+        setError(null);
+        await onPurchase?.(id);
+      } catch (error) {
+        console.error("Error purchasing data:", error);
+        setError("Failed to complete purchase. Please try again.");
+      }
+    },
+    [onPurchase]
+  );
+
+  // Filter rendering remains the same...
   const renderFilters = () => (
     <FilterContainer>
       <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={12} sm={6} md={3}>
           <TextField
             fullWidth
             label="Min Age"
             type="number"
             value={filters.minAge}
-            onChange={(e) => setFilters({ ...filters, minAge: e.target.value })}
+            onChange={(e) => handleFilterChange("minAge", e.target.value)}
+            inputProps={{ min: 0, max: 120 }}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={12} sm={6} md={3}>
           <TextField
             fullWidth
             label="Max Age"
             type="number"
             value={filters.maxAge}
-            onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })}
+            onChange={(e) => handleFilterChange("maxAge", e.target.value)}
+            inputProps={{ min: 0, max: 120 }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={6} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={filters.category}
+              label="Category"
+              onChange={(e) => handleFilterChange("category", e.target.value)}
+            >
+              {CATEGORIES.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>Price Range</InputLabel>
+            <Select
+              value={filters.priceRange}
+              label="Price Range"
+              onChange={(e) => handleFilterChange("priceRange", e.target.value)}
+            >
+              <MenuItem value="all">All Prices</MenuItem>
+              <MenuItem value="low">Low (≤ 0.1 ETH)</MenuItem>
+              <MenuItem value="medium">Medium (0.1-0.25 ETH)</MenuItem>
+              <MenuItem value="high">High ({">"} 0.25 ETH)</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12}>
           <FormControlLabel
             control={
               <Checkbox
                 checked={filters.verifiedOnly}
                 onChange={(e) =>
-                  setFilters({ ...filters, verifiedOnly: e.target.checked })
+                  handleFilterChange("verifiedOnly", e.target.checked)
                 }
               />
             }
@@ -360,73 +260,61 @@ const DataBrowser = () => {
     </FilterContainer>
   );
 
-  const renderHealthDataCard = (data) => (
-    <Grid item xs={12} sm={6} md={4} key={data.id}>
-      <StyledCard>
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Typography variant="h6" gutterBottom>
-            ID: {data.id}
-          </Typography>
-          <Typography
-            color="textSecondary"
-            gutterBottom
-            sx={{
-              bgcolor: "rgba(0, 0, 0, 0.05)",
-              p: 1,
-              borderRadius: 1,
-              fontSize: "0.9rem",
-            }}
-          >
-            Owner: {data.owner}
-          </Typography>
-          <Typography variant="body2" gutterBottom>
-            {data.description}
-          </Typography>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
-            Age: {data.age}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              display: "inline-block",
-              bgcolor: "rgba(33, 150, 243, 0.1)",
-              color: "primary.main",
-              px: 1.5,
-              py: 0.5,
-              borderRadius: "20px",
-              mb: 1,
-            }}
-          >
-            {data.category}
-          </Typography>
-          <Typography
-            variant="h6"
-            sx={{ color: "primary.main", fontWeight: "bold", mt: 1 }}
-          >
-            {data.price} ETH
-          </Typography>
-          {data.verified && (
+  // Render health data card
+  const renderHealthDataCard = useCallback(
+    (data) => (
+      <Grid item xs={12} sm={6} md={4} key={data.id}>
+        <StyledCard>
+          <CardContent sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" gutterBottom>
+              {data.category}
+            </Typography>
             <Typography
-              color="success.main"
+              color="textSecondary"
               gutterBottom
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                fontWeight: "bold",
+                bgcolor: "rgba(0, 0, 0, 0.05)",
+                p: 1,
+                borderRadius: 1,
+                fontSize: "0.9rem",
               }}
             >
-              Verified ✓
+              Owner: {data.owner}
             </Typography>
-          )}
-        </CardContent>
-        <Box sx={{ p: 2 }}>
-          <PurchaseButton fullWidth onClick={() => handlePurchase(data.id)}>
-            Purchase
-          </PurchaseButton>
-        </Box>
-      </StyledCard>
-    </Grid>
+            <Typography variant="body2" gutterBottom>
+              {data.description}
+            </Typography>
+            <Typography
+              variant="h6"
+              sx={{ color: "primary.main", fontWeight: "bold", mt: 1 }}
+            >
+              {data.price} ETH
+            </Typography>
+            {data.verified && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  color: "success.main",
+                }}
+              >
+                <CheckCircle size={16} />
+                <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                  Verified
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+          <Box sx={{ p: 2 }}>
+            <PurchaseButton fullWidth onClick={() => handlePurchase(data.id)}>
+              Purchase
+            </PurchaseButton>
+          </Box>
+        </StyledCard>
+      </Grid>
+    ),
+    [handlePurchase]
   );
 
   return (
@@ -446,10 +334,18 @@ const DataBrowser = () => {
           Browse Health Data
         </Typography>
 
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         {renderFilters()}
 
         {loading ? (
-          <Typography>Loading...</Typography>
+          <LoadingContainer>
+            <CircularProgress />
+          </LoadingContainer>
         ) : (
           <>
             <Typography
@@ -462,11 +358,21 @@ const DataBrowser = () => {
             <Grid container spacing={3}>
               {filteredData.map(renderHealthDataCard)}
             </Grid>
+            {filteredData.length === 0 && (
+              <Alert severity="info" icon={<AlertCircle />} sx={{ mt: 2 }}>
+                No records match your current filters. Try adjusting your search
+                criteria.
+              </Alert>
+            )}
           </>
         )}
       </Box>
     </Container>
   );
+};
+
+DataBrowser.propTypes = {
+  onPurchase: PropTypes.func,
 };
 
 export default DataBrowser;
