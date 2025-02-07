@@ -58,7 +58,7 @@ const DataUpload = () => {
       // Mock API call for now
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      alert("Data encrypted and ploaded successfully!");
+      alert("Data encrypted and uploaded successfully!");
       setFileData(null);
       setPrice("");
     } catch (error) {

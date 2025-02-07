@@ -1,7 +1,7 @@
 // EncryptionUpload.js
 export class EncryptionUpload {
 
-    // accepted file types
+    // accepted file types 
     acceptedFileTypes = {
         'application/pdf': ['.pdf']
     };
