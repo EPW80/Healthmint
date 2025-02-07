@@ -21,7 +21,7 @@ export class EncryptionUpload {
         }
 
         if (file.size > 10 * 1024 * 1024) {
-            throw new Error('File size must be 10MB or less');
+            throw new Error('File size must be within 10MB or less');
         }
         return true;
     }
