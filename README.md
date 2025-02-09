@@ -1,164 +1,159 @@
-# Healthmint - Decentralized Health Data Marketplace
+# Healthmint - Secure Health Data Marketplace
 
-Healthmint is a blockchain-based marketplace that enables secure trading of health data between individuals and researchers. Built with React, Ethereum, and IPFS, it provides a transparent and secure platform for health data transactions.
+Healthmint is a **decentralized health data platform** that allows users to securely **connect their wallets**, manage their **health records**, and interact with **healthcare providers and researchers**. Built with **React, Redux, Node.js, and Ethereum**, the platform ensures secure transactions, privacy, and **user control over their data**.
 
-## Features
+---
 
-### Secure Authentication
+## **🚀 Features**
 
-- MetaMask wallet integration
-- Age verification system (18+)
-- User profile management with role-based access
+### 🔐 **Secure Authentication**
 
-### Data Management
+- **MetaMask Wallet Integration**
+- **Ethereum-based Login & Identity Verification**
+- **Role-based Access Control (Patients, Providers, Researchers)**
 
-- Upload health records securely
-- Set custom pricing for data
-- Manage data access permissions
-- Track transaction history
+### 📂 **Health Data Management**
 
-### Marketplace Features
+- **Upload & Store Health Records**
+- **Encrypted Data Sharing & Ownership**
+- **Manage Access Permissions**
+- **Track Transaction History on Blockchain**
 
-- Browse available health records
-- Filter by age, verification status, and category
-- Purchase data using ETH
-- Verify data authenticity
+### 🛒 **Marketplace Features**
 
-### Security & Privacy
+- **Browse Available Health Records**
+- **Set Custom Pricing for Data**
+- **Purchase Data Using Ethereum**
+- **Filter Records by Age, Verification Status, & Category**
 
-- Secure wallet connection
-- Age verification enforcement
-- Smart contract-based access control
-- Transparent transaction tracking
+### 🔒 **Security & Privacy**
 
-## Technology Stack
+- **Blockchain-based Access Control**
+- **Smart Contracts for Data Transactions**
+- **Age Verification Enforcement**
+- **Transaction Transparency & Logging**
 
-### Frontend
+---
 
-- React.js with Hooks
-- Material-UI components
-- Redux Toolkit for state management
-- Ethers.js for blockchain integration
+## **🛠️ Technology Stack**
 
-### Backend
+### **Frontend**
 
-- Node.js/Express server
-- MongoDB database
-- JWT authentication
+- React.js (Hooks & Context API)
+- Redux Toolkit for State Management
+- Material-UI for UI Components
+- Ethers.js for Ethereum Integration
 
-### Blockchain & Storage
+### **Backend**
+
+- Node.js & Express.js for API
+- MongoDB (Mongoose ODM)
+- JWT Authentication & Role Management
+
+### **Blockchain & Storage**
 
 - Ethereum (Sepolia Testnet)
-- Smart Contracts (Solidity)
-- Truffle framework
+- Solidity Smart Contracts
+- Truffle & Hardhat for Blockchain Deployment
 
-## Prerequisites
+---
 
-- Node.js (v16 or higher)
-- npm/yarn
-- MongoDB (v6.0 or higher)
-- MetaMask browser extension
-- Git
+## **📌 Prerequisites**
 
-## Installation
+Before running the project, ensure you have the following installed:
 
-### Clone the repository:
+- **Node.js** (v16+)
+- **npm / yarn**
+- **MongoDB** (v6.0+)
+- **MetaMask Extension**
+- **Git**
+
+---
+
+## **📥 Installation & Setup**
+
+### **1️⃣ Clone the Repository**
 
 ```bash
 git clone https://github.com/EPW80/Healthmint.git
 cd Healthmint
+
+2️⃣ Install Dependencies
 ```
 
-### Install dependencies:
-
-```bash
-# Install all dependencies (root, client, and server)
 npm install
+
 ```
 
-### Configure environment variables:
+3️⃣ Configure Environment Variables
+Create .env files:
 
-Create `.env` files:
-
-**root/.env**
-
-```env
+📂 Backend (server/.env)
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/healthmint
 JWT_SECRET=<your_generated_jwt_secret>
-```
 
-**client/.env**
+📂 Frontend (client/.env)
 
-```env
 REACT_APP_API_URL=http://localhost:5000
-```
 
-### Start MongoDB:
-
-```bash
+4️⃣ Start MongoDB
 sudo systemctl start mongod
 sudo systemctl enable mongod
-```
 
-### Start the development servers:
-
-```bash
+5️⃣ Start the Development Servers
 npm run dev
-```
 
-## Project Structure
-
-```
+📂 Project Structure
 Healthmint/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── components/    # React components
 │   │   ├── redux/         # Redux state management
-│   │   └── utils/         # Helper functions
+│   │   ├── utils/         # Helper functions
+│   ├── public/            # Static assets
+│   ├── package.json       # Frontend dependencies
+│   └── .env               # Frontend environment variables
 ├── server/                 # Node.js backend
 │   ├── config/            # Server configuration
 │   ├── controllers/       # Route controllers
 │   ├── models/            # MongoDB models
 │   ├── routes/            # API routes
-│   └── services/          # Business logic
+│   ├── services/          # Business logic
+│   ├── package.json       # Backend dependencies
+│   ├── server.js          # Entry point
+│   └── .env               # Backend environment variables
 ├── contracts/              # Solidity smart contracts
 ├── migrations/             # Truffle migrations
-└── truffle-config.js       # Truffle configuration
-```
+├── truffle-config.js       # Truffle configuration
+└── README.md               # Project documentation
 
-## Development Scripts
+📌 Development Scripts
+Command	Description
+npm run dev	Start both client & server in development mode
+npm run client	Start only the React frontend
+npm run server	Start only the Node.js backend
+npm run install-all	Install dependencies for all parts
+npm run clean	Remove all node_modules folders
 
-- `npm run dev`: Start both client and server in development mode
-- `npm run client`: Start only the React client
-- `npm run server`: Start only the Node.js server
-- `npm run install-all`: Install dependencies for all parts of the application
-- `npm run clean`: Remove all `node_modules` folders
+🛠️ Usage Guide
+Ensure MongoDB is running
+Start the application with npm run dev
+Connect your MetaMask wallet
+Complete registration & browse health records
+Manage & transact securely with Ethereum
 
-## Usage
+📩 API Endpoints
+Method	Endpoint	Description
+GET	/data/browse	Browse available health records
+POST	/auth/wallet/connect	Connect a MetaMask wallet
+POST	/auth/register	Register a new user
+POST	/data/upload	Upload health data
+GET	/transactions	View transaction history
 
-1. Ensure MongoDB is running
-2. Start the application with `npm run dev`
-3. Connect your MetaMask wallet
-4. Complete the registration process
-5. Browse or upload health records
-6. Manage your data and transactions
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
+📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
-
-- Built with React and Material-UI
-- Powered by Ethereum blockchain
-- MongoDB for data storage
-- Express.js backend framework
+🚀 Get Started & Secure Your Health Data Today!
+Connect, share, and trade securely on Healthmint. 🏥 🔐 💡
+```

@@ -1,5 +1,4 @@
 // src/config/network.js
-import { ethers } from "ethers";
 
 /**
  * Network configuration errors with enhanced details
@@ -374,6 +373,7 @@ async function checkConnection(networkInfo) {
 }
 
 // Export convenience functions
+export const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
 export const convertNetworkId = networkUtils.convertNetworkId;
 export const getNetworkByChainId = networkUtils.getNetworkByChainId;
 export const isNetworkSupported = networkUtils.isNetworkSupported;
