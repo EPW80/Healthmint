@@ -17,7 +17,6 @@ app.options("*", (req, res) => {
   return res.sendStatus(204); // ✅ No Content response for preflight
 });
 
-
 // Basic middleware
 app.use(
   cors({
@@ -34,9 +33,10 @@ app.use(morgan("dev")); // Use dev logging for better visibility
 
 // Import routes
 const authRoutes = require("./routes/auth");
+const dataRoutes = require("./routes/data");
 
 // Basic root route for testing
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.json({
     success: true,
     message: "Healthmint API Server",
@@ -45,7 +45,7 @@ app.get("/", (req, res) => {
 });
 
 // Health check route
-app.get("/health", (req, res) => {
+app.get("/health", (_req, res) => {
   res.json({
     success: true,
     message: "Service is operational",
@@ -57,8 +57,11 @@ app.get("/health", (req, res) => {
 console.log("Mounting auth routes at /api/auth");
 app.use("/api/auth", authRoutes);
 
+console.log("Mounting data routes at /api/data");
+app.use("/api/data", dataRoutes);
+
 // Debug logging middleware
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
@@ -74,7 +77,7 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
+app.use((err, _req, res) => {
   console.error(err);
   res.status(err.status || 500).json({
     success: false,

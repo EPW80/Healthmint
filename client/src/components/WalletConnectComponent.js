@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
@@ -91,7 +91,6 @@ const WalletConnectComponent = ({ onConnect }) => {
       setAccount(account);
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
       const network = await provider.getNetwork();
 
       if (
@@ -104,8 +103,8 @@ const WalletConnectComponent = ({ onConnect }) => {
         updateWalletConnection({
           isConnected: true,
           address: account,
-          provider,
-          signer,
+          provider: { connection: provider.connection }, // Exclude the provider object
+          signer: { _isSigner: true }, // Exclude the signer object
           walletType: "metamask",
         })
       );

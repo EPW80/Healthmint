@@ -1,13 +1,13 @@
 // server/routes/browse.js
 const express = require("express");
 const router = express.Router();
-const healthDataService = require("../services/healthDataService");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
-const { validateAddress } = require("../middleware/validation");
-const { ERROR_CODES } = require("../config/networkConfig");
-const { asyncHandler } = require("../utils/asyncHandler");
-const { ApiError } = require("../utils/apiError");
-const { rateLimiters } = require("../middleware/rateLimiter");
+const healthDataService = require("../../services/healthDataService");
+const hipaaCompliance = require("../../middleware/hipaaCompliance");
+const { validateAddress } = require("../../middleware/validation");
+const { ERROR_CODES } = require("../../config/networkConfig");
+const { asyncHandler } = require("../../utils/asyncHandler");
+const { ApiError } = require("../../utils/apiError");
+const { rateLimiters } = require("../../middleware/rateLimiter");
 
 // Apply HIPAA compliance middleware
 router.use(hipaaCompliance.validatePHI);

@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const healthDataService = require("../services/healthDataService");
 const hipaaCompliance = require("../middleware/hipaaCompliance");
+const browseRoutes = require("./data/browse");
 const {
   validateAddress,
   validateHealthData,
@@ -251,5 +252,11 @@ router.post(
     });
   })
 );
+
+router.get("/browse", (req, res) => {
+  res.json({ success: true, message: "Data browsing available!" });
+});
+
+router.use("/browse", browseRoutes);
 
 module.exports = router;
