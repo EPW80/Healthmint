@@ -143,6 +143,8 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
     }
   };
 
+  const acceptedTypes = encryptionUpload.getAcceptedFileTypes().join(', ');
+
   return (
     <Container maxWidth="sm">
       <Box sx={{ mt: 4 }}>
