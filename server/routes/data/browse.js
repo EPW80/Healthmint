@@ -1,7 +1,7 @@
 // server/routes/browse.js
 import express from "express";
 import hipaaCompliance from "../../middleware/hipaaCompliance.js";
-import { ERROR_CODES } from "../../config/networkConfig.js";
+import { ERROR_CODES } from '../../config/networkConfig.js';
 import { ApiError } from "../../utils/apiError.js";
 import { secureStorageService } from "../../services/secureStorageService.js";
 import { userService } from "../../services/userService.js";

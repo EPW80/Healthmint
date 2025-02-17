@@ -1,7 +1,55 @@
-require("dotenv").config();
-const crypto = require("crypto");
+// config/hipaaConfig.js
+import { scrypt } from "crypto";
+import { promisify } from "util";
+import { fileURLToPath } from "url";
 
-// HIPAA Configuration
+const __filename = fileURLToPath(import.meta.url);
+
+const scryptAsync = promisify(scrypt);
+
+export const ERROR_CODES = {
+  VALIDATION_ERROR: {
+    code: "HIPAA_VALIDATION_ERROR",
+    status: 400,
+    message: "Invalid HIPAA-compliant data format",
+  },
+  UNAUTHORIZED: {
+    code: "HIPAA_UNAUTHORIZED",
+    status: 401,
+    message: "Unauthorized access to protected health information",
+  },
+  FORBIDDEN: {
+    code: "HIPAA_FORBIDDEN",
+    status: 403,
+    message: "Access to protected health information denied",
+  },
+  INTEGRITY_ERROR: {
+    code: "HIPAA_INTEGRITY_ERROR",
+    status: 400,
+    message: "Data integrity check failed",
+  },
+  ENCRYPTION_ERROR: {
+    code: "HIPAA_ENCRYPTION_ERROR",
+    status: 500,
+    message: "Data encryption failed",
+  },
+  CONSENT_REQUIRED: {
+    code: "HIPAA_CONSENT_REQUIRED",
+    status: 403,
+    message: "Patient consent required for this operation",
+  },
+};
+
+export class HIPAAError extends Error {
+  constructor(code, message, details = {}) {
+    super(message || ERROR_CODES[code]?.message);
+    this.name = "HIPAAError";
+    this.code = code;
+    this.details = details;
+    this.timestamp = new Date();
+  }
+}
+
 const hipaaConfig = {
   // Security Configuration
   security: {
@@ -76,14 +124,21 @@ const hipaaConfig = {
 
   // Initialize security keys and credentials
   initialize: () => {
+    console.log("ENCRYPTION_KEY:", process.env.ENCRYPTION_KEY);
+    console.log("All Environment Variables:", process.env);
+
     if (!process.env.ENCRYPTION_KEY) {
-      console.error("ENCRYPTION_KEY not found in environment variables");
-      process.exit(1);
+      throw new HIPAAError(
+        "ENCRYPTION_ERROR",
+        "ENCRYPTION_KEY not found in environment variables"
+      );
     }
 
     if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET not found in environment variables");
-      process.exit(1);
+      throw new HIPAAError(
+        "ENCRYPTION_ERROR",
+        "JWT_SECRET not found in environment variables"
+      );
     }
 
     // Verify encryption key length
@@ -91,8 +146,10 @@ const hipaaConfig = {
       Buffer.from(process.env.ENCRYPTION_KEY, "hex").length !==
       hipaaConfig.security.encryption.keyLength
     ) {
-      console.error("ENCRYPTION_KEY must be exactly 32 bytes");
-      process.exit(1);
+      throw new HIPAAError(
+        "ENCRYPTION_ERROR",
+        "ENCRYPTION_KEY must be exactly 32 bytes"
+      );
     }
 
     return {
@@ -116,7 +173,8 @@ const hipaaConfig = {
     );
 
     if (missingVars.length > 0) {
-      throw new Error(
+      throw new HIPAAError(
+        "VALIDATION_ERROR",
         `Missing required environment variables: ${missingVars.join(", ")}`
       );
     }
@@ -125,4 +183,9 @@ const hipaaConfig = {
   },
 };
 
-module.exports = hipaaConfig;
+// Create singleton instance with initialization
+const config = hipaaConfig.initialize();
+const instance = { ...hipaaConfig, ...config };
+
+export { instance as hipaaConfig };
+export default instance;

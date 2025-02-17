@@ -8,7 +8,8 @@ import {
   clearWalletConnection,
 } from "../redux/slices/walletSlice";
 import { addNotification } from "../redux/slices/store/notificationSlice";
-import { networkConfig } from "../config/networks";
+import { requiredNetwork } from "../config/networks";
+
 
 const WalletConnectComponent = ({ onConnect }) => {
   const navigate = useNavigate();
@@ -93,9 +94,7 @@ const WalletConnectComponent = ({ onConnect }) => {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const network = await provider.getNetwork();
 
-      if (
-        network.chainId !== parseInt(networkConfig.requiredNetwork.chainId, 16)
-      ) {
+      if (network.chainId !== requiredNetwork.NETWORK_ID) {
         throw new Error("Please switch to the Sepolia network.");
       }
 

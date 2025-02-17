@@ -6,12 +6,15 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 
-// Convert __dirname in ES Modules
+// Resolve the correct .env path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, ".env") });
+// Debugging Environment Variables
+console.log("✅ Loaded ENCRYPTION_KEY:", process.env.ENCRYPTION_KEY ? "Present" : "❌ Not Found");
+console.log("✅ Loaded JWT_SECRET:", process.env.JWT_SECRET ? "Present" : "❌ Not Found");
+console.log("✅ Running in:", process.env.NODE_ENV || "development");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,9 +41,15 @@ app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev")); // Log HTTP requests in the terminal
 
-// Import Routes (ES Module compatible dynamic import)
-import authRoutes from "./routes/auth.js";
-import dataRoutes from "./routes/data.js";
+// Import Routes with Error Handling
+let authRoutes, dataRoutes;
+try {
+  authRoutes = (await import("./routes/auth.js")).default;
+  dataRoutes = (await import("./routes/data.js")).default;
+} catch (err) {
+  console.error("❌ Failed to import routes:", err.message);
+  process.exit(1); // Stops the server if routes fail to load
+}
 
 // Root Route
 app.get("/", (_req, res) => {
@@ -91,6 +100,12 @@ app.use((err, _req, res, _next) => {
     message: err.message || "Internal server error",
     timestamp: new Date().toISOString(),
   });
+});
+
+// Graceful Shutdown Handling
+process.on("SIGINT", () => {
+  console.log("\n🔴 Server shutting down gracefully...");
+  process.exit(0);
 });
 
 // Start Server

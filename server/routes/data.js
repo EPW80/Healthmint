@@ -5,7 +5,7 @@ import {
   validateAddress,
   validateHealthData,
 } from "../services/validationService.js";
-import { ERROR_CODES } from "../config/networkConfig.js";
+import { ERROR_CODES } from "../config/hipaaConfig.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js"; // ✅ Correct ES Module import
 import { rateLimiters } from "../middleware/rateLimiter.js";
