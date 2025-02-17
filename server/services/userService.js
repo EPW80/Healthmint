@@ -1,7 +1,10 @@
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
-import { User } from "../models/User.js"; 
+import { User } from "../models/User.js";
 import { AUDIT_TYPES, ACCESS_LEVELS } from "../constants/index.js";
-import { validateUserData, sanitizeUserData } from "../services/validationService.js";
+import {
+  validateUserData,
+  sanitizeUserData,
+} from "../services/validationService.js";
 
 class UserServiceError extends Error {
   constructor(message, code = "USER_SERVICE_ERROR", details = {}) {
@@ -88,7 +91,7 @@ class UserService {
 
       await user.save({ session });
       await session.commitTransaction();
-      
+
       return await hipaaCompliance.sanitizeResponse(user);
     } catch (error) {
       await session.abortTransaction();
@@ -220,4 +223,3 @@ class UserService {
 }
 
 export const userService = new UserService();
-

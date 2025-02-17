@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
 export const AUDIT_TYPES = {
@@ -92,7 +92,7 @@ export const SECURITY_SETTINGS = {
 export const NETWORK_CONFIG = {
   MAINNET: {
     CHAIN_ID: 1,
-    RPC_URL: process.env.INFURA_KEY 
+    RPC_URL: process.env.INFURA_KEY
       ? `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`
       : process.env.RPC_URL,
     BLOCK_EXPLORER: "https://etherscan.io",
@@ -107,4 +107,3 @@ export const NETWORK_CONFIG = {
   TRANSACTION_CONFIRMATIONS: 3,
   GAS_LIMIT: process.env.GAS_LIMIT || 3000000,
 };
-

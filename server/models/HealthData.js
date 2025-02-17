@@ -388,4 +388,4 @@ healthDataSchema.virtual("formattedPrice").get(function () {
 
 const HealthData = mongoose.model("HealthData", healthDataSchema);
 
-export default HealthData; // ✅ Correct ES Module Export
+export default HealthData;
