@@ -1,7 +1,7 @@
-const User = require("../models/User");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
-const { AUDIT_TYPES, ACCESS_LEVELS } = require("../constants");
-const { validateUserData, sanitizeUserData } = require("../utils/validators");
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
+import { User } from "../models/User.js"; 
+import { AUDIT_TYPES, ACCESS_LEVELS } from "../constants/index.js";
+import { validateUserData, sanitizeUserData } from "../services/validationService.js";
 
 class UserServiceError extends Error {
   constructor(message, code = "USER_SERVICE_ERROR", details = {}) {
@@ -13,19 +13,22 @@ class UserServiceError extends Error {
   }
 }
 
-const userService = {
-  // Create user with enhanced security and HIPAA compliance
+class UserService {
+  constructor() {}
+
+  /**
+   * Creates a new user with HIPAA compliance and security validation.
+   */
   async createUser(userData, requestDetails = {}) {
     const session = await User.startSession();
     session.startTransaction();
 
     try {
-      // Validate required fields
       if (!userData.address) {
         throw new UserServiceError("Address is required", "VALIDATION_ERROR");
       }
 
-      // Validate and sanitize user data
+      // Validate & sanitize user data
       const validationResult = await validateUserData(userData);
       if (!validationResult.isValid) {
         throw new UserServiceError(
@@ -35,7 +38,7 @@ const userService = {
         );
       }
 
-      const sanitizedData = await sanitizeUserData({
+      const sanitizedData = sanitizeUserData({
         ...userData,
         address: userData.address.toLowerCase(),
         name: userData.name?.trim(),
@@ -44,7 +47,7 @@ const userService = {
         role: userData.role?.toLowerCase(),
       });
 
-      // Check for existing user
+      // Check if user already exists
       const existingUser = await this.getUserByAddress(sanitizedData.address);
       if (existingUser) {
         throw new UserServiceError("User already exists", "DUPLICATE_ERROR");
@@ -59,7 +62,7 @@ const userService = {
         age: await hipaaCompliance.encrypt(sanitizedData.age.toString()),
       };
 
-      // Create user with metadata
+      // Create user
       const user = new User({
         ...sanitizedData,
         protectedInfo: encryptedData,
@@ -83,112 +86,55 @@ const userService = {
         },
       });
 
-      // Set initial access controls
-      await user.grantAccess(
-        user.address,
-        ACCESS_LEVELS.ADMIN,
-        null,
-        "Owner Access",
-        { initialSetup: true }
-      );
-
-      // Add creation audit log
-      await user.addAuditLog(
-        AUDIT_TYPES.CREATE_USER,
-        requestDetails.requestedBy || "system",
-        {
-          ipAddress: requestDetails.ipAddress,
-          userAgent: requestDetails.userAgent,
-          timestamp: new Date(),
-        }
-      );
-
       await user.save({ session });
       await session.commitTransaction();
-
+      
       return await hipaaCompliance.sanitizeResponse(user);
     } catch (error) {
       await session.abortTransaction();
-      console.error("Error creating user:", {
-        error,
-        userData: { ...userData, address: userData.address?.slice(0, 10) },
-        timestamp: new Date(),
-      });
+      console.error("Error creating user:", error);
       throw new UserServiceError(
         error.message || "Failed to create user",
-        error.code || "CREATE_FAILED",
-        error.details
+        error.code || "CREATE_FAILED"
       );
     } finally {
-      session.endSession();
+      await session.endSession();
     }
-  },
+  }
 
-  // Get user by address with enhanced security
-  async getUserByAddress(address, requestDetails = {}) {
-    const session = await User.startSession();
-    session.startTransaction();
-
+  /**
+   * Retrieves a user by their wallet address.
+   */
+  async getUserByAddress(address) {
     try {
       if (!address) {
         throw new UserServiceError("Address is required", "VALIDATION_ERROR");
       }
 
       const normalizedAddress = address.toLowerCase();
-      const user = await User.findOne({ address: normalizedAddress })
-        .select("+protectedInfo +accessControl")
-        .session(session);
-
-      if (!user) {
-        return null;
-      }
-
-      // Add access audit log
-      await user.addAuditLog(
-        AUDIT_TYPES.READ_USER,
-        requestDetails.requestedBy || "system",
-        {
-          ipAddress: requestDetails.ipAddress,
-          userAgent: requestDetails.userAgent,
-          timestamp: new Date(),
-        }
+      const user = await User.findOne({ address: normalizedAddress }).select(
+        "+protectedInfo +accessControl"
       );
 
-      await session.commitTransaction();
-
-      // Return sanitized response based on access level
-      return await hipaaCompliance.sanitizeResponse(
-        user,
-        requestDetails.accessLevel || "basic"
-      );
+      return user ? await hipaaCompliance.sanitizeResponse(user) : null;
     } catch (error) {
-      await session.abortTransaction();
-      console.error("Error getting user:", {
-        error,
-        address: address?.slice(0, 10),
-        timestamp: new Date(),
-      });
+      console.error("Error fetching user:", error);
       throw new UserServiceError(
         error.message || "Failed to get user",
-        error.code || "RETRIEVAL_FAILED",
-        error.details
+        error.code || "RETRIEVAL_FAILED"
       );
-    } finally {
-      session.endSession();
     }
-  },
+  }
 
-  // Update user with enhanced security and validation
-  async updateUser(address, updateData, requestDetails = {}) {
-    const session = await User.startSession();
-    session.startTransaction();
-
+  /**
+   * Updates user details securely.
+   */
+  async updateUser(address, updateData) {
     try {
       if (!address) {
         throw new UserServiceError("Address is required", "VALIDATION_ERROR");
       }
 
-      // Validate update data
       const validationResult = await validateUserData(updateData, "update");
       if (!validationResult.isValid) {
         throw new UserServiceError(
@@ -198,8 +144,7 @@ const userService = {
         );
       }
 
-      // Sanitize and encrypt sensitive data
-      const sanitizedUpdate = await sanitizeUserData(updateData);
+      const sanitizedUpdate = sanitizeUserData(updateData);
       const encryptedUpdate = {};
 
       if (sanitizedUpdate.name) {
@@ -213,12 +158,6 @@ const userService = {
         );
       }
 
-      // Remove non-updatable fields
-      delete sanitizedUpdate.address;
-      delete sanitizedUpdate.createdAt;
-      delete sanitizedUpdate._id;
-      delete sanitizedUpdate.__v;
-
       const user = await User.findOneAndUpdate(
         { address: address.toLowerCase() },
         {
@@ -226,285 +165,59 @@ const userService = {
             ...sanitizedUpdate,
             ...encryptedUpdate,
             "metadata.lastModified": new Date(),
-            "metadata.lastModifiedBy": requestDetails.requestedBy || "system",
           },
         },
-        {
-          new: true,
-          runValidators: true,
-          session,
-        }
+        { new: true, runValidators: true }
       );
 
       if (!user) {
         throw new UserServiceError("User not found", "NOT_FOUND");
       }
 
-      // Add update audit log
-      await user.addAuditLog(
-        AUDIT_TYPES.UPDATE_USER,
-        requestDetails.requestedBy || "system",
-        {
-          ipAddress: requestDetails.ipAddress,
-          userAgent: requestDetails.userAgent,
-          timestamp: new Date(),
-          changes: Object.keys(updateData),
-        }
-      );
-
-      await session.commitTransaction();
-
       return await hipaaCompliance.sanitizeResponse(user);
     } catch (error) {
-      await session.abortTransaction();
-      console.error("Error updating user:", {
-        error,
-        address: address?.slice(0, 10),
-        updateData,
-        timestamp: new Date(),
-      });
+      console.error("Error updating user:", error);
       throw new UserServiceError(
         error.message || "Failed to update user",
-        error.code || "UPDATE_FAILED",
-        error.details
-      );
-    } finally {
-      session.endSession();
-    }
-  },
-
-  // Update user statistics with retry mechanism
-  async updateStatistics(address, type, value = 1, requestDetails = {}) {
-    const session = await User.startSession();
-    session.startTransaction();
-
-    try {
-      const validTypes = ["totalUploads", "totalPurchases", "dataQualityScore"];
-      if (!validTypes.includes(type)) {
-        throw new UserServiceError(
-          "Invalid statistics type",
-          "VALIDATION_ERROR"
-        );
-      }
-
-      const updateField = `statistics.${type}`;
-      let retries = 3;
-      let user;
-
-      while (retries > 0) {
-        try {
-          user = await User.findOneAndUpdate(
-            { address: address.toLowerCase() },
-            {
-              $inc: { [updateField]: value },
-              $set: { "statistics.lastUpdated": new Date() },
-            },
-            { new: true, session }
-          );
-          break;
-        } catch (err) {
-          retries--;
-          if (retries === 0) throw err;
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
-
-      if (!user) {
-        throw new UserServiceError("User not found", "NOT_FOUND");
-      }
-
-      // Add statistics update audit log
-      await user.addAuditLog(
-        AUDIT_TYPES.UPDATE_STATS,
-        requestDetails.requestedBy || "system",
-        {
-          ipAddress: requestDetails.ipAddress,
-          userAgent: requestDetails.userAgent,
-          timestamp: new Date(),
-          statisticType: type,
-          value,
-        }
-      );
-
-      await session.commitTransaction();
-
-      return await hipaaCompliance.sanitizeResponse(user);
-    } catch (error) {
-      await session.abortTransaction();
-      console.error("Error updating statistics:", {
-        error,
-        address,
-        type,
-        value,
-        timestamp: new Date(),
-      });
-      throw new UserServiceError(
-        error.message || "Failed to update statistics",
-        error.code || "UPDATE_FAILED",
-        error.details
-      );
-    } finally {
-      session.endSession();
-    }
-  },
-
-  // List users with enhanced filtering and security
-  async listUsers(filters = {}, options = {}, requestDetails = {}) {
-    try {
-      const {
-        page = 1,
-        limit = 10,
-        sortBy = "createdAt",
-        sortOrder = -1,
-      } = options;
-
-      // Build secure query
-      const query = this.buildSecureQuery(filters);
-
-      // Execute query with pagination
-      const [users, total] = await Promise.all([
-        User.find(query)
-          .select("+protectedInfo")
-          .sort({ [sortBy]: sortOrder })
-          .skip((page - 1) * limit)
-          .limit(limit)
-          .lean(),
-        User.countDocuments(query),
-      ]);
-
-      // Add audit log for bulk access
-      await User.addBulkAuditLog(
-        AUDIT_TYPES.LIST_USERS,
-        requestDetails.requestedBy || "system",
-        {
-          ipAddress: requestDetails.ipAddress,
-          userAgent: requestDetails.userAgent,
-          timestamp: new Date(),
-          filters,
-          resultCount: users.length,
-        }
-      );
-
-      return {
-        users: await Promise.all(
-          users.map((user) => hipaaCompliance.sanitizeResponse(user))
-        ),
-        pagination: {
-          total,
-          page,
-          pages: Math.ceil(total / limit),
-          hasMore: page * limit < total,
-        },
-      };
-    } catch (error) {
-      console.error("Error listing users:", {
-        error,
-        filters,
-        options,
-        timestamp: new Date(),
-      });
-      throw new UserServiceError(
-        error.message || "Failed to list users",
-        error.code || "RETRIEVAL_FAILED",
-        error.details
+        error.code || "UPDATE_FAILED"
       );
     }
-  },
+  }
 
-  // Get user statistics with enhanced analytics
-  async getUserStats(requestDetails = {}) {
+  /**
+   * Retrieves user statistics.
+   */
+  async getUserStats() {
     try {
       const stats = await User.aggregate([
         {
           $group: {
             _id: "$role",
             count: { $sum: 1 },
-            averageAge: { $avg: "$age" },
             totalUploads: { $sum: "$statistics.totalUploads" },
             totalPurchases: { $sum: "$statistics.totalPurchases" },
-            averageQualityScore: { $avg: "$statistics.dataQualityScore" },
-            activeUsers: {
-              $sum: {
-                $cond: [
-                  {
-                    $gt: [
-                      "$statistics.lastActive",
-                      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-            },
           },
         },
         {
           $project: {
-            _id: 0,
             role: "$_id",
             count: 1,
-            averageAge: { $round: ["$averageAge", 1] },
             totalUploads: 1,
             totalPurchases: 1,
-            averageQualityScore: { $round: ["$averageQualityScore", 1] },
-            activeUsers: 1,
-            activePercentage: {
-              $round: [
-                { $multiply: [{ $divide: ["$activeUsers", "$count"] }, 100] },
-                1,
-              ],
-            },
           },
         },
       ]);
 
-      // Add audit log for stats access
-      await User.addBulkAuditLog(
-        AUDIT_TYPES.VIEW_STATS,
-        requestDetails.requestedBy || "system",
-        {
-          ipAddress: requestDetails.ipAddress,
-          userAgent: requestDetails.userAgent,
-          timestamp: new Date(),
-        }
-      );
-
       return await hipaaCompliance.sanitizeResponse(stats);
     } catch (error) {
-      console.error("Error getting user stats:", {
-        error,
-        timestamp: new Date(),
-      });
+      console.error("Error fetching user statistics:", error);
       throw new UserServiceError(
         error.message || "Failed to get user statistics",
-        error.code || "RETRIEVAL_FAILED",
-        error.details
+        error.code || "RETRIEVAL_FAILED"
       );
     }
-  },
+  }
+}
 
-  // Utility methods
-  buildSecureQuery(filters) {
-    const query = {};
+export const userService = new UserService();
 
-    if (filters.role) {
-      query.role = filters.role.toLowerCase();
-    }
-    if (filters.minAge) {
-      query.age = { $gte: parseInt(filters.minAge) };
-    }
-    if (filters.maxAge) {
-      query.age = { ...query.age, $lte: parseInt(filters.maxAge) };
-    }
-    if (filters.active) {
-      query["statistics.lastActive"] = {
-        $gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      };
-    }
-
-    return query;
-  },
-};
-
-module.exports = userService;

@@ -1,14 +1,22 @@
-// server/server.js
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, ".env") });
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
 
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
+// Convert __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
+// CORS Preflight Handling for OPTIONS requests
 app.options("*", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -17,7 +25,7 @@ app.options("*", (req, res) => {
   return res.sendStatus(204); // ✅ No Content response for preflight
 });
 
-// Basic middleware
+// Basic Middleware
 app.use(
   cors({
     origin: "http://localhost:3000", // Explicitly allow frontend origin
@@ -26,16 +34,15 @@ app.use(
     allowedHeaders: "Content-Type,Authorization",
   })
 );
-
 app.use(helmet());
 app.use(express.json());
-app.use(morgan("dev")); // Use dev logging for better visibility
+app.use(morgan("dev")); // Log HTTP requests in the terminal
 
-// Import routes
-const authRoutes = require("./routes/auth");
-const dataRoutes = require("./routes/data");
+// Import Routes (ES Module compatible dynamic import)
+import authRoutes from "./routes/auth.js";
+import dataRoutes from "./routes/data.js";
 
-// Basic root route for testing
+// Root Route
 app.get("/", (_req, res) => {
   res.json({
     success: true,
@@ -44,7 +51,7 @@ app.get("/", (_req, res) => {
   });
 });
 
-// Health check route
+// Health Check Route
 app.get("/health", (_req, res) => {
   res.json({
     success: true,
@@ -53,20 +60,20 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Mount auth routes - explicitly log the mounting
+// Mount Routes
 console.log("Mounting auth routes at /api/auth");
 app.use("/api/auth", authRoutes);
 
 console.log("Mounting data routes at /api/data");
 app.use("/api/data", dataRoutes);
 
-// Debug logging middleware
+// Log All Requests
 app.use((req, _res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
 
-// 404 handler
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -76,8 +83,8 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
-app.use((err, _req, res) => {
+// Global Error Handler
+app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(err.status || 500).json({
     success: false,
@@ -86,14 +93,13 @@ app.use((err, _req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
-
+// Start Server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
   console.log("Available routes:");
   console.log("  GET  /");
   console.log("  GET  /health");
   console.log("  POST /api/auth/wallet/connect");
 });
 
-module.exports = app;
+export default app;

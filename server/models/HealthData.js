@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
+import mongoose from "mongoose";
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
 
 const healthDataSchema = new mongoose.Schema(
   {
@@ -388,4 +388,4 @@ healthDataSchema.virtual("formattedPrice").get(function () {
 
 const HealthData = mongoose.model("HealthData", healthDataSchema);
 
-module.exports = HealthData;
+export default HealthData; // ✅ Correct ES Module Export

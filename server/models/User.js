@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
+import mongoose from "mongoose";
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -48,46 +48,23 @@ const userSchema = new mongoose.Schema(
     },
 
     statistics: {
-      totalUploads: {
-        type: Number,
-        default: 0,
-      },
-      totalPurchases: {
-        type: Number,
-        default: 0,
-      },
-      dataQualityScore: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
+      totalUploads: { type: Number, default: 0 },
+      totalPurchases: { type: Number, default: 0 },
+      dataQualityScore: { type: Number, default: 0, min: 0, max: 100 },
     },
 
     security: {
-      twoFactorEnabled: {
-        type: Boolean,
-        default: false,
-      },
+      twoFactorEnabled: { type: Boolean, default: false },
       twoFactorSecret: String,
-      lastLogin: {
-        type: Date,
-        default: Date.now,
-      },
+      lastLogin: { type: Date, default: Date.now },
       lastActive: Date,
-      failedLoginAttempts: {
-        type: Number,
-        default: 0,
-      },
+      failedLoginAttempts: { type: Number, default: 0 },
       lockoutUntil: Date,
       passwordLastChanged: Date,
     },
 
     settings: {
-      emailNotifications: {
-        type: Boolean,
-        default: true,
-      },
+      emailNotifications: { type: Boolean, default: true },
       dataRetentionPeriod: {
         type: Number,
         default: 6 * 365 * 24 * 60 * 60 * 1000, // 6 years in milliseconds
@@ -97,23 +74,14 @@ const userSchema = new mongoose.Schema(
     // Access Control
     accessControl: [
       {
-        grantedTo: {
-          type: String,
-          required: true,
-        },
+        grantedTo: { type: String, required: true },
         accessLevel: {
           type: String,
           enum: ["read", "write", "admin"],
           required: true,
         },
-        grantedAt: {
-          type: Date,
-          default: Date.now,
-        },
-        expiresAt: {
-          type: Date,
-          required: true,
-        },
+        grantedAt: { type: Date, default: Date.now },
+        expiresAt: { type: Date, required: true },
         purpose: String,
       },
     ],
@@ -135,34 +103,18 @@ const userSchema = new mongoose.Schema(
             "access_revoked",
           ],
         },
-        performedBy: {
-          type: String,
-          required: true,
-        },
-        performedAt: {
-          type: Date,
-          default: Date.now,
-        },
+        performedBy: { type: String, required: true },
+        performedAt: { type: Date, default: Date.now },
         ipAddress: String,
         userAgent: String,
         details: String,
       },
     ],
 
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      immutable: true,
-    },
-
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
+    createdAt: { type: Date, default: Date.now, immutable: true },
+    updatedAt: { type: Date, default: Date.now },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 // Pre-save middleware to encrypt PHI
@@ -171,27 +123,25 @@ userSchema.pre("save", async function (next) {
     if (this.isModified("protectedInfo")) {
       // Encrypt name if modified
       if (this.isModified("protectedInfo.name")) {
-        const nameEncrypted = hipaaCompliance.encrypt(this.protectedInfo.name);
-        this.protectedInfo.name = nameEncrypted;
+        this.protectedInfo.name = await hipaaCompliance.encrypt(
+          this.protectedInfo.name
+        );
       }
 
       // Encrypt email if modified
       if (this.isModified("protectedInfo.email")) {
-        const emailEncrypted = hipaaCompliance.encrypt(
+        this.protectedInfo.email = await hipaaCompliance.encrypt(
           this.protectedInfo.email.toLowerCase()
         );
-        this.protectedInfo.email = emailEncrypted;
       }
 
       // Encrypt age if modified
       if (this.isModified("protectedInfo.age")) {
-        const ageEncrypted = hipaaCompliance.encrypt(
+        this.protectedInfo.age = await hipaaCompliance.encrypt(
           this.protectedInfo.age.toString()
         );
-        this.protectedInfo.age = ageEncrypted;
       }
     }
-
     next();
   } catch (error) {
     next(error);
@@ -205,7 +155,6 @@ userSchema.methods.decryptField = async function (fieldName) {
     if (!encryptedField || !encryptedField.encryptedData) {
       return null;
     }
-
     return hipaaCompliance.decrypt(
       encryptedField.encryptedData,
       encryptedField.iv,
@@ -219,15 +168,12 @@ userSchema.methods.decryptField = async function (fieldName) {
 // Method to get public profile (no PHI)
 userSchema.methods.getPublicProfile = function () {
   const userObject = this.toObject();
-
-  // Remove sensitive/private information
   delete userObject.protectedInfo;
   delete userObject.security;
   delete userObject.settings;
   delete userObject.accessControl;
   delete userObject.auditLog;
   delete userObject.__v;
-
   return userObject;
 };
 
@@ -239,15 +185,11 @@ userSchema.methods.getFullProfile = async function (requestedBy) {
   }
 
   const profile = this.toObject();
-
-  // Decrypt PHI fields
   profile.name = await this.decryptField("name");
   profile.email = await this.decryptField("email");
   profile.age = parseInt(await this.decryptField("age"));
-
   delete profile.protectedInfo;
   delete profile.__v;
-
   return profile;
 };
 
@@ -271,12 +213,8 @@ userSchema.methods.addAuditLog = async function (
 
 // Method to verify access
 userSchema.methods.verifyAccess = function (requestedBy, requiredLevel) {
-  // Owner always has full access
-  if (this.address === requestedBy) {
-    return true;
-  }
+  if (this.address === requestedBy) return true;
 
-  // Check access control list
   const access = this.accessControl.find(
     (access) =>
       access.grantedTo === requestedBy &&
@@ -300,6 +238,4 @@ userSchema.index({
 });
 userSchema.index({ "security.lastActive": 1 });
 
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+export const User = mongoose.model("User", userSchema);

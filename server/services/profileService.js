@@ -1,8 +1,7 @@
 // src/services/profileService.js
 const User = require("../models/User");
-const HealthData = require("../models/HealthData");
 const hipaaCompliance = require("../middleware/hipaaCompliance");
-const { AUDIT_TYPES, ACCESS_LEVELS } = require("../constants");
+const { AUDIT_TYPES } = require("../constants");
 
 class ProfileServiceError extends Error {
   constructor(message, code = "PROFILE_SERVICE_ERROR", details = {}) {

@@ -1,10 +1,7 @@
 // config/networkConfig.js
 
-/**
- * Main configuration file handling all network and API related settings
- */
-
-const ENV = {
+// Environment variables
+export const ENV = {
   NODE_ENV: process.env.NODE_ENV || "development",
   API_URL: process.env.API_URL || "http://localhost:5000",
   IPFS_HOST: process.env.IPFS_HOST || "ipfs.infura.io",
@@ -14,10 +11,8 @@ const ENV = {
   RETRY_ATTEMPTS: parseInt(process.env.RETRY_ATTEMPTS || "3", 10),
 };
 
-/**
- * Network definitions with complete configuration
- */
-const NETWORKS = {
+// Export configuration
+export const NETWORKS = {
   MAINNET: {
     NAME: "mainnet",
     CHAIN_ID: "0x1",
@@ -62,10 +57,8 @@ const NETWORKS = {
   },
 };
 
-/**
- * API endpoint configurations
- */
-const ENDPOINTS = {
+// API endpoints
+export const ENDPOINTS = {
   AUTH: {
     CONNECT: "/auth/wallet/connect",
     REGISTER: "/auth/register",
@@ -95,10 +88,8 @@ const ENDPOINTS = {
   },
 };
 
-/**
- * Environment-specific configurations
- */
-const ENV_CONFIG = {
+// Export configurations
+export const ENV_CONFIG = {
   development: {
     requestSizeLimit: "50mb",
     rateLimitWindow: 15 * 60 * 1000, // 15 minutes
@@ -137,10 +128,8 @@ const ENV_CONFIG = {
   },
 };
 
-/**
- * Error code definitions
- */
-const ERROR_CODES = {
+// Error codes and messages
+export const ERROR_CODES = {
   VALIDATION_ERROR: {
     code: "VALIDATION_ERROR",
     status: 400,
@@ -178,10 +167,8 @@ const ERROR_CODES = {
   },
 };
 
-/**
- * Utility functions for network configurations
- */
-const networkUtils = {
+// Network utility functions
+export const networkUtils = {
   getNetworkByChainId: (chainId) => {
     return Object.values(NETWORKS).find(
       (network) => network.CHAIN_ID === chainId
@@ -207,25 +194,12 @@ const networkUtils = {
   },
 };
 
-/**
- * Request configuration with default headers and timeout
- */
-const REQUEST_CONFIG = {
+// Request configuration
+export const REQUEST_CONFIG = {
   timeout: ENV.REQUEST_TIMEOUT,
   retryAttempts: ENV.RETRY_ATTEMPTS,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-};
-
-// Export configurations
-module.exports = {
-  ENV,
-  NETWORKS,
-  ENDPOINTS,
-  ENV_CONFIG,
-  ERROR_CODES,
-  networkUtils,
-  REQUEST_CONFIG,
 };

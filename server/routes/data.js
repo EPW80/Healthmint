@@ -1,27 +1,25 @@
-// server/routes/data.js
-const express = require("express");
-const router = express.Router();
-const healthDataService = require("../services/healthDataService");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
-const browseRoutes = require("./data/browse");
-const {
+import express from "express";
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
+import browseRoutes from "./data/browse.js";
+import {
   validateAddress,
   validateHealthData,
-} = require("../middleware/validation");
-const { ERROR_CODES } = require("../config/networkConfig");
-const { asyncHandler } = require("../utils/asyncHandler");
-const { ApiError } = require("../utils/apiError");
-const { rateLimiters } = require("../middleware/rateLimiter");
+} from "../services/validationService.js";
+import { ERROR_CODES } from "../config/networkConfig.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apiError.js"; // ✅ Correct ES Module import
+import { rateLimiters } from "../middleware/rateLimiter.js";
+import { userService } from "../services/userService.js";
+import transactionService from "../services/transactionService.js";
+import { secureStorageService } from "../services/secureStorageService.js";
+
+const router = express.Router();
 
 // Apply HIPAA compliance middleware to all routes
 router.use(hipaaCompliance.validatePHI);
 router.use(hipaaCompliance.auditLog);
 
-/**
- * @route   POST /upload
- * @desc    Upload health data with HIPAA compliance
- * @access  Private
- */
+// Upload health data
 router.post(
   "/upload",
   rateLimiters.upload,
@@ -46,7 +44,7 @@ router.post(
       category: data.category,
     };
 
-    const result = await healthDataService.uploadHealthData(
+    const result = await secureStorageService.storeHealthData(
       normalizedAddress,
       validatedData,
       requestMetadata
@@ -56,19 +54,15 @@ router.post(
       success: true,
       message: "Data uploaded successfully",
       data: {
-        dataId: result.healthData.id,
-        category: result.healthData.category,
+        dataId: result.dataId,
+        category: result.category,
         uploadTimestamp: requestMetadata.timestamp,
       },
     });
   })
 );
 
-/**
- * @route   GET /user
- * @desc    Get user's health data with access control
- * @access  Private
- */
+// Retrieve user data
 router.get(
   "/user",
   rateLimiters.api,
@@ -83,26 +77,9 @@ router.get(
       );
     }
 
-    const accessPurpose = req.headers["x-access-purpose"];
-    if (!accessPurpose) {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR.code,
-        "Access purpose is required"
-      );
-    }
-
-    const requestMetadata = {
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      purpose: accessPurpose,
-      timestamp: new Date(),
-      action: "data_access",
-    };
-
-    const result = await healthDataService.getHealthData(
+    const result = await userService.getUserHealthData(
       requestedBy,
-      dataId || address,
-      requestMetadata
+      dataId || address
     );
 
     if (!result) {
@@ -114,21 +91,12 @@ router.get(
 
     res.json({
       success: true,
-      data: result.data,
-      accessDetails: {
-        granted: true,
-        expiresAt: result.accessExpires,
-        purpose: accessPurpose,
-      },
+      data: result,
     });
   })
 );
 
-/**
- * @route   POST /purchase
- * @desc    Purchase health data with consent verification
- * @access  Private
- */
+// Purchase health data
 router.post(
   "/purchase",
   rateLimiters.api,
@@ -142,39 +110,22 @@ router.post(
       );
     }
 
-    const transactionMetadata = {
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      purpose,
-      transactionHash,
-      timestamp: new Date(),
-      action: "data_purchase",
-    };
-
-    const result = await healthDataService.purchaseData(
+    const result = await transactionService.purchaseData(
       buyerAddress,
       dataId,
-      transactionMetadata
+      purpose,
+      transactionHash
     );
 
     res.json({
       success: true,
       message: "Data purchased successfully",
-      purchase: {
-        id: result.purchase.dataId,
-        accessGranted: result.purchase.accessGranted,
-        expiresAt: result.purchase.expiresAt,
-        transactionHash: result.purchase.transactionHash,
-      },
+      purchase: result,
     });
   })
 );
 
-/**
- * @route   GET /audit
- * @desc    Get access audit log for health data
- * @access  Private
- */
+// Fetch audit log
 router.get(
   "/audit",
   rateLimiters.api,
@@ -189,9 +140,10 @@ router.get(
       );
     }
 
-    const auditLog = await healthDataService.getAuditLog(dataId, requestedBy, {
-      action: "audit_log_access",
-    });
+    const auditLog = await secureStorageService.getAuditLog(
+      dataId,
+      requestedBy
+    );
 
     res.json({
       success: true,
@@ -200,11 +152,7 @@ router.get(
   })
 );
 
-/**
- * @route   POST /emergency-access
- * @desc    Request emergency access to health data
- * @access  Private (Providers only)
- */
+// Emergency access request
 router.post(
   "/emergency-access",
   rateLimiters.api,
@@ -226,37 +174,25 @@ router.post(
       );
     }
 
-    const accessMetadata = {
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      reason,
-      timestamp: new Date(),
-      action: "emergency_access_request",
-    };
-
-    const result = await healthDataService.handleEmergencyAccess(
+    const result = await secureStorageService.handleEmergencyAccess(
       requestedBy,
       dataId,
-      accessMetadata
+      reason
     );
 
     res.json({
       success: true,
       message: "Emergency access granted",
-      access: {
-        granted: true,
-        expiresAt: result.expiresAt,
-        reason: result.reason,
-        restrictions: result.restrictions,
-      },
+      access: result,
     });
   })
 );
 
-router.get("/browse", (req, res) => {
+// Data browsing route
+router.get("/browse", (_req, res) => {
   res.json({ success: true, message: "Data browsing available!" });
 });
-
 router.use("/browse", browseRoutes);
 
-module.exports = router;
+// Export the router for use in the main server.js file
+export default router;

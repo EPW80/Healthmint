@@ -27,6 +27,31 @@ import axios from "axios";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 console.log("Resolved API_URL:", API_URL);
 
+// Categories from backend
+const CATEGORIES = [
+  "All",
+  "General Health",
+  "Cardiology",
+  "Physical Exam",
+  "Laboratory",
+  "Immunization",
+  "Genetics",
+  "Psychology",
+  "Dental",
+  "Ophthalmology",
+  "Allergy",
+  "Neurology",
+  "Physical Therapy",
+  "Nutrition",
+  "Dermatology",
+  "Orthopedics",
+  "Pulmonology",
+  "Endocrinology",
+  "Obstetrics",
+  "Pediatrics",
+  "Sports Medicine",
+];
+
 // Styled components remain the same...
 const StyledCard = styled(Card)(({ theme }) => ({
   background: "rgba(255, 255, 255, 0.9)",
@@ -88,28 +113,19 @@ const DataBrowser = ({ onPurchase }) => {
     try {
       setLoading(true);
       setError(null);
-
       const formattedUrl = `${API_URL.replace(/\/$/, "")}/api/data/browse`;
-      console.log("Fetching from:", formattedUrl);
-
       const response = await axios.get(formattedUrl, {
         params: {
           minAge: filters.minAge || undefined,
           maxAge: filters.maxAge || undefined,
           verified: filters.verifiedOnly || undefined,
           category: filters.category === "All" ? undefined : filters.category,
-          priceRange:
-            filters.priceRange === "all" ? undefined : filters.priceRange,
+          priceRange: filters.priceRange === "all" ? undefined : filters.priceRange,
         },
       });
-
       setHealthData(response.data.data || []);
     } catch (err) {
-      console.error("Error fetching health data:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to load health data. Please try again later."
-      );
+      setError(err.response?.data?.message || "Failed to load health data. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -349,31 +365,6 @@ const DataBrowser = ({ onPurchase }) => {
     </Container>
   );
 };
-
-// Categories from backend
-const CATEGORIES = [
-  "All",
-  "General Health",
-  "Cardiology",
-  "Physical Exam",
-  "Laboratory",
-  "Immunization",
-  "Genetics",
-  "Psychology",
-  "Dental",
-  "Ophthalmology",
-  "Allergy",
-  "Neurology",
-  "Physical Therapy",
-  "Nutrition",
-  "Dermatology",
-  "Orthopedics",
-  "Pulmonology",
-  "Endocrinology",
-  "Obstetrics",
-  "Pediatrics",
-  "Sports Medicine",
-];
 
 DataBrowser.propTypes = {
   onPurchase: PropTypes.func,

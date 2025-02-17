@@ -1,27 +1,21 @@
 // server/routes/browse.js
-const express = require("express");
+import express from "express";
+import hipaaCompliance from "../../middleware/hipaaCompliance.js";
+import { ERROR_CODES } from "../../config/networkConfig.js";
+import { ApiError } from "../../utils/apiError.js";
+import { secureStorageService } from "../../services/secureStorageService.js";
+import { userService } from "../../services/userService.js";
+import { rateLimiters } from "../../middleware/rateLimiter.js";
+
 const router = express.Router();
-const healthDataService = require("../../services/healthDataService");
-const hipaaCompliance = require("../../middleware/hipaaCompliance");
-const { validateAddress } = require("../../middleware/validation");
-const { ERROR_CODES } = require("../../config/networkConfig");
-const { asyncHandler } = require("../../utils/asyncHandler");
-const { ApiError } = require("../../utils/apiError");
-const { rateLimiters } = require("../../middleware/rateLimiter");
 
 // Apply HIPAA compliance middleware
 router.use(hipaaCompliance.validatePHI);
 router.use(hipaaCompliance.auditLog);
 
-/**
- * @route   GET /browse
- * @desc    Browse available health data with filters
- * @access  Private
- */
-router.get(
-  "/",
-  rateLimiters.api,
-  asyncHandler(async (req, res) => {
+// Browse health data
+router.get("/", rateLimiters.api, async (req, res, next) => {
+  try {
     const {
       category,
       minAge,
@@ -45,16 +39,10 @@ router.get(
       userAgent: req.get("User-Agent"),
       timestamp: new Date(),
       action: "browse_data",
-      filters: {
-        category,
-        minAge,
-        maxAge,
-        verified,
-        priceRange,
-      },
+      filters: { category, minAge, maxAge, verified, priceRange },
     };
 
-    const result = await healthDataService.browseHealthData({
+    const result = await secureStorageService.browseHealthData({
       filters: {
         category,
         minAge: minAge ? parseInt(minAge) : undefined,
@@ -75,18 +63,14 @@ router.get(
       data: result.data,
       pagination: result.pagination,
     });
-  })
-);
+  } catch (error) {
+    next(error);
+  }
+});
 
-/**
- * @route   GET /browse/:id
- * @desc    Get detailed view of specific health data
- * @access  Private
- */
-router.get(
-  "/:id",
-  rateLimiters.api,
-  asyncHandler(async (req, res) => {
+// Get health data details
+router.get("/:id", rateLimiters.api, async (req, res, next) => {
+  try {
     const { id } = req.params;
     const requestedBy = req.user?.address;
 
@@ -113,7 +97,7 @@ router.get(
       purpose: accessPurpose,
     };
 
-    const result = await healthDataService.getHealthDataDetails(
+    const result = await secureStorageService.getHealthDataDetails(
       id,
       requestedBy,
       requestMetadata
@@ -127,18 +111,14 @@ router.get(
       success: true,
       data: await hipaaCompliance.sanitizeResponse(result),
     });
-  })
-);
+  } catch (error) {
+    next(error);
+  }
+});
 
-/**
- * @route   GET /browse/categories
- * @desc    Get list of available categories
- * @access  Private
- */
-router.get(
-  "/categories",
-  rateLimiters.api,
-  asyncHandler(async (req, res) => {
+// Get health data categories
+router.get("/categories", rateLimiters.api, async (req, res, next) => {
+  try {
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
@@ -155,24 +135,22 @@ router.get(
       action: "get_categories",
     };
 
-    const categories = await healthDataService.getCategories(requestMetadata);
+    const categories = await secureStorageService.getCategories(
+      requestMetadata
+    );
 
     res.json({
       success: true,
       categories,
     });
-  })
-);
+  } catch (error) {
+    next(error);
+  }
+});
 
-/**
- * @route   GET /browse/stats
- * @desc    Get marketplace statistics
- * @access  Private
- */
-router.get(
-  "/stats",
-  rateLimiters.api,
-  asyncHandler(async (req, res) => {
+// Get marketplace statistics
+router.get("/stats", rateLimiters.api, async (req, res, next) => {
+  try {
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
@@ -189,13 +167,15 @@ router.get(
       action: "get_marketplace_stats",
     };
 
-    const stats = await healthDataService.getMarketplaceStats(requestMetadata);
+    const stats = await userService.getUserStats(requestMetadata);
 
     res.json({
       success: true,
       stats: await hipaaCompliance.sanitizeResponse(stats),
     });
-  })
-);
+  } catch (error) {
+    next(error);
+  }
+});
 
-module.exports = router;
+export default router;

@@ -1,7 +1,7 @@
-// constants/index.js
+import dotenv from 'dotenv';
+dotenv.config();
 
-// Audit types for logging and tracking
-const AUDIT_TYPES = {
+export const AUDIT_TYPES = {
   CREATE: "create",
   READ: "read",
   UPDATE: "update",
@@ -16,16 +16,14 @@ const AUDIT_TYPES = {
   EMERGENCY_ACCESS: "emergency_access",
 };
 
-// Access control levels
-const ACCESS_LEVELS = {
+export const ACCESS_LEVELS = {
   READ: "read",
   WRITE: "write",
   ADMIN: "admin",
   EMERGENCY: "emergency",
 };
 
-// Data retention periods (in milliseconds)
-const DATA_RETENTION = {
+export const DATA_RETENTION = {
   HEALTH_RECORDS: 6 * 365 * 24 * 60 * 60 * 1000, // 6 years
   AUDIT_LOGS: 6 * 365 * 24 * 60 * 60 * 1000, // 6 years
   PURCHASE_ACCESS: 365 * 24 * 60 * 60 * 1000, // 1 year
@@ -33,30 +31,32 @@ const DATA_RETENTION = {
   SESSION: 30 * 60 * 1000, // 30 minutes
 };
 
-// User roles
-const USER_ROLES = {
+export const DATA_LIMITS = {
+  MAX_RECORDS_PER_USER: 5000,
+  MAX_STORAGE_SIZE_MB: 1000, // 1GB
+};
+
+export const USER_ROLES = {
   PATIENT: "patient",
   PROVIDER: "provider",
   RESEARCHER: "researcher",
   ADMIN: "admin",
 };
 
-// Data categories
-const DATA_CATEGORIES = {
-  GENERAL_HEALTH: "General Health",
-  CARDIOLOGY: "Cardiology",
-  NEUROLOGY: "Neurology",
-  ORTHOPEDICS: "Orthopedics",
-  PEDIATRICS: "Pediatrics",
-  LABORATORY: "Laboratory",
-  RADIOLOGY: "Radiology",
-  GENETICS: "Genetics",
-  MENTAL_HEALTH: "Mental Health",
-  DENTAL: "Dental",
+export const DATA_CATEGORIES = {
+  GENERAL_HEALTH: "general_health",
+  CARDIOLOGY: "cardiology",
+  NEUROLOGY: "neurology",
+  ORTHOPEDICS: "orthopedics",
+  PEDIATRICS: "pediatrics",
+  LABORATORY: "laboratory",
+  RADIOLOGY: "radiology",
+  GENETICS: "genetics",
+  MENTAL_HEALTH: "mental_health",
+  DENTAL: "dental",
 };
 
-// API error codes
-const API_ERRORS = {
+export const API_ERRORS = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   UNAUTHORIZED: "UNAUTHORIZED",
   FORBIDDEN: "FORBIDDEN",
@@ -68,8 +68,7 @@ const API_ERRORS = {
   CONSENT_REQUIRED: "CONSENT_REQUIRED",
 };
 
-// File constraints
-const FILE_CONSTRAINTS = {
+export const FILE_CONSTRAINTS = {
   MAX_SIZE: 50 * 1024 * 1024, // 50MB
   ALLOWED_TYPES: [
     "application/pdf",
@@ -81,22 +80,31 @@ const FILE_CONSTRAINTS = {
   ],
 };
 
-// Security settings
-const SECURITY_SETTINGS = {
-  PASSWORD_MIN_LENGTH: 12,
-  MAX_LOGIN_ATTEMPTS: 3,
+export const SECURITY_SETTINGS = {
+  PASSWORD_MIN_LENGTH: process.env.NODE_ENV === "production" ? 14 : 8,
+  PASSWORD_COMPLEXITY: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{12,}$/,
+  MAX_LOGIN_ATTEMPTS: 5,
   LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutes
   TOKEN_EXPIRY: 24 * 60 * 60 * 1000, // 24 hours
-  REQUIRE_MFA: process.env.NODE_ENV === "production",
+  REQUIRE_MFA: process.env.REQUIRE_MFA === "true",
 };
 
-module.exports = {
-  AUDIT_TYPES,
-  ACCESS_LEVELS,
-  DATA_RETENTION,
-  USER_ROLES,
-  DATA_CATEGORIES,
-  API_ERRORS,
-  FILE_CONSTRAINTS,
-  SECURITY_SETTINGS,
+export const NETWORK_CONFIG = {
+  MAINNET: {
+    CHAIN_ID: 1,
+    RPC_URL: process.env.INFURA_KEY 
+      ? `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`
+      : process.env.RPC_URL,
+    BLOCK_EXPLORER: "https://etherscan.io",
+  },
+  SEPOLIA: {
+    CHAIN_ID: 11155111,
+    RPC_URL: process.env.INFURA_KEY
+      ? `https://sepolia.infura.io/v3/${process.env.INFURA_KEY}`
+      : process.env.SEPOLIA_RPC_URL,
+    BLOCK_EXPLORER: "https://sepolia.etherscan.io",
+  },
+  TRANSACTION_CONFIRMATIONS: 3,
+  GAS_LIMIT: process.env.GAS_LIMIT || 3000000,
 };
+

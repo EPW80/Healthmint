@@ -1,83 +1,81 @@
-const express = require("express");
-const router = express.Router();
-const ethers = require("ethers");
-const { asyncHandler } = require("../utils/asyncHandler");
+import express from "express";
+import ethers from "ethers";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-/**
- * @route   POST /api/auth/wallet/connect
- * @desc    Connect wallet and check if user exists
- * @access  Public
- */
+const router = express.Router();
+
+// CORS Preflight Handling
 router.options("/wallet/connect", (_req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  return res.sendStatus(204); // No content response for preflight
+  return res.sendStatus(204); // ✅ No content response for preflight
 });
 
-router.post("/wallet/connect", asyncHandler(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000"); // ✅ Allow specific frontend
-  res.setHeader("Access-Control-Allow-Credentials", "true"); // ✅ Required for cookies/auth
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+// Wallet Connect Route
+router.post(
+  "/wallet/connect",
+  asyncHandler(async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
 
-
-  try {
-    const { address, chainId } = req.body;
-
-    if (!address) {
-      return res.status(400).json({
-        success: false,
-        message: "Wallet address is required",
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    let normalizedAddress;
     try {
-      normalizedAddress = ethers.utils.getAddress(address.toLowerCase());
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Ethereum address format",
-        timestamp: new Date().toISOString()
-      });
-    }
+      const { address, chainId } = req.body;
 
-    console.log("Wallet connection attempt:", {
-      address: normalizedAddress,
-      chainId,
-      timestamp: new Date().toISOString()
-    });
+      if (!address) {
+        return res.status(400).json({
+          success: false,
+          message: "Wallet address is required",
+          timestamp: new Date().toISOString(),
+        });
+      }
 
-    return res.json({
-      success: true,
-      message: "Wallet connected successfully",
-      data: {
-        isNewUser: true,
+      let normalizedAddress;
+      try {
+        normalizedAddress = ethers.utils.getAddress(address.toLowerCase());
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Ethereum address format",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      console.log("Wallet connection attempt:", {
         address: normalizedAddress,
         chainId,
-        timestamp: new Date().toISOString()
-      }
-    });
+        timestamp: new Date().toISOString(),
+      });
 
-  } catch (error) {
-    console.error("Wallet connect error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to process wallet connection",
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-}));
+      return res.json({
+        success: true,
+        message: "Wallet connected successfully",
+        data: {
+          isNewUser: true,
+          address: normalizedAddress,
+          chainId,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error("Wallet connect error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process wallet connection",
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  })
+);
 
-/**
- * @route   POST /api/auth/register
- * @desc    Register new user
- * @access  Public
- */
+// User Registration Route
 router.post(
   "/register",
   asyncHandler(async (req, res) => {
@@ -117,11 +115,7 @@ router.post(
   })
 );
 
-/**
- * @route   GET /api/auth/verify
- * @desc    Verify wallet connection
- * @access  Public
- */
+// Wallet Verification Route
 router.get(
   "/verify",
   asyncHandler(async (req, res) => {
@@ -160,4 +154,5 @@ router.get(
   })
 );
 
-module.exports = router;
+// ✅ Use ES Module Export
+export default router;

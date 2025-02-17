@@ -8,10 +8,7 @@ const {
   validateProfileUpdate,
   validateConsent,
 } = require("../middleware/validation");
-const {
-  ERROR_CODES,
-  ENDPOINTS,
-} = require("../config/networkConfig");
+const { ERROR_CODES, ENDPOINTS } = require("../config/networkConfig");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { ApiError } = require("../utils/apiError");
 const { rateLimiters } = require("../middleware/rateLimiter");
