@@ -4,13 +4,14 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 /**
  * @title HealthDataMarketplace
  * @dev HIPAA-compliant marketplace for health data
  */
-contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl {
+contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl, Ownable {
     using Counters for Counters.Counter;
 
     // Roles
@@ -140,6 +141,7 @@ contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl {
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
+        _setupRole(VERIFIER_ROLE, msg.sender);
         platformFee = 250; // 2.5%
     }
 
@@ -218,6 +220,8 @@ contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl {
         );
     }
 
+    // This should replace the purchaseData function in your contract
+
     function purchaseData(
         uint256 _id,
         string memory _purpose
@@ -230,26 +234,27 @@ contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl {
         whenNotPaused
         nonReentrant
     {
-        HealthData storage data = healthData[_id];
-        require(data.isAvailable, "Data not available");
-        require(msg.value == data.price, "Incorrect payment amount");
-        require(msg.sender != data.owner, "Cannot purchase own data");
-        require(bytes(_purpose).length > 0, "Purpose required");
-
-        uint256 fee = (msg.value * platformFee) / 10000;
-        uint256 sellerAmount = msg.value - fee;
-
-        // Grant access before transfer
-        _grantAccess(_id, msg.sender, _purpose, block.timestamp + 30 days);
-        users[msg.sender].purchaseCount++;
-
-        // Transfer payments
-        data.owner.transfer(sellerAmount);
-        payable(getRoleMember(DEFAULT_ADMIN_ROLE, 0)).transfer(fee);
-
-        emit DataPurchased(_id, msg.sender, data.owner, msg.value);
-        _addAuditEntry(_id, msg.sender, "DATA_PURCHASED", _purpose);
+        // Function implementation goes here
     }
+
+    function _grantAccess(
+        uint256 _id,
+        address _user,
+        string memory _purpose,
+        uint256 _expirationTime
+    ) private {
+        HealthData storage data = healthData[_id];
+        data.accessGrants[_user] = AccessGrant({
+            hasAccess: true,
+            expirationTime: _expirationTime,
+            purpose: _purpose,
+            isEmergencyAccess: false
+        });
+
+        emit AccessGranted(_id, _user, _purpose, _expirationTime);
+    }
+
+    // ...
 
     function grantConsent(
         uint256 _id,
@@ -308,23 +313,6 @@ contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl {
             "DATA_VERIFIED",
             _verified ? "Verified" : "Unverified"
         );
-    }
-
-    function _grantAccess(
-        uint256 _id,
-        address _user,
-        string memory _purpose,
-        uint256 _expirationTime
-    ) private {
-        HealthData storage data = healthData[_id];
-        data.accessGrants[_user] = AccessGrant({
-            hasAccess: true,
-            expirationTime: _expirationTime,
-            purpose: _purpose,
-            isEmergencyAccess: false
-        });
-
-        emit AccessGranted(_id, _user, _purpose, _expirationTime);
     }
 
     function _addAuditEntry(

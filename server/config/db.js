@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const hipaaConfig = require('./hipaaConfig');
+import mongoose from "mongoose";
+import hipaaConfig from "./hipaaConfig.js";
 
 class DatabaseError extends Error {
   constructor(message, code = "DB_ERROR") {
@@ -11,12 +11,11 @@ class DatabaseError extends Error {
 
 const validateConfig = () => {
   // Only check for MONGODB_URI since credentials are included in the URI
-  const requiredEnvVars = [
-    "MONGODB_URI",
-    "ENCRYPTION_KEY"
-  ];
+  const requiredEnvVars = ["MONGODB_URI", "ENCRYPTION_KEY"];
 
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  const missingVars = requiredEnvVars.filter(
+    (varName) => !process.env[varName]
+  );
   if (missingVars.length > 0) {
     throw new DatabaseError(
       `Missing required environment variables: ${missingVars.join(", ")}`,
@@ -32,20 +31,23 @@ const getMongoOptions = () => ({
   connectTimeoutMS: 30000,
   retryWrites: true,
   w: "majority",
-  dbName: 'healthmint',  // Explicitly set database name
-  ...(process.env.NODE_ENV === "production" ? {
-    tls: true,
-    tlsAllowInvalidCertificates: false
-  } : {})
+  dbName: "healthmint", // Explicitly set database name
+  ...(process.env.NODE_ENV === "production"
+    ? {
+        tls: true,
+        tlsAllowInvalidCertificates: false,
+      }
+    : {}),
 });
 
 const setupMongooseMiddleware = () => {
   // Encrypt sensitive fields before saving
   mongoose.plugin((schema) => {
-    schema.pre("save", async function(next) {
+    schema.pre("save", async function (next) {
       try {
-        const sensitiveFields = Object.keys(this.schema.paths)
-          .filter(path => this.schema.paths[path].options.sensitive);
+        const sensitiveFields = Object.keys(this.schema.paths).filter(
+          (path) => this.schema.paths[path].options.sensitive
+        );
 
         for (const field of sensitiveFields) {
           if (this.isModified(field) && this[field]) {
@@ -63,23 +65,29 @@ const setupMongooseMiddleware = () => {
   // Log all operations in production
   if (process.env.NODE_ENV === "production") {
     mongoose.plugin((schema) => {
-      ["save", "remove", "updateOne", "updateMany", "deleteOne", "deleteMany"]
-        .forEach((method) => {
-          schema.pre(method, async function(next) {
-            try {
-              await hipaaConfig.audit.logOperation({
-                operation: method,
-                collection: this.constructor.modelName,
-                documentId: this._id,
-                timestamp: new Date(),
-                userId: this._user,
-              });
-              next();
-            } catch (error) {
-              next(error);
-            }
-          });
+      [
+        "save",
+        "remove",
+        "updateOne",
+        "updateMany",
+        "deleteOne",
+        "deleteMany",
+      ].forEach((method) => {
+        schema.pre(method, async function (next) {
+          try {
+            await hipaaConfig.audit.logOperation({
+              operation: method,
+              collection: this.constructor.modelName,
+              documentId: this._id,
+              timestamp: new Date(),
+              userId: this._user,
+            });
+            next();
+          } catch (error) {
+            next(error);
+          }
         });
+      });
     });
   }
 };
@@ -96,7 +104,7 @@ const connectDB = async () => {
     // Setup Mongoose middleware
     setupMongooseMiddleware();
 
-    console.log('Connecting to MongoDB...');
+    console.log("Connecting to MongoDB...");
     await mongoose.connect(process.env.MONGODB_URI, getMongoOptions());
     console.log("✓ MongoDB connected successfully");
 
@@ -176,8 +184,4 @@ const disconnectDB = async () => {
   }
 };
 
-module.exports = {
-  connectDB,
-  disconnectDB,
-  DatabaseError,
-};
+export { connectDB, disconnectDB, DatabaseError };

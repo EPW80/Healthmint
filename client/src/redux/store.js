@@ -5,6 +5,7 @@ import dataReducer from "./slices/dataSlice";
 import profileReducer from "./slices/profileSlice";
 import uiReducer from "./slices/uiSlice";
 import userReducer from "./slices/userSlice";
+import notificationReducer from "../redux/slices/store/notificationSlice";
 
 // Create the Redux store with all reducers combined.
 export const store = configureStore({
@@ -14,6 +15,7 @@ export const store = configureStore({
     profile: profileReducer,
     ui: uiReducer,
     user: userReducer,
+    notifications: notificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

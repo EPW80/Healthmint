@@ -24,7 +24,33 @@ import { CheckCircle, AlertCircle } from "lucide-react";
 import axios from "axios";
 
 // API endpoint (should come from environment config)
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+console.log("Resolved API_URL:", API_URL);
+
+// Categories from backend
+const CATEGORIES = [
+  "All",
+  "General Health",
+  "Cardiology",
+  "Physical Exam",
+  "Laboratory",
+  "Immunization",
+  "Genetics",
+  "Psychology",
+  "Dental",
+  "Ophthalmology",
+  "Allergy",
+  "Neurology",
+  "Physical Therapy",
+  "Nutrition",
+  "Dermatology",
+  "Orthopedics",
+  "Pulmonology",
+  "Endocrinology",
+  "Obstetrics",
+  "Pediatrics",
+  "Sports Medicine",
+];
 
 // Styled components remain the same...
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -70,31 +96,6 @@ const LoadingContainer = styled(Box)({
   minHeight: "200px",
 });
 
-// Categories from backend
-const CATEGORIES = [
-  "All",
-  "General Health",
-  "Cardiology",
-  "Physical Exam",
-  "Laboratory",
-  "Immunization",
-  "Genetics",
-  "Psychology",
-  "Dental",
-  "Ophthalmology",
-  "Allergy",
-  "Neurology",
-  "Physical Therapy",
-  "Nutrition",
-  "Dermatology",
-  "Orthopedics",
-  "Pulmonology",
-  "Endocrinology",
-  "Obstetrics",
-  "Pediatrics",
-  "Sports Medicine",
-];
-
 const DataBrowser = ({ onPurchase }) => {
   const [healthData, setHealthData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,25 +113,19 @@ const DataBrowser = ({ onPurchase }) => {
     try {
       setLoading(true);
       setError(null);
-
-      const response = await axios.get(`${API_URL}/data/browse`, {
+      const formattedUrl = `${API_URL.replace(/\/$/, "")}/api/data/browse`;
+      const response = await axios.get(formattedUrl, {
         params: {
           minAge: filters.minAge || undefined,
           maxAge: filters.maxAge || undefined,
           verified: filters.verifiedOnly || undefined,
           category: filters.category === "All" ? undefined : filters.category,
-          priceRange:
-            filters.priceRange === "all" ? undefined : filters.priceRange,
+          priceRange: filters.priceRange === "all" ? undefined : filters.priceRange,
         },
       });
-
       setHealthData(response.data.data || []);
     } catch (err) {
-      console.error("Error fetching health data:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to load health data. Please try again later."
-      );
+      setError(err.response?.data?.message || "Failed to load health data. Please try again later.");
     } finally {
       setLoading(false);
     }

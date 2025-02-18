@@ -1,11 +1,9 @@
-// utils/apiError.js
-const { ERROR_CODES } = require("../config/networkConfig");
+import { ERROR_CODES } from "../config/networkConfig.js";
 
 /**
- * Custom error class for API errors with HIPAA compliance
- * @extends Error
+ * Custom error class for API errors
  */
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(code, message, details = {}, statusCode = null) {
     super(message);
     this.name = "ApiError";
@@ -61,9 +59,9 @@ class ApiError extends Error {
 }
 
 /**
- * Factory functions for common API errors with HIPAA compliance
+ * Factory function to create API errors with standardized error codes
  */
-const createApiError = {
+export const createApiError = {
   validation: (message, details) =>
     new ApiError(ERROR_CODES.VALIDATION_ERROR.code, message, details),
 
@@ -92,9 +90,4 @@ const createApiError = {
 
   consent: (message = "Consent required") =>
     new ApiError("CONSENT_REQUIRED", message),
-};
-
-module.exports = {
-  ApiError,
-  createApiError,
 };

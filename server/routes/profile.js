@@ -1,20 +1,18 @@
 // server/routes/profile.js
-const express = require("express");
-const router = express.Router();
-const profileService = require("../services/profileService");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
-const {
+import express from "express";
+import { profileService } from "../services/profileService.js";
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
+import {
   validateAddress,
   validateProfileUpdate,
   validateHash,
-} = require("../middleware/validation");
-const {
-  ENDPOINTS,
-  ERROR_CODES,
-} = require("../config/networkConfig");
-const { asyncHandler } = require("../utils/asyncHandler");
-const { ApiError } = require("../utils/apiError");
-const { rateLimiters } = require("../middleware/rateLimiter");
+} from "../middleware/validation.js";
+import { ENDPOINTS, ERROR_CODES } from "../config/networkConfig.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apiError.js";
+import { rateLimiters } from "../middleware/rateLimiter.js";
+
+const router = express.Router();
 
 // Security middleware setup
 const secureRouter = express.Router();
@@ -265,4 +263,4 @@ secureRouter.delete(
 // Use secure router for all profile routes
 router.use("/", secureRouter);
 
-module.exports = router;
+export default router;

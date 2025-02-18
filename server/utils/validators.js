@@ -2,9 +2,7 @@
 const ethers = require("ethers");
 const { ACCESS_LEVELS, DATA_CATEGORIES, USER_ROLES } = require("../constants");
 
-/**
- * Validates Ethereum address format
- */
+// Validates Ethereum address format
 const validateAddress = (address) => {
   try {
     if (!address) {
@@ -16,9 +14,7 @@ const validateAddress = (address) => {
   }
 };
 
-/**
- * Validates health data submission
- */
+// Validates health data
 const validateHealthData = (data) => {
   const errors = [];
 
@@ -62,9 +58,7 @@ const validateHealthData = (data) => {
   };
 };
 
-/**
- * Validates profile update data
- */
+// Validates access level
 const validateProfileUpdate = (data) => {
   const errors = [];
 
@@ -100,9 +94,7 @@ const validateProfileUpdate = (data) => {
   };
 };
 
-/**
- * Validates transaction data
- */
+// Validates transaction data
 const validateTransaction = (data) => {
   const errors = [];
 
@@ -143,9 +135,7 @@ const validateTransaction = (data) => {
   };
 };
 
-/**
- * Validates access grant request
- */
+// Validates access grant data
 const validateAccessGrant = (data) => {
   const errors = [];
 
@@ -189,9 +179,7 @@ const validateAccessGrant = (data) => {
   };
 };
 
-/**
- * Validates IPFS hash format
- */
+// Validates IPFS hash
 const validateIPFSHash = (hash) => {
   if (!hash) {
     return {

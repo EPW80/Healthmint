@@ -2,7 +2,6 @@
   "name": "client",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:5000",
   "dependencies": {
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
@@ -13,7 +12,7 @@
     "@web3-react/injected-connector": "^6.0.7",
     "axios": "^1.4.0",
     "ethers": "^5.7.2",
-    "ipfs-http-client": "^60.0.1",
+    "ipfs-http-client": "^50.1.2",
     "lucide-react": "^0.474.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -24,6 +23,7 @@
     "web3": "^1.10.4"
   },
   "scripts": {
+    "preinstall": "npx npm-force-resolutions",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -33,6 +33,11 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ]
+  },
+  "babel": {
+    "presets": [
+      "react-app"
     ]
   },
   "browserslist": {
@@ -49,11 +54,8 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "web-vitals": "^4.2.4"
-  },
-  "overrides": {
-    "source-map-loader": {
-      "webpack": "^5.0.0"
-    }
+    "source-map-loader": "^5.0.0",
+    "web-vitals": "^4.2.4",
+    "webpack-dev-server": "^4.15.2"
   }
 }

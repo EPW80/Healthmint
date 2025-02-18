@@ -1,7 +1,7 @@
 // src/services/apiService.js
 
 import axios from "axios";
-import { ENV, REQUEST_CONFIG, apiUtils, API_ERRORS } from "../config/apiConfig";
+import { ENV, REQUEST_CONFIG, apiUtils } from "../config/apiConfig";
 
 class ApiService {
   constructor() {

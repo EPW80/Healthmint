@@ -33,6 +33,7 @@ import {
 
 const NavButton = ({ to, icon: Icon, label, onClick, mobile }) => {
   const location = useLocation();
+  const theme = useTheme();
   const isActive = location.pathname === to;
 
   const content = (
@@ -52,10 +53,10 @@ const NavButton = ({ to, icon: Icon, label, onClick, mobile }) => {
         selected={isActive}
         sx={{
           "&.Mui-selected": {
-            backgroundColor: "primary.main",
+            backgroundColor: theme.palette.primary.main, // ✅ Matched project theme
             color: "white",
             "&:hover": {
-              backgroundColor: "primary.dark",
+              backgroundColor: theme.palette.primary.dark,
             },
           },
         }}
@@ -77,11 +78,12 @@ const NavButton = ({ to, icon: Icon, label, onClick, mobile }) => {
         sx={{
           minWidth: "auto",
           px: 2,
+          color: isActive ? theme.palette.primary.contrastText : "white", // ✅ Ensure visibility
           backgroundColor: isActive
-            ? "rgba(255, 255, 255, 0.1)"
+            ? theme.palette.primary.main
             : "transparent",
           "&:hover": {
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            backgroundColor: theme.palette.primary.dark, // ✅ Darker hover effect
           },
         }}
         onClick={onClick}
@@ -195,7 +197,7 @@ const Navigation = ({ account, onLogout }) => {
         position="static"
         sx={{
           backdropFilter: "blur(10px)",
-          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          backgroundColor: theme.palette.primary.main, // ✅ Changed AppBar color to match project
         }}
       >
         <Toolbar>
@@ -218,7 +220,7 @@ const Navigation = ({ account, onLogout }) => {
             sx={{
               flexGrow: 1,
               textDecoration: "none",
-              color: "inherit",
+              color: "white", // ✅ Ensure title is visible
               fontWeight: "bold",
               "&:hover": {
                 opacity: 0.8,
@@ -243,9 +245,9 @@ const Navigation = ({ account, onLogout }) => {
                 color="secondary"
                 sx={{
                   color: "white",
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  backgroundColor: theme.palette.secondary.main,
                   "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.3)",
+                    backgroundColor: theme.palette.secondary.dark,
                   },
                 }}
               />
