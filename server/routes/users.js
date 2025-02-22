@@ -1,17 +1,18 @@
 // server/routes/users.js
-const express = require("express");
-const router = express.Router();
-const userService = require("../services/userService");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
-const {
+import express from "express";
+import {
   validateAddress,
   validateProfileUpdate,
   validateConsent,
-} = require("../middleware/validation");
-const { ERROR_CODES, ENDPOINTS } = require("../config/networkConfig");
-const { asyncHandler } = require("../utils/asyncHandler");
-const { ApiError } = require("../utils/apiError");
-const { rateLimiters } = require("../middleware/rateLimiter");
+} from "../middleware/validation.js";
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
+import { ERROR_CODES, ENDPOINTS } from "../config/networkConfig.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apiError.js";
+import { rateLimiters } from "../middleware/rateLimiter.js";
+import { userService } from "../services/userService.js";
+
+const router = express.Router();
 
 // Apply HIPAA middleware to all routes
 router.use(hipaaCompliance.validatePHI);
@@ -258,4 +259,4 @@ router.get(
   })
 );
 
-module.exports = router;
+export default router;

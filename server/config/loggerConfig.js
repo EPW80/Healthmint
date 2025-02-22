@@ -1,6 +1,11 @@
 // config/loggerConfig.js
-const winston = require('winston');
-const path = require('path');
+import winston from 'winston';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const logLevels = {
   error: 0,
@@ -18,6 +23,7 @@ const colors = {
   debug: 'blue',
 };
 
+// Add colors to Winston
 winston.addColors(colors);
 
 const developmentFormat = winston.format.combine(
@@ -37,6 +43,8 @@ const loggerConfig = {
   development: {
     format: 'dev',
     options: {
+      levels: logLevels,
+      level: 'debug',
       transports: [
         new winston.transports.Console({
           level: 'debug',
@@ -58,6 +66,8 @@ const loggerConfig = {
   production: {
     format: 'combined',
     options: {
+      levels: logLevels,
+      level: 'info',
       transports: [
         new winston.transports.Console({
           level: 'info',
@@ -89,10 +99,11 @@ const loggerConfig = {
   },
 };
 
-// Create logger instance
-const logger = winston.createLogger(
-  loggerConfig[process.env.NODE_ENV || 'development'].options
-);
+// Create logger instance with custom levels
+const logger = winston.createLogger({
+  ...loggerConfig[process.env.NODE_ENV || 'development'].options,
+  levels: logLevels,
+});
 
 // Add request logger middleware for development
 logger.dev = (req, res, next) => {
@@ -100,7 +111,4 @@ logger.dev = (req, res, next) => {
   next();
 };
 
-module.exports = {
-  loggerConfig,
-  logger,
-};
+export { loggerConfig, logger };

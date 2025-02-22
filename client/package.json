@@ -11,7 +11,10 @@
     "@web3-react/core": "^8.2.3",
     "@web3-react/injected-connector": "^6.0.7",
     "axios": "^1.4.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
     "ethers": "^5.7.2",
+    "helmet": "^8.0.0",
     "ipfs-http-client": "^50.1.2",
     "lucide-react": "^0.474.0",
     "react": "^18.2.0",
@@ -20,6 +23,7 @@
     "react-router-dom": "^6.11.2",
     "react-scripts": "^5.0.1",
     "redux-thunk": "^3.1.0",
+    "stream-browserify": "^3.0.0",
     "web3": "^1.10.4"
   },
   "scripts": {
@@ -27,7 +31,10 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,jsx,json,md}\""
   },
   "eslintConfig": {
     "extends": [
@@ -54,8 +61,24 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
     "source-map-loader": "^5.0.0",
     "web-vitals": "^4.2.4",
     "webpack-dev-server": "^4.15.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   }
 }

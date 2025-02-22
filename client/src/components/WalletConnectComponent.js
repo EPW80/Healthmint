@@ -7,7 +7,7 @@ import {
   updateWalletConnection,
   clearWalletConnection,
 } from "../redux/slices/walletSlice";
-import { addNotification } from "../redux/slices/store/notificationSlice";
+import { addNotification } from "../redux/slices/notificationSlice";
 import { requiredNetwork } from "../config/networks";
 
 

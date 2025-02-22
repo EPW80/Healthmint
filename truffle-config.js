@@ -1,15 +1,23 @@
-// Load environment variables
-require("dotenv").config();
-const Web3 = require("web3");
-const path = require("path");
-const HDWalletProvider = require("@truffle/hdwallet-provider");
+import dotenv from "dotenv";
+import Web3 from "web3";
+import path from "path";
+import { fileURLToPath } from "url";
+import HDWalletProvider from "@truffle/hdwallet-provider";
+
+// Configure environment variables
+dotenv.config();
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Provider Manager with retries and rate-limiting
 class ProviderManager {
   constructor() {
-    this.privateKey = process.env.PRIVATE_KEY?.startsWith("0x")
-      ? process.env.PRIVATE_KEY.slice(2)
-      : process.env.PRIVATE_KEY;
+    const rawPrivateKey = process.env.PRIVATE_KEY ?? "";
+    this.privateKey = rawPrivateKey?.startsWith("0x")
+      ? rawPrivateKey.slice(2)
+      : rawPrivateKey;
 
     if (!this.privateKey) {
       throw new Error("❌ Missing PRIVATE_KEY in environment variables");
@@ -86,8 +94,8 @@ class ProviderManager {
 
     try {
       const provider = new HDWalletProvider({
-        privateKeys: [process.env.PRIVATE_KEY],
-        providerOrUrl: process.env.SEPOLIA_RPC_URL,
+        privateKeys: [this.privateKey],
+        providerOrUrl: process.env.SEPOLIA_RPC_URL ?? "",
         pollingInterval: 60000, // Reduce polling frequency
       });
 
@@ -102,7 +110,7 @@ class ProviderManager {
 
 const providerManager = new ProviderManager();
 
-module.exports = {
+const config = {
   networks: {
     development: {
       host: "127.0.0.1",
@@ -111,9 +119,7 @@ module.exports = {
     },
 
     sepolia: {
-      provider: function () {
-        return providerManager.getProvider();
-      },
+      provider: () => providerManager.getProvider(),
       network_id: 11155111,
       gas: 5500000,
       gasPrice: 20000000000, // 20 gwei
@@ -124,7 +130,7 @@ module.exports = {
       websockets: false,
       verify: {
         apiUrl: "https://api-sepolia.etherscan.io/",
-        apiKey: process.env.ETHERSCAN_API_KEY,
+        apiKey: process.env.ETHERSCAN_API_KEY ?? "",
       },
     },
   },
@@ -148,7 +154,7 @@ module.exports = {
 
   plugins: ["truffle-plugin-verify"],
   api_keys: {
-    etherscan: process.env.ETHERSCAN_API_KEY,
+    etherscan: process.env.ETHERSCAN_API_KEY ?? "",
   },
 
   mocha: {
@@ -156,3 +162,5 @@ module.exports = {
     reporter: "spec",
   },
 };
+
+export default config;

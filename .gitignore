@@ -3,6 +3,7 @@
 /client/node_modules
 /client/src/contracts
 /server/node_modules
+package-lock.json
 
 # Environment files
 .env

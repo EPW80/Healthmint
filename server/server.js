@@ -12,12 +12,18 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 // Debugging Environment Variables
-console.log("✅ Loaded ENCRYPTION_KEY:", process.env.ENCRYPTION_KEY ? "Present" : "❌ Not Found");
-console.log("✅ Loaded JWT_SECRET:", process.env.JWT_SECRET ? "Present" : "❌ Not Found");
+console.log(
+  "✅ Loaded ENCRYPTION_KEY:",
+  process.env.ENCRYPTION_KEY ? "Present" : "❌ Not Found"
+);
+console.log(
+  "✅ Loaded JWT_SECRET:",
+  process.env.JWT_SECRET ? "Present" : "❌ Not Found"
+);
 console.log("✅ Running in:", process.env.NODE_ENV || "development");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
 // CORS Preflight Handling for OPTIONS requests
 app.options("*", (req, res) => {

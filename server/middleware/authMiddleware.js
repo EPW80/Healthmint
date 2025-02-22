@@ -1,6 +1,7 @@
-const jwt = require("jsonwebtoken");
-const { ApiError } = require("../utils/apiError");
-const { ERROR_CODES } = require("../config/networkConfig");
+// middleware/authMiddleware.js
+import jwt from "jsonwebtoken";
+import { ApiError } from "../utils/apiError.js";
+import { ERROR_CODES } from "../config/networkConfig.js";
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -26,4 +27,4 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+export default authMiddleware;
