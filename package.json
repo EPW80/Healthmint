@@ -15,6 +15,7 @@
     "build": "cd client && npm run build",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "eslint .",
+    "lint-staged": "lint-staged",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
     "prepare": "husky install",
     "postinstall": "cd client && npm install && cd ../server && npm install"
