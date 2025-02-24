@@ -17,6 +17,9 @@ import DataBrowser from "./components/DataBrowser";
 import WalletConnect from "./components/WalletConnect";
 import Footer from "./components/Footer";
 import ProfileSettings from "./components/ProfileSettings";
+import RoleSelector from "./components/roles/RoleSelector";
+import PatientDashboard from "./components/dashboard/PatientDashboard";
+import ResearcherDashboard from "./components/dashboard/ResearcherDashboard";
 
 // Redux actions and selectors
 import {
@@ -24,22 +27,25 @@ import {
   clearWalletConnection,
   selectWallet,
 } from "./redux/slices/authSlice";
-
 import { clearUserProfile, updateUserProfile } from "./redux/slices/userSlice";
 import { addNotification } from "./redux/slices/uiSlice";
+import { selectRole, selectIsRoleSelected } from "./redux/slices/roleSlice";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const isRoleSelected = useSelector(selectIsRoleSelected);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
+    } else if (!isRoleSelected) {
+      navigate("/select-role", { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isRoleSelected, navigate]);
 
-  return isAuthenticated ? children : null;
+  return isAuthenticated && isRoleSelected ? children : null;
 };
 
 function AppContent() {
@@ -50,10 +56,12 @@ function AppContent() {
   );
   const { isConnected } = useSelector(selectWallet);
   const userData = useSelector((state) => state.user.userData);
+  const role = useSelector(selectRole);
+  const isRoleSelected = useSelector(selectIsRoleSelected);
 
   useEffect(() => {
     if (isAuthenticated && window.location.pathname === "/login") {
-      navigate("/", { replace: true });
+      navigate("/select-role", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -84,7 +92,7 @@ function AppContent() {
           })
         );
 
-        navigate("/", { replace: true });
+        navigate("/select-role", { replace: true });
       }
     } catch (error) {
       console.error("Connection error:", error);
@@ -116,28 +124,49 @@ function AppContent() {
           account={address}
           onLogout={handleLogout}
           userName={userData?.name}
+          role={role}
         />
       )}
       <div className="flex-1 p-5">
+        {}
         <Routes>
           <Route
             path="/login"
             element={
               isConnected ? (
-                <Navigate to="/" replace />
+                <Navigate to="/select-role" replace />
               ) : (
                 <WalletConnect onConnect={handleConnect} />
               )
             }
           />
+
           <Route
-            path="/"
+            path="/select-role"
+            element={
+              !isConnected ? (
+                <Navigate to="/login" replace />
+              ) : isRoleSelected ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <RoleSelector />
+              )
+            }
+          />
+
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
-                <DataBrowser />
+                {role === "patient" ? (
+                  <PatientDashboard />
+                ) : (
+                  <ResearcherDashboard />
+                )}
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/upload"
             element={
@@ -146,6 +175,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/browse"
             element={
@@ -154,6 +184,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/profile"
             element={
@@ -162,9 +193,21 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="*"
-            element={<Navigate to={isConnected ? "/" : "/login"} replace />}
+            element={
+              <Navigate
+                to={
+                  !isConnected
+                    ? "/login"
+                    : !isRoleSelected
+                      ? "/select-role"
+                      : "/dashboard"
+                }
+                replace
+              />
+            }
           />
         </Routes>
       </div>

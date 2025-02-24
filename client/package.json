@@ -8,6 +8,8 @@
     "@mui/icons-material": "^5.11.16",
     "@mui/material": "^5.13.0",
     "@reduxjs/toolkit": "^1.9.7",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
     "@web3-react/core": "^8.2.3",
     "@web3-react/injected-connector": "^6.0.7",
     "axios": "^1.4.0",
@@ -44,7 +46,12 @@
   },
   "babel": {
     "presets": [
-      "react-app"
+      [
+        "react-app",
+        {
+          "absoluteRuntime": false
+        }
+      ]
     ]
   },
   "browserslist": {
@@ -61,19 +68,25 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/core": "^7.22.5",
+    "@babel/preset-react": "^7.22.5",
+    "autoprefixer": "^10.4.14",
+    "babel-preset-react-app": "^10.0.1",
+    "cross-env": "^7.0.3",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.33.2",
-    "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
+    "postcss": "^8.4.31",
     "prettier": "^3.2.0",
     "source-map-loader": "^5.0.0",
+    "tailwindcss": "^3.3.3",
     "web-vitals": "^4.2.4",
     "webpack-dev-server": "^4.15.2"
   },
   "lint-staged": {
     "*.{js,jsx}": [
-      "eslint --fix",
+      "cross-env NODE_ENV=development BABEL_ENV=development eslint --fix",
       "prettier --write"
     ]
   },

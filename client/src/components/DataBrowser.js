@@ -120,12 +120,16 @@ const DataBrowser = ({ onPurchase }) => {
           maxAge: filters.maxAge || undefined,
           verified: filters.verifiedOnly || undefined,
           category: filters.category === "All" ? undefined : filters.category,
-          priceRange: filters.priceRange === "all" ? undefined : filters.priceRange,
+          priceRange:
+            filters.priceRange === "all" ? undefined : filters.priceRange,
         },
       });
       setHealthData(response.data.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load health data. Please try again later.");
+      setError(
+        err.response?.data?.message ||
+          "Failed to load health data. Please try again later."
+      );
     } finally {
       setLoading(false);
     }
