@@ -1,11 +1,7 @@
 // server/services/transactionService.js
-// server/services/transactionService.js
 import { ethers } from "ethers";
-import HealthData from "../models/HealthData.js";
-import hipaaCompliance from "../middleware/hipaaCompliance.js";
-import { AUDIT_TYPES, NETWORK_CONFIG } from "../constants/index.js";
+import { NETWORK_CONFIG } from "../constants/index.js";
 import dotenv from "dotenv";
-import { createRequire } from "module";
 
 // Load environment variables
 dotenv.config();
@@ -14,7 +10,6 @@ dotenv.config();
 console.log("✅ Loaded ENV Variables:", JSON.stringify(process.env, null, 2));
 console.log("✅ NETWORK_CONFIG:", JSON.stringify(NETWORK_CONFIG, null, 2));
 
-const require = createRequire(import.meta.url);
 const contractJson = require("../../client/src/contracts/HealthDataMarketplace.json");
 const contractABI = contractJson.abi;
 

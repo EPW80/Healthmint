@@ -1,9 +1,6 @@
 // middleware/rateLimiter.js
 import rateLimit from "express-rate-limit";
 
-/**
- * Creates a customizable rate limiter
- */
 const createRateLimiter = ({
   name = "default-limiter",
   windowMs = 15 * 60 * 1000, // 15 minutes
@@ -41,7 +38,7 @@ const createRateLimiter = ({
   });
 };
 
-// ✅ Named exports for ES Module compatibility
+// Export rate limiters for use in app.js
 export const rateLimiters = {
   auth: createRateLimiter({
     name: "auth-limiter",
@@ -81,5 +78,5 @@ export const rateLimiters = {
   }),
 };
 
-// ✅ Export `createRateLimiter` for custom usage
+// Export the factory function for custom rate limiters
 export { createRateLimiter };

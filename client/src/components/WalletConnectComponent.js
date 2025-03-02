@@ -10,7 +10,6 @@ import {
 import { addNotification } from "../redux/slices/notificationSlice";
 import { requiredNetwork } from "../config/networks";
 
-
 const WalletConnectComponent = ({ onConnect }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();

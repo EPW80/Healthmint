@@ -1,6 +1,5 @@
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { User } from "../models/User.js";
-import { AUDIT_TYPES, ACCESS_LEVELS } from "../constants/index.js";
 import {
   validateUserData,
   sanitizeUserData,

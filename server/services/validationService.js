@@ -179,4 +179,4 @@ export const validateTransaction = ValidationService.validateTransaction;
 export const sanitizeUserData = ValidationService.sanitizeUserData;
 export const validateContractAddress =
   ValidationService.validateContractAddress;
-export const validateUserData = ValidationService.validateUserData; // ✅ Now explicitly exported
+export const validateUserData = ValidationService.validateUserData;

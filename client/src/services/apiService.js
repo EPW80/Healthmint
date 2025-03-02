@@ -1,5 +1,4 @@
 // src/services/apiService.js
-
 import axios from "axios";
 import { ENV, REQUEST_CONFIG, apiUtils } from "../config/apiConfig";
 
@@ -203,11 +202,3 @@ class ApiService {
 const apiService = new ApiService();
 
 export default apiService;
-
-// Example usage:
-// import apiService from '../services/apiService';
-// import { ENDPOINTS } from '../config/apiConfig';
-//
-// const getHealthData = async (id) => {
-//   return await apiService.get(ENDPOINTS.HEALTH_DATA.GET, { id });
-// };

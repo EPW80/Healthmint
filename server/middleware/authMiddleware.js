@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/apiError.js";
 import { ERROR_CODES } from "../config/networkConfig.js";
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = (req, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {

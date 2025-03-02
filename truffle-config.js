@@ -7,7 +7,7 @@ import HDWalletProvider from "@truffle/hdwallet-provider";
 // Configure environment variables
 dotenv.config();
 
-// Get __dirname equivalent in ES modules
+// Load ABI (Application Binary Interface) for the ERC20 token contract
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

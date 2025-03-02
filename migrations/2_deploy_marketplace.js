@@ -3,12 +3,12 @@ const HealthDataMarketplace = artifacts.require("HealthDataMarketplace");
 const fs = require("fs");
 const path = require("path");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   try {
     // Create directories if they don't exist
     const auditDir = path.join(__dirname, "../audit");
     const deploymentsDir = path.join(auditDir, "deployments");
-    
+
     if (!fs.existsSync(auditDir)) {
       fs.mkdirSync(auditDir, { recursive: true });
     }
@@ -45,12 +45,15 @@ module.exports = async function(deployer, network, accounts) {
       deploymentsDir,
       `deploy_${network}_${deploymentStart.getTime()}.json`
     );
-    
+
     fs.writeFileSync(filename, JSON.stringify(deploymentInfo, null, 2));
     console.log(`\nDeployment info saved to: ${filename}`);
 
     // Update client contract info
-    const clientInfoPath = path.join(__dirname, "../client/src/contractInfo.json");
+    const clientInfoPath = path.join(
+      __dirname,
+      "../client/src/contractInfo.json"
+    );
     const clientInfo = {
       address: instance.address,
       network,

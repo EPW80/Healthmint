@@ -169,9 +169,8 @@ const userController = {
 
       try {
         // Check for existing user
-        const existingUser = await userService.getUserByAddress(
-          normalizedAddress
-        );
+        const existingUser =
+          await userService.getUserByAddress(normalizedAddress);
         if (existingUser) {
           return sendResponse(res, 400, false, "User already exists");
         }

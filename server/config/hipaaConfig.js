@@ -1,12 +1,4 @@
 // config/hipaaConfig.js
-import { scrypt } from "crypto";
-import { promisify } from "util";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-
-const scryptAsync = promisify(scrypt);
-
 export const ERROR_CODES = {
   VALIDATION_ERROR: {
     code: "HIPAA_VALIDATION_ERROR",

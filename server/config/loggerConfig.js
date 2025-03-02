@@ -1,7 +1,7 @@
 // config/loggerConfig.js
-import winston from 'winston';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import winston from "winston";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -16,18 +16,18 @@ const logLevels = {
 };
 
 const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'blue',
+  error: "red",
+  warn: "yellow",
+  info: "green",
+  http: "magenta",
+  debug: "blue",
 };
 
 // Add colors to Winston
 winston.addColors(colors);
 
 const developmentFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
   winston.format.colorize({ all: true }),
   winston.format.printf(
     (info) => `${info.timestamp} ${info.level}: ${info.message}`
@@ -35,53 +35,53 @@ const developmentFormat = winston.format.combine(
 );
 
 const productionFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
   winston.format.json()
 );
 
 const loggerConfig = {
   development: {
-    format: 'dev',
+    format: "dev",
     options: {
       levels: logLevels,
-      level: 'debug',
+      level: "debug",
       transports: [
         new winston.transports.Console({
-          level: 'debug',
+          level: "debug",
           format: developmentFormat,
         }),
         new winston.transports.File({
-          filename: path.join(__dirname, '../logs/error.log'),
-          level: 'error',
+          filename: path.join(__dirname, "../logs/error.log"),
+          level: "error",
           format: productionFormat,
         }),
         new winston.transports.File({
-          filename: path.join(__dirname, '../logs/combined.log'),
+          filename: path.join(__dirname, "../logs/combined.log"),
           format: productionFormat,
         }),
       ],
     },
-    skipPaths: ['/health', '/metrics'],
+    skipPaths: ["/health", "/metrics"],
   },
   production: {
-    format: 'combined',
+    format: "combined",
     options: {
       levels: logLevels,
-      level: 'info',
+      level: "info",
       transports: [
         new winston.transports.Console({
-          level: 'info',
+          level: "info",
           format: productionFormat,
         }),
         new winston.transports.File({
-          filename: path.join(__dirname, '../logs/error.log'),
-          level: 'error',
+          filename: path.join(__dirname, "../logs/error.log"),
+          level: "error",
           format: productionFormat,
           maxsize: 5242880, // 5MB
           maxFiles: 5,
         }),
         new winston.transports.File({
-          filename: path.join(__dirname, '../logs/combined.log'),
+          filename: path.join(__dirname, "../logs/combined.log"),
           format: productionFormat,
           maxsize: 5242880, // 5MB
           maxFiles: 5,
@@ -89,19 +89,19 @@ const loggerConfig = {
       ],
     },
     skipPaths: [
-      '/health',
-      '/metrics',
-      '/favicon.ico',
-      '/_next',
-      '/static',
-      '/api-docs',
+      "/health",
+      "/metrics",
+      "/favicon.ico",
+      "/_next",
+      "/static",
+      "/api-docs",
     ],
   },
 };
 
 // Create logger instance with custom levels
 const logger = winston.createLogger({
-  ...loggerConfig[process.env.NODE_ENV || 'development'].options,
+  ...loggerConfig[process.env.NODE_ENV || "development"].options,
   levels: logLevels,
 });
 
