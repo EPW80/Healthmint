@@ -1,5 +1,7 @@
-const userService = require("../services/userService");
-const { ethers } = require("ethers");
+// ./controllers/userController.js
+// Import user service
+import userService from "../services/userService.js";
+import { ethers } from "ethers";
 
 const sendResponse = (res, statusCode, success, message, data = null) => {
   try {
@@ -58,6 +60,7 @@ const logRequestInfo = (req, context) => {
   });
 };
 
+// User Controller with ES module export
 const userController = {
   async connectWallet(req, res) {
     try {
@@ -243,4 +246,8 @@ const userController = {
   },
 };
 
-module.exports = userController;
+// Export helper functions for testing and reuse
+export { sendResponse, validateWalletAddress, logRequestInfo };
+
+// Default export
+export default userController;

@@ -1,8 +1,6 @@
 import ethers from "ethers";
 import {
-  FILE_CONSTRAINTS,
   DATA_CATEGORIES,
-  DATA_LIMITS,
 } from "../constants/index.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 

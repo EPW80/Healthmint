@@ -1,3 +1,4 @@
+// utils/apiError.js
 import { ERROR_CODES } from "../config/networkConfig.js";
 
 /**
@@ -58,6 +59,9 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Factory function to create API errors with standardized error codes
+ */
 /**
  * Factory function to create API errors with standardized error codes
  */

@@ -1,6 +1,6 @@
 // middleware/requestLogger.js
-const { logger } = require("../config/loggerConfig");
-const hipaaCompliance = require("./hipaaCompliance");
+import { logger } from "../config/loggerConfig.js";
+import hipaaCompliance from "./hipaaCompliance.js";
 
 // Clean sensitive data from request
 const sanitizeRequest = (req) => {
@@ -30,7 +30,7 @@ const sanitizeRequest = (req) => {
 };
 
 // Initialize request context
-const setupRequestContext = (req, res, next) => {
+export const setupRequestContext = (req, res, next) => {
   req.id =
     req.id || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   req.startTime = Date.now();
@@ -38,7 +38,7 @@ const setupRequestContext = (req, res, next) => {
 };
 
 // Main request logger
-const requestLogger = async (req, res, next) => {
+export const requestLogger = async (req, res, next) => {
   try {
     const sanitizedReq = sanitizeRequest(req);
 
@@ -118,7 +118,7 @@ const requestLogger = async (req, res, next) => {
 };
 
 // Development request logger with more verbose output
-const developmentLogger = (req, res, next) => {
+export const developmentLogger = (req, res, next) => {
   if (process.env.NODE_ENV !== "development") {
     return next();
   }
@@ -142,7 +142,11 @@ const developmentLogger = (req, res, next) => {
   next();
 };
 
-module.exports = {
+// Named exports
+export { sanitizeRequest };
+
+// Default export object for backward compatibility
+export default {
   setupRequestContext,
   requestLogger,
   developmentLogger,

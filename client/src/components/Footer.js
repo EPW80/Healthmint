@@ -1,58 +1,7 @@
+// src/components/Footer.js
 import React from "react";
 import PropTypes from "prop-types";
-import {
-  Box,
-  Container,
-  Typography,
-  Link,
-  IconButton,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { Github, Twitter } from "lucide-react";
-
-const GlassFooter = styled("footer")(({ theme }) => ({
-  background: "rgba(255, 255, 255, 0.7)",
-  backdropFilter: "blur(10px)",
-  borderTop: "1px solid rgba(255, 255, 255, 0.3)",
-  position: "fixed",
-  bottom: 0,
-  width: "100%",
-  padding: theme.spacing(2, 0),
-  zIndex: 1000,
-  boxShadow: "0 -30px 30px rgba(0, 0, 0, 0.05)",
-}));
-
-const SocialIcon = styled(IconButton)(({ theme }) => ({
-  margin: theme.spacing(0, 1),
-  transition: "transform 0.2s ease-in-out, background-color 0.2s ease-in-out",
-  "&:hover": {
-    transform: "translateY(-3px)",
-    backgroundColor: "rgba(0, 0, 0, 0.04)",
-  },
-  "&:focus": {
-    outline: `2px solid ${theme.palette.primary.main}`,
-    outlineOffset: "2px",
-  },
-}));
-
-const FooterLink = styled(Link)(({ theme }) => ({
-  color: theme.palette.text.secondary,
-  textDecoration: "none",
-  transition: "color 0.2s ease-in-out",
-  "&:hover": {
-    color: theme.palette.primary.main,
-  },
-  "&:focus": {
-    outline: `2px solid ${theme.palette.primary.main}`,
-    outlineOffset: "2px",
-  },
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.875rem",
-    margin: theme.spacing(0.5, 1),
-  },
-}));
+import { Github, Twitter, Mail, ExternalLink } from "lucide-react";
 
 const Footer = ({
   companyName = "Healthmint",
@@ -60,8 +9,6 @@ const Footer = ({
   twitterUrl = "https://twitter.com/healthmint",
   contactEmail = "erikpw009@gmail.com",
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const currentYear = new Date().getFullYear();
 
   const handleContactClick = (e) => {
@@ -69,96 +16,87 @@ const Footer = ({
     window.location.href = `mailto:${contactEmail}`;
   };
 
-  return (
-    <GlassFooter role="contentinfo" aria-label="Site footer">
-      <Container maxWidth="lg">
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 2,
-            [theme.breakpoints.down("sm")]: {
-              flexDirection: "column",
-              textAlign: "center",
-            },
-          }}
-        >
-          <Box>
-            <Typography
-              variant={isMobile ? "caption" : "body2"}
-              color="text.secondary"
-            >
-              © {currentYear} {companyName}. All rights reserved.
-            </Typography>
-          </Box>
+  // Footer link component for consistency
+  const FooterLink = ({ href, label, icon: Icon, onClick, external }) => (
+    <a
+      href={href}
+      onClick={onClick}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+      aria-label={label}
+      className="text-gray-600 hover:text-blue-500 transition-colors text-sm flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 rounded px-2 py-1"
+    >
+      {Icon && <Icon size={16} className="opacity-75" />}
+      <span>{label}</span>
+      {external && <ExternalLink size={12} className="opacity-75" />}
+    </a>
+  );
 
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: { xs: 1, sm: 2 },
-              flexWrap: "wrap",
-              justifyContent: "center",
-            }}
-          >
+  // Social media icon component
+  const SocialIcon = ({ href, label, icon: Icon }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+    >
+      <Icon size={20} />
+    </a>
+  );
+
+  return (
+    <footer
+      className="fixed bottom-0 w-full bg-white/70 backdrop-blur-md border-t border-white/30 py-3 shadow-[0_-10px_15px_rgba(0,0,0,0.05)] z-10"
+      role="contentinfo"
+      aria-label="Site footer"
+    >
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+          {/* Company info */}
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full"></div>
+            <p className="text-sm text-gray-600 font-medium">
+              © {currentYear} {companyName}
+            </p>
+          </div>
+
+          {/* Links */}
+          <div className="flex items-center gap-4 flex-wrap justify-center">
             <FooterLink
               href={`${githubUrl}/blob/main/LICENSE`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="View Privacy Policy"
-            >
-              Privacy Policy
-            </FooterLink>
+              label="Privacy Policy"
+              external
+            />
             <FooterLink
               href={`${githubUrl}/blob/main/LICENSE`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="View Terms of Service"
-            >
-              Terms of Service
-            </FooterLink>
+              label="Terms of Service"
+              external
+            />
             <FooterLink
               href={`mailto:${contactEmail}`}
+              label="Contact"
+              icon={Mail}
               onClick={handleContactClick}
-              aria-label="Contact us via email"
-            >
-              Contact
-            </FooterLink>
-          </Box>
+            />
+          </div>
 
-          <Box
-            sx={{
-              display: "flex",
-              gap: 1,
-              justifyContent: "center",
-            }}
-          >
+          {/* Social media */}
+          <div className="flex gap-1 justify-center">
             <SocialIcon
-              color="primary"
-              aria-label="Visit our GitHub repository"
               href={githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="small"
-            >
-              <Github size={20} />
-            </SocialIcon>
+              label="Visit our GitHub repository"
+              icon={Github}
+            />
             <SocialIcon
-              color="primary"
-              aria-label="Follow us on Twitter"
               href={twitterUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="small"
-            >
-              <Twitter size={20} />
-            </SocialIcon>
-          </Box>
-        </Box>
-      </Container>
-    </GlassFooter>
+              label="Follow us on Twitter"
+              icon={Twitter}
+            />
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 };
 

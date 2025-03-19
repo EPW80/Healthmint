@@ -1,19 +1,34 @@
 // migrations/2_deploy_marketplace.js
-const HealthDataMarketplace = artifacts.require("HealthDataMarketplace");
-const fs = require("fs");
-const path = require("path");
+import { promises as fs } from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
-module.exports = async function (deployer, network, accounts) {
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Function to dynamically load the contract artifact
+const getContractArtifact = async () => {
+  const artifactPath = path.join(
+    __dirname,
+    "../build/contracts/HealthDataMarketplace.json"
+  );
+  const artifactData = await fs.readFile(artifactPath, "utf8");
+  return JSON.parse(artifactData);
+};
+
+// Migration function
+export default async function (deployer, network, accounts) {
   try {
-    // Create directories if they don't exist
+    // Create directories if they don’t exist
     const auditDir = path.join(__dirname, "../audit");
     const deploymentsDir = path.join(auditDir, "deployments");
 
-    if (!fs.existsSync(auditDir)) {
-      fs.mkdirSync(auditDir, { recursive: true });
-    }
-    if (!fs.existsSync(deploymentsDir)) {
-      fs.mkdirSync(deploymentsDir, { recursive: true });
+    try {
+      await fs.mkdir(auditDir, { recursive: true });
+      await fs.mkdir(deploymentsDir, { recursive: true });
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
     }
 
     // Log deployment initiation
@@ -24,8 +39,13 @@ module.exports = async function (deployer, network, accounts) {
     console.log(`Network: ${network}`);
     console.log(`Deployer address: ${accounts[0]}`);
 
+    // Load contract artifact
+    console.log("\nLoading HealthDataMarketplace artifact...");
+    const artifact = await getContractArtifact();
+    const HealthDataMarketplace = deployer.truffle.Contract(artifact);
+
     // Deploy contract
-    console.log("\nDeploying HealthDataMarketplace contract...");
+    console.log("Deploying HealthDataMarketplace contract...");
     const instance = await deployer.deploy(HealthDataMarketplace);
     console.log("Contract deployed at:", instance.address);
 
@@ -46,7 +66,7 @@ module.exports = async function (deployer, network, accounts) {
       `deploy_${network}_${deploymentStart.getTime()}.json`
     );
 
-    fs.writeFileSync(filename, JSON.stringify(deploymentInfo, null, 2));
+    await fs.writeFile(filename, JSON.stringify(deploymentInfo, null, 2));
     console.log(`\nDeployment info saved to: ${filename}`);
 
     // Update client contract info
@@ -60,7 +80,7 @@ module.exports = async function (deployer, network, accounts) {
       deploymentDate: deploymentStart.toISOString(),
     };
 
-    fs.writeFileSync(clientInfoPath, JSON.stringify(clientInfo, null, 2));
+    await fs.writeFile(clientInfoPath, JSON.stringify(clientInfo, null, 2));
     console.log(`Contract info updated at: ${clientInfoPath}`);
 
     return deploymentInfo;
@@ -69,4 +89,4 @@ module.exports = async function (deployer, network, accounts) {
     console.error(error.message);
     throw error;
   }
-};
+}

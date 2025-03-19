@@ -15,13 +15,19 @@
     "build": "npm run clean && npm run build-babel",
     "clean": "rm -rf dist"
   },
-  "keywords": ["blockchain", "healthcare", "ethereum", "web3"],
+  "keywords": [
+    "blockchain",
+    "healthcare",
+    "ethereum",
+    "web3"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "buffer": "^6.0.3",
     "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
     "dotenv": "^16.4.7",
     "ethers": "^5.7.2",
     "express": "^4.18.2",

@@ -1,8 +1,6 @@
 // src/components/dashboard/PatientDashboard.js
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import PropTypes from "prop-types";
 import {
   FileText,
   Upload,
@@ -11,97 +9,165 @@ import {
   AlertCircle,
   Check,
   Bell,
+  Database,
+  Download,
 } from "lucide-react";
-import { setLoading, setError } from "../../redux/slices/uiSlice";
-import { addNotification } from "../../redux/slices/notificationSlice";
+import { setLoading, setError } from "../../redux/slices/uiSlice.js";
+import { addNotification } from "../../redux/slices/notificationSlice.js";
+import userService from "../../services/userService.js";
+import apiService from "../../services/apiService.js";
+import hipaaComplianceService from "../../services/hipaaComplianceService.js";
+import useNavigation from "../../hooks/useNavigation.js";
 
+/**
+ * PatientDashboard Component
+ *
+ * Main dashboard for patient role users to view and manage their health data
+ */
 const PatientDashboard = ({ onNavigate }) => {
   const dispatch = useDispatch();
+  const { navigateTo } = useNavigation();
   const { loading, error } = useSelector((state) => state.ui);
+  const userProfile = useSelector((state) => state.user.profile);
+
+  // Local state
   const [dashboardData, setDashboardData] = useState({
     totalRecords: 0,
     sharedRecords: 0,
     pendingRequests: 0,
     securityScore: 0,
     recentActivity: [],
+    healthRecords: [],
   });
 
+  // Function to fetch all dashboard data
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      dispatch(setLoading(true));
+      dispatch(setError(null));
+
+      // Create audit log for dashboard access
+      await hipaaComplianceService.createAuditLog("DASHBOARD_ACCESS", {
+        userRole: "patient",
+        timestamp: new Date().toISOString(),
+      });
+
+      const userStats = await userService.getUserStats();
+      const healthRecords = await userService.getUserHealthRecords();
+      const recentActivity = await userService.getAuditLog({
+        limit: 10,
+        type: "patient_activity",
+      });
+
+      // Update dashboard data state
+      setDashboardData({
+        totalRecords: userStats.totalUploads || 0,
+        sharedRecords: userStats.totalShared || 0,
+        pendingRequests: userStats.pendingRequests || 0,
+        securityScore: userStats.securityScore || 85, // Default to 85 if not provided
+        recentActivity: recentActivity.data || [],
+        healthRecords: healthRecords || [],
+      });
+    } catch (err) {
+      dispatch(setError(err.message || "Failed to load dashboard data"));
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Failed to load dashboard data. Please try again.",
+        })
+      );
+
+      // Set default values if API calls fail
+      setDashboardData({
+        totalRecords: 0,
+        sharedRecords: 0,
+        pendingRequests: 0,
+        securityScore: 85,
+        recentActivity: [],
+        healthRecords: [],
+      });
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
+
+  // Fetch dashboard data on component mount
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    fetchDashboardData();
+  }, [fetchDashboardData]); // Added fetchDashboardData as a dependency
+
+  // Navigation handlers
+  const handleUploadRecord = useCallback(() => {
+    if (onNavigate) {
+      onNavigate("/upload");
+    } else {
+      navigateTo("/upload");
+    }
+  }, [navigateTo, onNavigate]);
+
+  const handleManagePermissions = useCallback(() => {
+    if (onNavigate) {
+      onNavigate("/permissions");
+    } else {
+      navigateTo("/permissions");
+    }
+  }, [navigateTo, onNavigate]);
+
+  const handleViewHistory = useCallback(() => {
+    if (onNavigate) {
+      onNavigate("/history");
+    } else {
+      navigateTo("/history");
+    }
+  }, [navigateTo, onNavigate]);
+
+  // Download a health record
+  const handleDownloadRecord = useCallback(
+    async (recordId) => {
       try {
         dispatch(setLoading(true));
-        // Mock API call - replace with actual API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        setDashboardData({
-          totalRecords: 12,
-          sharedRecords: 5,
-          pendingRequests: 2,
-          securityScore: 98,
-          recentActivity: [
-            {
-              id: 1,
-              type: "upload",
-              message: "Medical Record Uploaded",
-              timestamp: "2 hours ago",
-              status: "success",
-              category: "Cardiology",
-            },
-            {
-              id: 2,
-              type: "access",
-              message: "Access Granted to Dr. Smith",
-              timestamp: "Yesterday",
-              status: "success",
-              category: "General",
-            },
-            {
-              id: 3,
-              type: "request",
-              message: "Data Access Request from Research Lab",
-              timestamp: "2 days ago",
-              status: "pending",
-              category: "Research",
-            },
-          ],
+        // Log the download attempt for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("DOWNLOAD_RECORD", {
+          recordId,
+          timestamp: new Date().toISOString(),
         });
+
+        // Get the record data
+        const recordData = await apiService.get(`records/${recordId}`, {
+          responseType: "blob",
+        });
+
+        // Create a download link
+        const url = window.URL.createObjectURL(new Blob([recordData]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `health-record-${recordId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Record downloaded successfully",
+          })
+        );
       } catch (err) {
-        dispatch(setError(err.message));
         dispatch(
           addNotification({
             type: "error",
-            message: "Failed to load dashboard data",
+            message: "Failed to download record. Please try again.",
           })
         );
       } finally {
         dispatch(setLoading(false));
       }
-    };
+    },
+    [dispatch]
+  );
 
-    fetchDashboardData();
-  }, [dispatch]);
-
-  const handleUploadRecord = () => {
-    if (onNavigate) {
-      onNavigate("/upload");
-    } else {
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Navigation handler not provided",
-        })
-      );
-    }
-  };
-
-  const handleManagePermissions = () => {
-    onNavigate?.("/permissions");
-  };
-
-  const handleViewHistory = () => {
-    onNavigate?.("/history");
-  };
-
+  // Activity status & icon helpers
   const getActivityIcon = (type) => {
     switch (type) {
       case "upload":
@@ -110,6 +176,8 @@ const PatientDashboard = ({ onNavigate }) => {
         return <Check className="w-5 h-5 text-green-500" />;
       case "request":
         return <Bell className="w-5 h-5 text-yellow-500" />;
+      case "download":
+        return <Download className="w-5 h-5 text-purple-500" />;
       default:
         return <Clock className="w-5 h-5 text-gray-500" />;
     }
@@ -128,6 +196,7 @@ const PatientDashboard = ({ onNavigate }) => {
     }
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -136,6 +205,7 @@ const PatientDashboard = ({ onNavigate }) => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -149,6 +219,16 @@ const PatientDashboard = ({ onNavigate }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* User welcome */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome, {userProfile?.name || "Patient"}
+        </h1>
+        <p className="text-gray-600">
+          Your patient dashboard for managing health data
+        </p>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
@@ -165,7 +245,7 @@ const PatientDashboard = ({ onNavigate }) => {
 
         <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center gap-4">
-            <Upload className="text-green-500 w-8 h-8" />
+            <Database className="text-green-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Shared Records</p>
               <p className="text-2xl font-semibold">
@@ -177,7 +257,7 @@ const PatientDashboard = ({ onNavigate }) => {
 
         <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center gap-4">
-            <Clock className="text-purple-500 w-8 h-8" />
+            <Bell className="text-purple-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Pending Requests</p>
               <p className="text-2xl font-semibold">
@@ -228,42 +308,99 @@ const PatientDashboard = ({ onNavigate }) => {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">Recent Activity</h2>
-        <div className="space-y-4">
-          {dashboardData.recentActivity.map((activity) => (
-            <div
-              key={activity.id}
-              className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
-            >
-              <div className="flex-shrink-0">
-                {getActivityIcon(activity.type)}
+        {dashboardData.recentActivity.length > 0 ? (
+          <div className="space-y-4">
+            {dashboardData.recentActivity.map((activity) => (
+              <div
+                key={activity.id}
+                className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+              >
+                <div className="flex-shrink-0">
+                  {getActivityIcon(activity.type)}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{activity.message}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-sm text-gray-600">
+                      {activity.timestamp}
+                    </p>
+                    <span className="text-gray-300">•</span>
+                    <p className="text-sm text-gray-600">{activity.category}</p>
+                  </div>
+                </div>
+                {activity.status && (
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${getActivityStatusColor(activity.status)}`}
+                  >
+                    {activity.status.charAt(0).toUpperCase() +
+                      activity.status.slice(1)}
+                  </span>
+                )}
               </div>
-              <div className="flex-1">
-                <p className="font-medium">{activity.message}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-sm text-gray-600">{activity.timestamp}</p>
-                  <span className="text-gray-300">•</span>
-                  <p className="text-sm text-gray-600">{activity.category}</p>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No recent activity to display
+          </div>
+        )}
+      </div>
+
+      {/* Health Records */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
+        {dashboardData.healthRecords.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dashboardData.healthRecords.map((record) => (
+              <div
+                key={record.id}
+                className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">{record.category}</h3>
+                  {record.verified && (
+                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Check className="w-3 h-3 mr-1" />
+                      Verified
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  {record.description}
+                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">
+                    {record.dateUploaded}
+                  </span>
+                  <button
+                    onClick={() => handleDownloadRecord(record.id)}
+                    className="text-blue-500 hover:text-blue-700 text-sm flex items-center"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </button>
                 </div>
               </div>
-              {activity.status && (
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${getActivityStatusColor(activity.status)}`}
-                >
-                  {activity.status.charAt(0).toUpperCase() +
-                    activity.status.slice(1)}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-blue-50 rounded-lg">
+            <Database className="w-12 h-12 text-blue-300 mx-auto mb-3" />
+            <p className="text-blue-700 mb-2">No health records found</p>
+            <button
+              onClick={handleUploadRecord}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Your First Record
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-PatientDashboard.propTypes = {
-  onNavigate: PropTypes.func,
-};
 export default PatientDashboard;

@@ -1,114 +1,405 @@
 // src/redux/slices/authSlice.js
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
+import authService from "../../services/authService.js";
+import { addNotification } from "./notificationSlice.js";
+
+// Initial state
 const initialState = {
   isAuthenticated: false,
-  account: null,
-  provider: null,
-  signer: null,
-  loading: false,
-  error: null,
-  network: {
-    chainId: null,
-    name: null,
-    isSupported: false,
-  },
-  wallet: {
-    type: "metamask", // Default wallet type
-    isConnecting: false,
-    isConnected: false,
-  },
+  token: null,
+  refreshToken: null,
+  tokenExpiry: null,
+  authLoading: false,
+  authError: null,
+  sessionActive: false,
+  lastAuthActivity: null,
+  userRoles: [],
+  userId: null,
 };
 
-// Network reducer helper
-const getNetworkName = (chainId) => {
-  const networks = {
-    "0x1": "Ethereum Mainnet",
-    "0xaa36a7": "Sepolia",
-    "0x5": "Goerli",
-  };
-  return networks[chainId] || "Unknown Network";
-};
+/**
+ * Async thunk for user authentication via wallet signature
+ */
+export const loginAsync = createAsyncThunk(
+  "auth/login",
+  async ({ address }, { rejectWithValue, dispatch }) => {
+    try {
+      // Validate wallet address
+      if (!address) {
+        throw new Error("Wallet address is required");
+      }
 
+      // Authenticate with wallet service
+      const result = await authService.authenticateWithWallet(address);
+
+      // Success notification
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Successfully authenticated",
+          duration: 3000,
+        })
+      );
+
+      // Extract roles properly, handling various response formats
+      let userRoles = [];
+      if (result.user?.roles && Array.isArray(result.user.roles)) {
+        userRoles = result.user.roles;
+      } else if (result.user?.role) {
+        userRoles = [result.user.role];
+      } else {
+        userRoles = ["user"]; // Default role
+      }
+
+      return {
+        token: result.token,
+        refreshToken: result.refreshToken,
+        tokenExpiry: result.expiresAt,
+        userRoles,
+        userId: result.user?.id,
+        isNewUser: result.isNewUser,
+      };
+    } catch (error) {
+      // Error notification
+      dispatch(
+        addNotification({
+          type: "error",
+          message: error.message || "Authentication failed",
+          duration: 5000,
+        })
+      );
+
+      return rejectWithValue(error.message || "Authentication failed");
+    }
+  }
+);
+
+/**
+ * Async thunk for refreshing authentication token
+ */
+export const refreshTokenAsync = createAsyncThunk(
+  "auth/refreshToken",
+  async (_, { rejectWithValue, dispatch, getState }) => {
+    try {
+      const { auth } = getState();
+
+      // If there's no refresh token, fail immediately
+      if (!auth.refreshToken) {
+        return rejectWithValue("No refresh token available");
+      }
+
+      // Use auth service to refresh token
+      const result = await authService.refreshToken();
+
+      // Extract roles from the refresh response or keep existing roles
+      const userRoles =
+        result.userRoles ||
+        result.roles ||
+        result.user?.roles ||
+        (result.user?.role ? [result.user.role] : null) ||
+        auth.userRoles;
+
+      return {
+        token: result.token,
+        refreshToken: result.refreshToken,
+        tokenExpiry: Date.now() + result.expiresIn * 1000,
+        userRoles,
+      };
+    } catch (error) {
+      // Since this often happens in the background, only show notification
+      // for unexpected errors, not for expired refresh tokens
+      if (error.message !== "No refresh token available") {
+        dispatch(
+          addNotification({
+            type: "warning",
+            message: "Session expired. Please log in again.",
+            duration: 5000,
+          })
+        );
+      }
+
+      return rejectWithValue(error.message || "Failed to refresh token");
+    }
+  }
+);
+
+/**
+ * Async thunk for logging out the user
+ */
+export const logoutAsync = createAsyncThunk(
+  "auth/logout",
+  async (_, { dispatch }) => {
+    try {
+      // Use auth service to log out
+      await authService.logout();
+
+      // Success notification
+      dispatch(
+        addNotification({
+          type: "info",
+          message: "Successfully logged out",
+          duration: 3000,
+        })
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Logout error:", error);
+
+      // Still return success even if API call fails
+      // to ensure user is logged out from the frontend
+      return true;
+    }
+  }
+);
+
+/**
+ * Async thunk for setting or updating user role
+ */
+export const updateRoleAsync = createAsyncThunk(
+  "auth/updateRole",
+  async ({ role, address }, { rejectWithValue, dispatch, getState }) => {
+    try {
+      if (!role) {
+        throw new Error("Role is required");
+      }
+
+      const { auth } = getState();
+      const authToken = auth.token;
+
+      if (!authToken) {
+        throw new Error("Authentication required");
+      }
+
+      // Call API to update role
+      const response = await fetch("/api/user/role", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ role, address }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update role");
+      }
+
+      // Success notification
+      dispatch(
+        addNotification({
+          type: "success",
+          message: `Role updated to ${role}`,
+          duration: 3000,
+        })
+      );
+
+      // Return roles from API or create array with the new role
+      const userRoles = result.roles || [role];
+
+      return { userRoles };
+    } catch (error) {
+      dispatch(
+        addNotification({
+          type: "error",
+          message: error.message || "Failed to update role",
+          duration: 5000,
+        })
+      );
+
+      return rejectWithValue(error.message || "Failed to update role");
+    }
+  }
+);
+
+// Create auth slice
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    updateWalletConnection: (state, action) => {
-      state.isAuthenticated = true;
-      state.account = action.payload.address;
-      state.provider = action.payload.provider;
-      state.signer = action.payload.signer;
-      state.wallet = {
-        type: action.payload.walletType || "metamask",
-        isConnecting: false,
-        isConnected: true,
-      };
+    // Start session (after wallet connection is verified)
+    startSession: (state) => {
+      state.sessionActive = true;
+      state.lastAuthActivity = Date.now();
     },
 
-    startWalletConnection: (state) => {
-      state.wallet.isConnecting = true;
-      state.error = null;
+    // End session
+    endSession: (state) => {
+      state.sessionActive = false;
+      state.lastAuthActivity = null;
     },
 
-    clearWalletConnection: (state) => {
-      return {
-        ...initialState,
-        network: state.network, // Preserve network state
-      };
+    // Update last activity timestamp to prevent session timeout
+    updateActivity: (state) => {
+      state.lastAuthActivity = Date.now();
     },
 
-    setLoading: (state, action) => {
-      state.loading = action.payload;
-    },
+    // Update auth state from localStorage on app init
+    initializeAuth: (state) => {
+      const token = authService.getToken();
+      const refreshToken = authService.getRefreshToken();
+      const tokenExpiry = localStorage.getItem(authService.tokenExpiryKey);
+      const userData = localStorage.getItem(authService.userKey);
 
-    setError: (state, action) => {
-      state.error = action.payload;
-      state.loading = false;
-      state.wallet.isConnecting = false;
-    },
+      if (token && tokenExpiry && Date.now() < parseInt(tokenExpiry, 10)) {
+        state.isAuthenticated = true;
+        state.token = token;
+        state.refreshToken = refreshToken;
+        state.tokenExpiry = parseInt(tokenExpiry, 10);
+        state.sessionActive = true;
+        state.lastAuthActivity = Date.now();
 
-    updateAccount: (state, action) => {
-      state.account = action.payload;
-      if (!action.payload) {
-        state.isAuthenticated = false;
-        state.wallet.isConnected = false;
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            state.userRoles = user.roles || (user.role ? [user.role] : []);
+            state.userId = user.id;
+          } catch (e) {
+            console.error("Error parsing user data:", e);
+          }
+        }
       }
     },
 
-    updateNetwork: (state, action) => {
-      const supportedNetworks = ["0x1", "0xaa36a7"]; // Ethereum Mainnet and Sepolia
-      const chainId = action.payload;
+    // Update user roles - important for role-based access control
+    updateUserRoles: (state, action) => {
+      // Ensure roles are always in array format and contain unique values
+      const uniqueRoles = Array.from(new Set(action.payload.filter(Boolean)));
+      state.userRoles = uniqueRoles;
 
-      state.network = {
-        chainId: chainId,
-        name: getNetworkName(chainId),
-        isSupported: supportedNetworks.includes(chainId),
-      };
+      // Update localStorage to persist roles
+      try {
+        const userData = localStorage.getItem(authService.userKey);
+        if (userData) {
+          const user = JSON.parse(userData);
+          user.roles = uniqueRoles;
+          localStorage.setItem(authService.userKey, JSON.stringify(user));
+        }
+      } catch (e) {
+        console.error("Error updating user roles in localStorage:", e);
+      }
     },
 
+    // Add a single role to the roles array
+    addUserRole: (state, action) => {
+      const newRole = action.payload;
+      if (newRole && !state.userRoles.includes(newRole)) {
+        state.userRoles = [...state.userRoles, newRole];
+
+        // Update localStorage to persist roles
+        try {
+          const userData = localStorage.getItem(authService.userKey);
+          if (userData) {
+            const user = JSON.parse(userData);
+            user.roles = state.userRoles;
+            localStorage.setItem(authService.userKey, JSON.stringify(user));
+          }
+        } catch (e) {
+          console.error("Error adding user role in localStorage:", e);
+        }
+      }
+    },
+
+    // Manually reset auth state
     resetAuthState: () => initialState,
+  },
+  extraReducers: (builder) => {
+    builder
+      // Login async thunk handling
+      .addCase(loginAsync.pending, (state) => {
+        state.authLoading = true;
+        state.authError = null;
+      })
+      .addCase(loginAsync.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.token = action.payload.token;
+        state.refreshToken = action.payload.refreshToken;
+        state.tokenExpiry = action.payload.tokenExpiry;
+        state.authLoading = false;
+        state.sessionActive = true;
+        state.lastAuthActivity = Date.now();
+        state.userRoles = action.payload.userRoles || [];
+        state.userId = action.payload.userId;
+      })
+      .addCase(loginAsync.rejected, (state, action) => {
+        state.authLoading = false;
+        state.authError = action.payload || "Authentication failed";
+        state.isAuthenticated = false;
+      })
+
+      // Refresh token async thunk handling
+      .addCase(refreshTokenAsync.pending, (state) => {
+        state.authLoading = true;
+      })
+      .addCase(refreshTokenAsync.fulfilled, (state, action) => {
+        state.token = action.payload.token;
+        state.refreshToken = action.payload.refreshToken;
+        state.tokenExpiry = action.payload.tokenExpiry;
+        if (action.payload.userRoles) {
+          state.userRoles = action.payload.userRoles;
+        }
+        state.authLoading = false;
+        state.lastAuthActivity = Date.now();
+      })
+      .addCase(refreshTokenAsync.rejected, (state, action) => {
+        state.authLoading = false;
+        state.authError = action.payload || "Failed to refresh token";
+        // Don't reset authentication state here to allow retry
+      })
+
+      // Update role async thunk handling
+      .addCase(updateRoleAsync.pending, (state) => {
+        state.authLoading = true;
+      })
+      .addCase(updateRoleAsync.fulfilled, (state, action) => {
+        state.userRoles = action.payload.userRoles;
+        state.authLoading = false;
+      })
+      .addCase(updateRoleAsync.rejected, (state, action) => {
+        state.authLoading = false;
+        state.authError = action.payload || "Failed to update role";
+      })
+
+      // Logout async thunk handling
+      .addCase(logoutAsync.pending, (state) => {
+        state.authLoading = true;
+      })
+      .addCase(logoutAsync.fulfilled, (state) => {
+        return initialState;
+      })
+      .addCase(logoutAsync.rejected, (state) => {
+        // Still reset state even if API call fails
+        return initialState;
+      });
   },
 });
 
-// Action creators
+// Export actions
 export const {
-  updateWalletConnection,
-  startWalletConnection,
-  clearWalletConnection,
-  setLoading,
-  setError,
-  updateAccount,
-  updateNetwork,
+  startSession,
+  endSession,
+  updateActivity,
+  initializeAuth,
   resetAuthState,
+  updateUserRoles,
+  addUserRole,
 } = authSlice.actions;
 
-// Selectors
+// Export selectors
 export const selectAuth = (state) => state.auth;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
-export const selectIsConnected = (state) => state.auth.wallet.isConnected;
-export const selectWallet = (state) => state.auth.wallet;
-export const selectNetwork = (state) => state.auth.network;
-export const selectAccount = (state) => state.auth.account;
+export const selectAuthToken = (state) => state.auth.token;
+export const selectAuthLoading = (state) => state.auth.authLoading;
+export const selectAuthError = (state) => state.auth.authError;
+export const selectSessionActive = (state) => state.auth.sessionActive;
+export const selectTokenExpiry = (state) => state.auth.tokenExpiry;
+export const selectUserRoles = (state) => state.auth.userRoles;
+export const selectUserId = (state) => state.auth.userId;
+export const selectHasRole = (role) => (state) =>
+  state.auth.userRoles.includes(role);
 
+// Export reducer
 export default authSlice.reducer;

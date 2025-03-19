@@ -1,7 +1,7 @@
-const ValidationService = require("../services/validationService");
-const hipaaCompliance = require("./hipaaCompliance");
+import ValidationService from "../services/validationService.js";
+import hipaaCompliance from "./hipaaCompliance.js";
 
-class ValidationError extends Error {
+export class ValidationError extends Error {
   constructor(message, code = "VALIDATION_ERROR") {
     super(message);
     this.name = "ValidationError";
@@ -9,8 +9,84 @@ class ValidationError extends Error {
   }
 }
 
+// Validate name with enhanced security
+const validateName = (name) => {
+  if (!name || typeof name !== "string") {
+    return "Name is required";
+  }
+
+  const trimmedName = name.trim();
+  if (trimmedName.length < 2 || trimmedName.length > 100) {
+    return "Name must be between 2 and 100 characters";
+  }
+
+  // Validate name format (letters, spaces, hyphens, apostrophes only)
+  const nameRegex = /^[a-zA-Z\s\-']+$/;
+  if (!nameRegex.test(trimmedName)) {
+    return "Name contains invalid characters";
+  }
+
+  return true;
+};
+
+// Validate age with HIPAA compliance
+const validateAge = (age) => {
+  const parsedAge = parseInt(age);
+
+  if (!age || isNaN(parsedAge)) {
+    return "Valid age is required";
+  }
+
+  if (parsedAge < 18 || parsedAge > 120) {
+    return "Age must be between 18 and 120";
+  }
+
+  return true;
+};
+
+// Validate role with access control
+const validateRole = (role) => {
+  const validRoles = ["patient", "provider", "researcher"];
+
+  if (!role || !validRoles.includes(role)) {
+    return "Valid role is required (patient, provider, or researcher)";
+  }
+
+  return true;
+};
+
+// Validate email with enhanced security
+const validateEmail = (email) => {
+  if (!email || typeof email !== "string") {
+    return "Valid email is required";
+  }
+
+  // Enhanced email validation regex
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return "Invalid email format";
+  }
+
+  return true;
+};
+
+// Validate emergency contact
+const validateEmergencyContact = (contact) => {
+  if (!contact.name || !contact.relationship || !contact.phone) {
+    return "Emergency contact must include name, relationship, and phone number";
+  }
+
+  // Validate phone number
+  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+  if (!phoneRegex.test(contact.phone)) {
+    return "Invalid emergency contact phone number";
+  }
+
+  return true;
+};
+
 // Validate registration with HIPAA compliance
-const validateRegistration = async (req, res, next) => {
+export const validateRegistration = async (req, res, next) => {
   try {
     const {
       address,
@@ -101,84 +177,8 @@ const validateRegistration = async (req, res, next) => {
   }
 };
 
-// Validate name with enhanced security
-const validateName = (name) => {
-  if (!name || typeof name !== "string") {
-    return "Name is required";
-  }
-
-  const trimmedName = name.trim();
-  if (trimmedName.length < 2 || trimmedName.length > 100) {
-    return "Name must be between 2 and 100 characters";
-  }
-
-  // Validate name format (letters, spaces, hyphens, apostrophes only)
-  const nameRegex = /^[a-zA-Z\s\-']+$/;
-  if (!nameRegex.test(trimmedName)) {
-    return "Name contains invalid characters";
-  }
-
-  return true;
-};
-
-// Validate age with HIPAA compliance
-const validateAge = (age) => {
-  const parsedAge = parseInt(age);
-
-  if (!age || isNaN(parsedAge)) {
-    return "Valid age is required";
-  }
-
-  if (parsedAge < 18 || parsedAge > 120) {
-    return "Age must be between 18 and 120";
-  }
-
-  return true;
-};
-
-// Validate role with access control
-const validateRole = (role) => {
-  const validRoles = ["patient", "provider", "researcher"];
-
-  if (!role || !validRoles.includes(role)) {
-    return "Valid role is required (patient, provider, or researcher)";
-  }
-
-  return true;
-};
-
-// Validate email with enhanced security
-const validateEmail = (email) => {
-  if (!email || typeof email !== "string") {
-    return "Valid email is required";
-  }
-
-  // Enhanced email validation regex
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (!emailRegex.test(email)) {
-    return "Invalid email format";
-  }
-
-  return true;
-};
-
-// Validate emergency contact
-const validateEmergencyContact = (contact) => {
-  if (!contact.name || !contact.relationship || !contact.phone) {
-    return "Emergency contact must include name, relationship, and phone number";
-  }
-
-  // Validate phone number
-  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-  if (!phoneRegex.test(contact.phone)) {
-    return "Invalid emergency contact phone number";
-  }
-
-  return true;
-};
-
 // Validate data access request
-const validateDataAccess = (req, res, next) => {
+export const validateDataAccess = (req, res, next) => {
   try {
     const { purpose, duration, requestedBy } = req.body;
 
@@ -213,7 +213,7 @@ const validateDataAccess = (req, res, next) => {
 };
 
 // Validate consent update
-const validateConsentUpdate = (req, res, next) => {
+export const validateConsentUpdate = (req, res, next) => {
   try {
     const { consentType, grantedTo, purpose, expirationDate } = req.body;
 
@@ -258,7 +258,17 @@ const validateConsentUpdate = (req, res, next) => {
   }
 };
 
-module.exports = {
+// Named exports
+export {
+  validateName,
+  validateAge,
+  validateRole,
+  validateEmail,
+  validateEmergencyContact,
+};
+
+// Default export
+export default {
   validateRegistration,
   validateDataAccess,
   validateConsentUpdate,

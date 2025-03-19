@@ -1,29 +1,10 @@
+// src/components/DataBrowser.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import {
-  Box,
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  TextField,
-  FormControlLabel,
-  Checkbox,
-  Paper,
-  Alert,
-  CircularProgress,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { CheckCircle, AlertCircle } from "lucide-react";
 import axios from "axios";
 
-// API endpoint (should come from environment config)
+// API URL from environment
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 console.log("Resolved API_URL:", API_URL);
 
@@ -51,50 +32,6 @@ const CATEGORIES = [
   "Pediatrics",
   "Sports Medicine",
 ];
-
-// Styled components remain the same...
-const StyledCard = styled(Card)(({ theme }) => ({
-  background: "rgba(255, 255, 255, 0.9)",
-  backdropFilter: "blur(10px)",
-  borderRadius: "16px",
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  boxShadow: "0 4px 30px rgba(0, 0, 0, 0.1)",
-  border: "1px solid rgba(255, 255, 255, 0.3)",
-  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-  "&:hover": {
-    transform: "translateY(-8px)",
-    boxShadow: "0 12px 40px rgba(0, 0, 0, 0.15)",
-  },
-}));
-
-const FilterContainer = styled(Paper)(({ theme }) => ({
-  background: "rgba(255, 255, 255, 0.7)",
-  backdropFilter: "blur(10px)",
-  borderRadius: "16px",
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(4),
-  border: "1px solid rgba(255, 255, 255, 0.3)",
-}));
-
-const PurchaseButton = styled(Button)(({ theme }) => ({
-  borderRadius: "8px",
-  padding: "10px 0",
-  fontWeight: "bold",
-  background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-  boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
-  "&:hover": {
-    background: "linear-gradient(45deg, #1976D2 30%, #2196F3 90%)",
-  },
-}));
-
-const LoadingContainer = styled(Box)({
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  minHeight: "200px",
-});
 
 const DataBrowser = ({ onPurchase }) => {
   const [healthData, setHealthData] = useState([]);
@@ -187,186 +124,200 @@ const DataBrowser = ({ onPurchase }) => {
     [onPurchase]
   );
 
-  // Filter rendering remains the same...
+  // Filter component
   const renderFilters = () => (
-    <FilterContainer>
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="Min Age"
+    <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 mb-8 border border-white/30 shadow-md">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+        <div>
+          <label
+            htmlFor="minAge"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Min Age
+          </label>
+          <input
+            id="minAge"
             type="number"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             value={filters.minAge}
             onChange={(e) => handleFilterChange("minAge", e.target.value)}
-            inputProps={{ min: 0, max: 120 }}
+            min="0"
+            max="120"
           />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="Max Age"
+        </div>
+
+        <div>
+          <label
+            htmlFor="maxAge"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Max Age
+          </label>
+          <input
+            id="maxAge"
             type="number"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             value={filters.maxAge}
             onChange={(e) => handleFilterChange("maxAge", e.target.value)}
-            inputProps={{ min: 0, max: 120 }}
+            min="0"
+            max="120"
           />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={filters.category}
-              label="Category"
-              onChange={(e) => handleFilterChange("category", e.target.value)}
-            >
-              {CATEGORIES.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {category}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Price Range</InputLabel>
-            <Select
-              value={filters.priceRange}
-              label="Price Range"
-              onChange={(e) => handleFilterChange("priceRange", e.target.value)}
-            >
-              <MenuItem value="all">All Prices</MenuItem>
-              <MenuItem value="low">Low (≤ 0.1 ETH)</MenuItem>
-              <MenuItem value="medium">Medium (0.1-0.25 ETH)</MenuItem>
-              <MenuItem value="high">High ({">"} 0.25 ETH)</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={filters.verifiedOnly}
-                onChange={(e) =>
-                  handleFilterChange("verifiedOnly", e.target.checked)
-                }
-              />
-            }
-            label="Show verified data only"
-          />
-        </Grid>
-      </Grid>
-    </FilterContainer>
+        </div>
+
+        <div>
+          <label
+            htmlFor="category"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Category
+          </label>
+          <select
+            id="category"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            value={filters.category}
+            onChange={(e) => handleFilterChange("category", e.target.value)}
+          >
+            {CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="priceRange"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Price Range
+          </label>
+          <select
+            id="priceRange"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            value={filters.priceRange}
+            onChange={(e) => handleFilterChange("priceRange", e.target.value)}
+          >
+            <option value="all">All Prices</option>
+            <option value="low">Low (≤ 0.1 ETH)</option>
+            <option value="medium">Medium (0.1-0.25 ETH)</option>
+            <option value="high">High ({"> "}0.25 ETH)</option>
+          </select>
+        </div>
+
+        <div className="md:col-span-4">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              checked={filters.verifiedOnly}
+              onChange={(e) =>
+                handleFilterChange("verifiedOnly", e.target.checked)
+              }
+            />
+            <span className="text-gray-700">Show verified data only</span>
+          </label>
+        </div>
+      </div>
+    </div>
   );
 
   // Render health data card
   const renderHealthDataCard = useCallback(
     (data) => (
-      <Grid item xs={12} sm={6} md={4} key={data.id}>
-        <StyledCard>
-          <CardContent sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              {data.category}
-            </Typography>
-            <Typography
-              color="textSecondary"
-              gutterBottom
-              sx={{
-                bgcolor: "rgba(0, 0, 0, 0.05)",
-                p: 1,
-                borderRadius: 1,
-                fontSize: "0.9rem",
-              }}
-            >
+      <div
+        key={data.id}
+        className="col-span-1 sm:col-span-1 md:col-span-1 lg:col-span-1 xl:col-span-1"
+      >
+        <div className="bg-white/90 backdrop-blur-md h-full rounded-2xl shadow-md border border-white/30 transition-all duration-300 hover:translate-y-[-8px] hover:shadow-xl flex flex-col">
+          <div className="p-6 flex-grow">
+            <h3 className="text-xl font-semibold mb-2">{data.category}</h3>
+            <div className="bg-black/5 p-2 rounded text-sm text-gray-600 mb-3">
               Owner: {data.owner}
-            </Typography>
-            <Typography variant="body2" gutterBottom>
-              {data.description}
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{ color: "primary.main", fontWeight: "bold", mt: 1 }}
-            >
+            </div>
+            <p className="text-gray-700 mb-4">{data.description}</p>
+            <p className="text-lg font-bold text-blue-600 mt-2">
               {data.price} ETH
-            </Typography>
+            </p>
             {data.verified && (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  color: "success.main",
-                }}
-              >
+              <div className="flex items-center gap-1 text-green-600 mt-2">
                 <CheckCircle size={16} />
-                <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                  Verified
-                </Typography>
-              </Box>
+                <span className="font-medium text-sm">Verified</span>
+              </div>
             )}
-          </CardContent>
-          <Box sx={{ p: 2 }}>
-            <PurchaseButton fullWidth onClick={() => handlePurchase(data.id)}>
+          </div>
+          <div className="p-4">
+            <button
+              onClick={() => handlePurchase(data.id)}
+              className="w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-colors"
+            >
               Purchase
-            </PurchaseButton>
-          </Box>
-        </StyledCard>
-      </Grid>
+            </button>
+          </div>
+        </div>
+      </div>
     ),
     [handlePurchase]
   );
 
   return (
-    <Container>
-      <Box sx={{ mt: 4 }}>
-        <Typography
-          variant="h4"
-          gutterBottom
-          sx={{
-            fontWeight: "bold",
-            background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            mb: 4,
-          }}
-        >
+    <div className="container mx-auto px-4 py-8">
+      <div className="mt-4">
+        <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
           Browse Health Data
-        </Typography>
+        </h1>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+            <AlertCircle size={20} className="text-red-500" />
+            <span>{error}</span>
+            <button
+              className="ml-auto text-red-500 hover:text-red-700"
+              onClick={() => setError(null)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
         )}
 
         {renderFilters()}
 
         {loading ? (
-          <LoadingContainer>
-            <CircularProgress />
-          </LoadingContainer>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
         ) : (
           <>
-            <Typography
-              variant="subtitle1"
-              gutterBottom
-              sx={{ mb: 3, color: "text.secondary", fontWeight: 500 }}
-            >
+            <p className="mb-6 text-gray-600 font-medium">
               Showing {filteredData.length} of {healthData.length} records
-            </Typography>
-            <Grid container spacing={3}>
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filteredData.map(renderHealthDataCard)}
-            </Grid>
+            </div>
             {filteredData.length === 0 && (
-              <Alert severity="info" icon={<AlertCircle />} sx={{ mt: 2 }}>
-                No records match your current filters. Try adjusting your search
-                criteria.
-              </Alert>
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mt-4 flex items-center gap-2">
+                <AlertCircle size={20} className="text-blue-500" />
+                <span>
+                  No records match your current filters. Try adjusting your
+                  search criteria.
+                </span>
+              </div>
             )}
           </>
         )}
-      </Box>
-    </Container>
+      </div>
+    </div>
   );
 };
 

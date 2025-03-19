@@ -1,6 +1,8 @@
-import { createSlice } from "@reduxjs/toolkit";
+import * as pkg from "@reduxjs/toolkit";
 
-// Role types enum - matching your project's needs
+const { createSlice } = pkg;
+
+// Define user roles
 export const USER_ROLES = {
   PATIENT: "patient",
   RESEARCHER: "researcher",
@@ -74,7 +76,7 @@ export const selectRolePermissions = (state) => state.role.permissions;
 export const selectRoleLoading = (state) => state.role.loading;
 export const selectRoleError = (state) => state.role.error;
 
-// Thunks for async operations
+// Async action creator with validation
 export const setRoleWithValidation = (role) => (dispatch) => {
   try {
     dispatch(setLoading(true));
@@ -97,7 +99,7 @@ export const setRoleWithValidation = (role) => (dispatch) => {
   }
 };
 
-// Helper function to get default permissions based on role
+// Helper function to get permissions based on role
 const getRolePermissions = (role) => {
   switch (role) {
     case USER_ROLES.PATIENT:

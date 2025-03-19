@@ -1,8 +1,16 @@
-const webpack = require("webpack");
+import webpack from "webpack";
 
-module.exports = {
+export default {
   resolve: {
     fallback: {},
+  },
+  module: {
+    rules: [
+      {
+        test: /\.json$/,
+        type: "json", 
+      },
+    ],
   },
   plugins: [
     new webpack.ProvidePlugin({

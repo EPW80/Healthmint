@@ -3,24 +3,52 @@ import Web3 from "web3";
 import path from "path";
 import { fileURLToPath } from "url";
 import HDWalletProvider from "@truffle/hdwallet-provider";
+import fs from "fs";
 
-// Configure environment variables
-dotenv.config();
+// Configure environment variables from the appropriate .env file
+const envPath =
+  process.env.NODE_ENV === "production" ? ".env.production" : ".env";
 
-// Load ABI (Application Binary Interface) for the ERC20 token contract
+if (fs.existsSync(envPath)) {
+  console.log(`📁 Loading environment from ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.log("📁 Loading environment from default .env file");
+  dotenv.config();
+}
+
+// Set __filename and __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Provider Manager with retries and rate-limiting
+/**
+ * Provider Manager Class
+ * Handles wallet provider initialization with retry logic and proper error handling
+ */
 class ProviderManager {
   constructor() {
-    const rawPrivateKey = process.env.PRIVATE_KEY ?? "";
-    this.privateKey = rawPrivateKey?.startsWith("0x")
-      ? rawPrivateKey.slice(2)
-      : rawPrivateKey;
+    // Check for private key or mnemonic (safer option for non-dev environments)
+    this.privateKey = null;
+    this.mnemonic = null;
 
-    if (!this.privateKey) {
-      throw new Error("❌ Missing PRIVATE_KEY in environment variables");
+    if (process.env.MNEMONIC) {
+      this.mnemonic = process.env.MNEMONIC;
+      console.log("🔐 Using mnemonic for provider initialization");
+    } else if (process.env.PRIVATE_KEY) {
+      const rawPrivateKey = process.env.PRIVATE_KEY ?? "";
+      this.privateKey = rawPrivateKey?.startsWith("0x")
+        ? rawPrivateKey.slice(2)
+        : rawPrivateKey;
+      console.log("🔑 Using private key for provider initialization");
+    } else {
+      throw new Error(
+        "❌ Missing PRIVATE_KEY or MNEMONIC in environment variables"
+      );
+    }
+
+    // Check for RPC URL
+    if (!process.env.SEPOLIA_RPC_URL) {
+      throw new Error("❌ Missing SEPOLIA_RPC_URL in environment variables");
     }
 
     this.providerOptions = {
@@ -91,15 +119,29 @@ class ProviderManager {
 
   getProvider() {
     console.log("🔄 Initializing provider...");
+    const rpcUrl = process.env.SEPOLIA_RPC_URL;
 
     try {
-      const provider = new HDWalletProvider({
-        privateKeys: [this.privateKey],
-        providerOrUrl: process.env.SEPOLIA_RPC_URL ?? "",
-        pollingInterval: 60000, // Reduce polling frequency
-      });
+      let providerOptions;
 
-      console.log("✅ Provider initialized successfully!");
+      if (this.mnemonic) {
+        providerOptions = {
+          mnemonic: this.mnemonic,
+          providerOrUrl: rpcUrl,
+          addressIndex: 0,
+          numberOfAddresses: 1,
+          pollingInterval: 60000,
+        };
+      } else {
+        providerOptions = {
+          privateKeys: [this.privateKey],
+          providerOrUrl: rpcUrl,
+          pollingInterval: 60000,
+        };
+      }
+
+      const provider = new HDWalletProvider(providerOptions);
+      console.log(`✅ Provider initialized successfully for ${rpcUrl}!`);
       return provider;
     } catch (error) {
       console.error("❌ Provider initialization failed:", error.message);
@@ -108,32 +150,65 @@ class ProviderManager {
   }
 }
 
-const providerManager = new ProviderManager();
+// Network configurations
+const networks = {
+  // Development network for local testing
+  development: {
+    host: "127.0.0.1",
+    port: 8545,
+    network_id: "*",
+  },
 
-const config = {
-  networks: {
-    development: {
-      host: "127.0.0.1",
-      port: 8545,
-      network_id: "*",
-    },
-
-    sepolia: {
-      provider: () => providerManager.getProvider(),
-      network_id: 11155111,
-      gas: 5500000,
-      gasPrice: 20000000000, // 20 gwei
-      confirmations: 2,
-      timeoutBlocks: 500,
-      skipDryRun: true,
-      networkCheckTimeout: 1000000,
-      websockets: false,
-      verify: {
-        apiUrl: "https://api-sepolia.etherscan.io/",
-        apiKey: process.env.ETHERSCAN_API_KEY ?? "",
-      },
+  // Sepolia testnet
+  sepolia: {
+    provider: () => new ProviderManager().getProvider(),
+    network_id: 11155111,
+    gas: 5500000,
+    gasPrice: 20000000000, // 20 gwei
+    confirmations: 2,
+    timeoutBlocks: 500,
+    skipDryRun: true,
+    networkCheckTimeout: 1000000,
+    websockets: false,
+    verify: {
+      apiUrl: "https://api-sepolia.etherscan.io/",
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
     },
   },
+
+  // Mainnet configuration for production deployments
+  mainnet: {
+    provider: () => {
+      // Ensure we're using the production environment
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "⚠️ Attempting to deploy to mainnet in non-production environment!"
+        );
+        // Uncomment to enforce production environment for mainnet
+        // throw new Error("Mainnet deployment requires NODE_ENV=production");
+      }
+      return new ProviderManager().getProvider();
+    },
+    network_id: 1,
+    gas: 6000000,
+    gasPrice: null, // Use web3.eth.getGasPrice() at runtime
+    confirmations: 3,
+    timeoutBlocks: 200,
+    skipDryRun: false, // Always do dry-run on mainnet
+    networkCheckTimeout: 100000,
+    verify: {
+      apiUrl: "https://api.etherscan.io/",
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
+    },
+  },
+};
+
+const config = {
+  // Conditionally include networks based on environment
+  networks:
+    process.env.NODE_ENV === "production"
+      ? { mainnet: networks.mainnet, sepolia: networks.sepolia }
+      : { development: networks.development, sepolia: networks.sepolia },
 
   contracts_directory: path.join(__dirname, "contracts"),
   contracts_build_directory: path.join(__dirname, "client/src/contracts"),
@@ -148,6 +223,19 @@ const config = {
           runs: 200,
         },
         evmVersion: "paris",
+        outputSelection: {
+          "*": {
+            "": ["ast"],
+            "*": [
+              "abi",
+              "evm.bytecode.object",
+              "evm.bytecode.sourceMap",
+              "evm.deployedBytecode.object",
+              "evm.deployedBytecode.sourceMap",
+              "evm.methodIdentifiers",
+            ],
+          },
+        },
       },
     },
   },
@@ -160,6 +248,7 @@ const config = {
   mocha: {
     timeout: 100000,
     reporter: "spec",
+    useColors: true,
   },
 };
 

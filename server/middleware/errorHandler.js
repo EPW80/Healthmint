@@ -1,6 +1,6 @@
-const hipaaCompliance = require("./hipaaCompliance");
+import hipaaCompliance from "./hipaaCompliance.js";
 
-class HIPAAError extends Error {
+export class HIPAAError extends Error {
   constructor(message, code = "HIPAA_ERROR", details = {}) {
     super(message);
     this.name = "HIPAAError";
@@ -8,65 +8,6 @@ class HIPAAError extends Error {
     this.details = details;
   }
 }
-
-const errorHandler = async (err, req, res, next) => {
-  try {
-    // Generate error ID for tracking
-    const errorId = generateErrorId();
-
-    // Prepare error metadata
-    const errorMetadata = {
-      errorId,
-      timestamp: new Date(),
-      path: req.path,
-      method: req.method,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      userId: req.user?.address || "anonymous",
-      errorType: err.name || "UnknownError",
-      errorCode: err.code || "UNKNOWN_ERROR",
-    };
-
-    // Sanitize error stack to remove sensitive information
-    const sanitizedStack = sanitizeErrorStack(err.stack);
-
-    // Log error with metadata (avoiding PHI)
-    await logError({
-      ...errorMetadata,
-      error: err.message,
-      stack: sanitizedStack,
-    });
-
-    // Handle different types of errors
-    if (err instanceof HIPAAError) {
-      return handleHIPAAError(err, res, errorId);
-    }
-
-    if (err.name === "ValidationError") {
-      return handleValidationError(err, res, errorId);
-    }
-
-    if (err.code === 11000) {
-      return handleDuplicateError(err, res, errorId);
-    }
-
-    if (err.name === "UnauthorizedError") {
-      return handleAuthError(err, res, errorId);
-    }
-
-    // Handle generic errors
-    return handleGenericError(err, res, errorId);
-  } catch (handlingError) {
-    // Fallback error handling
-    console.error("Error in error handler:", handlingError);
-
-    return res.status(500).json({
-      success: false,
-      message: "An unexpected error occurred",
-      errorId: generateErrorId(),
-    });
-  }
-};
 
 // Helper function to generate unique error ID
 const generateErrorId = () => {
@@ -217,7 +158,65 @@ const sanitizeFieldName = (field) => {
   return field;
 };
 
-module.exports = {
-  errorHandler,
-  HIPAAError,
+const errorHandler = async (err, req, res, next) => {
+  try {
+    // Generate error ID for tracking
+    const errorId = generateErrorId();
+
+    // Prepare error metadata
+    const errorMetadata = {
+      errorId,
+      timestamp: new Date(),
+      path: req.path,
+      method: req.method,
+      ipAddress: req.ip,
+      userAgent: req.get("User-Agent"),
+      userId: req.user?.address || "anonymous",
+      errorType: err.name || "UnknownError",
+      errorCode: err.code || "UNKNOWN_ERROR",
+    };
+
+    // Sanitize error stack to remove sensitive information
+    const sanitizedStack = sanitizeErrorStack(err.stack);
+
+    // Log error with metadata (avoiding PHI)
+    await logError({
+      ...errorMetadata,
+      error: err.message,
+      stack: sanitizedStack,
+    });
+
+    // Handle different types of errors
+    if (err instanceof HIPAAError) {
+      return handleHIPAAError(err, res, errorId);
+    }
+
+    if (err.name === "ValidationError") {
+      return handleValidationError(err, res, errorId);
+    }
+
+    if (err.code === 11000) {
+      return handleDuplicateError(err, res, errorId);
+    }
+
+    if (err.name === "UnauthorizedError") {
+      return handleAuthError(err, res, errorId);
+    }
+
+    // Handle generic errors
+    return handleGenericError(err, res, errorId);
+  } catch (handlingError) {
+    // Fallback error handling
+    console.error("Error in error handler:", handlingError);
+
+    return res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred",
+      errorId: generateErrorId(),
+    });
+  }
 };
+
+// Export using ES module syntax
+export { errorHandler, HIPAAError };
+export default errorHandler;

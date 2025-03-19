@@ -11,7 +11,7 @@ import { ApiError } from "../utils/apiError.js"; // ✅ Correct ES Module import
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { userService } from "../services/userService.js";
 import transactionService from "../services/transactionService.js";
-import { secureStorageService } from "../services/secureStorageService.js";
+import secureStorageService from "../services/secureStorageService.js";
 
 const router = express.Router();
 

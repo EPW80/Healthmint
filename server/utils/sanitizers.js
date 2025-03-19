@@ -1,20 +1,5 @@
 // utils/sanitizers.js
 
-// Sanitizes user input data
-const sanitizeData = (data) => {
-  if (!data) return {};
-
-  return {
-    description: sanitizeString(data.description),
-    patientAge: sanitizeNumber(data.patientAge),
-    category: sanitizeString(data.category),
-    price: sanitizeNumber(data.price),
-    medicalData: sanitizeObject(data.medicalData),
-    metadata: sanitizeMetadata(data.metadata),
-    blockchainMetadata: sanitizeBlockchainMetadata(data.blockchainMetadata),
-  };
-};
-
 // Sanitizes string input
 const sanitizeString = (str) => {
   if (!str) return "";
@@ -28,40 +13,6 @@ const sanitizeString = (str) => {
 const sanitizeNumber = (num) => {
   const parsed = parseFloat(num);
   return isNaN(parsed) ? 0 : parsed;
-};
-
-// Sanitizes metadata
-const sanitizeMetadata = (metadata) => {
-  if (!metadata || typeof metadata !== "object") {
-    return {};
-  }
-
-  return {
-    fileType: sanitizeString(metadata.fileType),
-    fileSize: sanitizeNumber(metadata.fileSize),
-    uploadDate: metadata.uploadDate
-      ? new Date(metadata.uploadDate)
-      : new Date(),
-    lastModified: metadata.lastModified
-      ? new Date(metadata.lastModified)
-      : new Date(),
-    checksums: sanitizeObject(metadata.checksums),
-  };
-};
-
-// Sanitizes blockchain metadata
-const sanitizeBlockchainMetadata = (metadata) => {
-  if (!metadata || typeof metadata !== "object") {
-    return {};
-  }
-
-  return {
-    transactionHash: sanitizeString(metadata.transactionHash),
-    blockNumber: sanitizeNumber(metadata.blockNumber),
-    contractAddress: sanitizeString(metadata.contractAddress),
-    tokenId: sanitizeNumber(metadata.tokenId),
-    ipfsHash: sanitizeString(metadata.ipfsHash),
-  };
 };
 
 // Sanitizes object input
@@ -98,6 +49,55 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
+// Sanitizes metadata
+const sanitizeMetadata = (metadata) => {
+  if (!metadata || typeof metadata !== "object") {
+    return {};
+  }
+
+  return {
+    fileType: sanitizeString(metadata.fileType),
+    fileSize: sanitizeNumber(metadata.fileSize),
+    uploadDate: metadata.uploadDate
+      ? new Date(metadata.uploadDate)
+      : new Date(),
+    lastModified: metadata.lastModified
+      ? new Date(metadata.lastModified)
+      : new Date(),
+    checksums: sanitizeObject(metadata.checksums),
+  };
+};
+
+// Sanitizes blockchain metadata
+const sanitizeBlockchainMetadata = (metadata) => {
+  if (!metadata || typeof metadata !== "object") {
+    return {};
+  }
+
+  return {
+    transactionHash: sanitizeString(metadata.transactionHash),
+    blockNumber: sanitizeNumber(metadata.blockNumber),
+    contractAddress: sanitizeString(metadata.contractAddress),
+    tokenId: sanitizeNumber(metadata.tokenId),
+    ipfsHash: sanitizeString(metadata.ipfsHash),
+  };
+};
+
+// Sanitizes user input data
+const sanitizeData = (data) => {
+  if (!data) return {};
+
+  return {
+    description: sanitizeString(data.description),
+    patientAge: sanitizeNumber(data.patientAge),
+    category: sanitizeString(data.category),
+    price: sanitizeNumber(data.price),
+    medicalData: sanitizeObject(data.medicalData),
+    metadata: sanitizeMetadata(data.metadata),
+    blockchainMetadata: sanitizeBlockchainMetadata(data.blockchainMetadata),
+  };
+};
+
 // Sanitizes user data for HIPAA compliance
 const sanitizeUserData = (data) => {
   if (!data) return {};
@@ -121,7 +121,20 @@ const sanitizeResponse = (data) => {
   return sanitizeObject(sanitized);
 };
 
-module.exports = {
+// Export all functions individually for named imports
+export {
+  sanitizeData,
+  sanitizeString,
+  sanitizeNumber,
+  sanitizeObject,
+  sanitizeMetadata,
+  sanitizeBlockchainMetadata,
+  sanitizeUserData,
+  sanitizeResponse,
+};
+
+// Export all functions as a default object for backward compatibility
+export default {
   sanitizeData,
   sanitizeString,
   sanitizeNumber,

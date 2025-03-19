@@ -2,15 +2,26 @@
 import { ethers } from "ethers";
 import { NETWORK_CONFIG } from "../constants/index.js";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Load environment variables
 dotenv.config();
+
+// Get directory path and load JSON file using ES Module compatible approach
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const contractJsonPath = path.resolve(
+  __dirname,
+  "../../client/src/contracts/HealthDataMarketplace.json"
+);
+const contractJson = JSON.parse(fs.readFileSync(contractJsonPath, "utf8"));
 
 // Debug logs for troubleshooting
 console.log("✅ Loaded ENV Variables:", JSON.stringify(process.env, null, 2));
 console.log("✅ NETWORK_CONFIG:", JSON.stringify(NETWORK_CONFIG, null, 2));
 
-const contractJson = require("../../client/src/contracts/HealthDataMarketplace.json");
 const contractABI = contractJson.abi;
 
 class TransactionServiceError extends Error {
@@ -44,7 +55,7 @@ class TransactionService {
         );
       }
 
-      // Use the correct Ethers.js v6 provider initialization
+      // Ethers.js v5 provider initialization
       this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
       if (!this.provider) {
@@ -104,6 +115,55 @@ class TransactionService {
         transactionHash: event.transactionHash,
       });
     });
+  }
+
+  /**
+   * Purchase data through the blockchain contract
+   * @param {string} buyerAddress - Address of the buyer
+   * @param {string} dataId - ID of the data being purchased
+   * @param {string} purpose - Purpose of data purchase
+   * @param {string} transactionHash - Optional transaction hash
+   * @returns {Promise<Object>} Purchase transaction details
+   */
+  async purchaseData(buyerAddress, dataId, purpose) {
+    try {
+      // Validate inputs
+      if (!buyerAddress || !dataId || !purpose) {
+        throw new TransactionServiceError(
+          "Missing required parameters for data purchase",
+          "INVALID_PURCHASE_PARAMS"
+        );
+      }
+
+      // Get the signer (you might need to provide a wallet or signer)
+      const signer = this.provider.getSigner(buyerAddress);
+
+      // Create contract instance with signer for transactions
+      const contractWithSigner = this.contract.connect(signer);
+
+      // Call contract method to purchase data
+      const transaction = await contractWithSigner.purchaseData(
+        dataId,
+        purpose,
+        { gasLimit: 300000 } // Adjust gas limit as needed
+      );
+
+      // Wait for transaction confirmation
+      const receipt = await transaction.wait();
+
+      return {
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        status: receipt.status === 1 ? "success" : "failed",
+      };
+    } catch (error) {
+      console.error("Data purchase error:", error);
+      throw new TransactionServiceError(
+        "Failed to purchase data",
+        "PURCHASE_FAILED",
+        { originalError: error.message }
+      );
+    }
   }
 }
 

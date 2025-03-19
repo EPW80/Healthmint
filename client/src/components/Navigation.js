@@ -1,26 +1,7 @@
-import React, { useState, useCallback } from "react";
+// src/components/Navigation.js
+import React, { useState, useCallback, Fragment } from "react";
 import PropTypes from "prop-types";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import {
-  AppBar,
-  Box,
-  Toolbar,
-  Typography,
-  Button,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  useTheme,
-  useMediaQuery,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Tooltip,
-} from "@mui/material";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Upload,
@@ -29,72 +10,53 @@ import {
   LogOut,
   Menu as MenuIcon,
   User,
+  X,
+  ChevronDown,
 } from "lucide-react";
 
-const NavButton = ({ to, icon: Icon, label, onClick, mobile }) => {
+// Navigation link component
+const NavLink = ({ to, icon: Icon, label, onClick, mobile = false }) => {
   const location = useLocation();
-  const theme = useTheme();
   const isActive = location.pathname === to;
-
-  const content = (
-    <>
-      {Icon && <Icon size={20} style={{ marginRight: mobile ? 16 : 8 }} />}
-      {label}
-    </>
-  );
 
   if (mobile) {
     return (
-      <ListItem
-        button
-        component={Link}
+      <Link
         to={to}
         onClick={onClick}
-        selected={isActive}
-        sx={{
-          "&.Mui-selected": {
-            backgroundColor: theme.palette.primary.main, // ✅ Matched project theme
-            color: "white",
-            "&:hover": {
-              backgroundColor: theme.palette.primary.dark,
-            },
-          },
-        }}
+        className={`flex items-center p-3 rounded-lg transition-colors ${
+          isActive
+            ? "bg-blue-500 text-white"
+            : "text-gray-700 hover:bg-gray-100"
+        }`}
       >
-        <ListItemIcon sx={{ color: isActive ? "white" : "inherit" }}>
-          <Icon size={20} />
-        </ListItemIcon>
-        <ListItemText primary={label} />
-      </ListItem>
+        {Icon && <Icon size={20} className="mr-3" />}
+        <span className="font-medium">{label}</span>
+      </Link>
     );
   }
 
   return (
-    <Tooltip title={label}>
-      <Button
-        component={Link}
+    <div className="relative group">
+      <Link
         to={to}
-        color="inherit"
-        sx={{
-          minWidth: "auto",
-          px: 2,
-          color: isActive ? theme.palette.primary.contrastText : "white", // ✅ Ensure visibility
-          backgroundColor: isActive
-            ? theme.palette.primary.main
-            : "transparent",
-          "&:hover": {
-            backgroundColor: theme.palette.primary.dark, // ✅ Darker hover effect
-          },
-        }}
+        className={`flex items-center px-3 py-2 rounded-lg font-medium transition-colors ${
+          isActive ? "bg-white/20 text-white" : "text-white hover:bg-white/10"
+        }`}
         onClick={onClick}
       >
-        {content}
-      </Button>
-    </Tooltip>
+        {Icon && <Icon size={18} className="mr-2" />}
+        <span>{label}</span>
+      </Link>
+      {/* Active indicator dot for desktop */}
+      {isActive && (
+        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full hidden md:block"></div>
+      )}
+    </div>
   );
 };
 
-NavButton.propTypes = {
+NavLink.propTypes = {
   to: PropTypes.string.isRequired,
   icon: PropTypes.elementType,
   label: PropTypes.string.isRequired,
@@ -104,27 +66,23 @@ NavButton.propTypes = {
 
 const Navigation = ({ account, onLogout }) => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
-  const isMenuOpen = Boolean(menuAnchorEl);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const handleMobileMenuToggle = () => {
-    setMobileOpen(!mobileOpen);
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const handleMenuOpen = (event) => {
-    setMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
+  const toggleUserMenu = () => {
+    setUserMenuOpen(!userMenuOpen);
   };
 
   const handleLogout = useCallback(() => {
-    handleMenuClose();
-    onLogout?.();
+    if (onLogout) {
+      onLogout();
+    }
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
     navigate("/login");
   }, [onLogout, navigate]);
 
@@ -135,174 +93,164 @@ const Navigation = ({ account, onLogout }) => {
     { to: "/profile", label: "Profile Settings", icon: Settings },
   ];
 
-  const renderMobileDrawer = (
-    <Drawer
-      variant="temporary"
-      anchor="left"
-      open={mobileOpen}
-      onClose={handleMobileMenuToggle}
-      ModalProps={{
-        keepMounted: true, // Better open performance on mobile
-      }}
-      sx={{
-        "& .MuiDrawer-paper": {
-          width: 240,
-          boxSizing: "border-box",
-          backgroundColor: theme.palette.background.default,
-        },
-      }}
-    >
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h6" component="div">
-          Healthmint
-        </Typography>
-      </Box>
-      <Divider />
-      <List>
-        {navigationItems.map((item) => (
-          <NavButton
-            key={item.to}
-            {...item}
-            mobile
-            onClick={handleMobileMenuToggle}
-          />
-        ))}
-      </List>
-      {account && (
-        <>
-          <Divider />
-          <List>
-            <ListItem>
-              <Chip
-                label={`${account.slice(0, 6)}...${account.slice(-4)}`}
-                color="secondary"
-                sx={{ width: "100%" }}
-              />
-            </ListItem>
-            <ListItem button onClick={handleLogout}>
-              <ListItemIcon>
-                <LogOut size={20} />
-              </ListItemIcon>
-              <ListItemText primary="Logout" />
-            </ListItem>
-          </List>
-        </>
-      )}
-    </Drawer>
-  );
-
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar
-        position="static"
-        sx={{
-          backdropFilter: "blur(10px)",
-          backgroundColor: theme.palette.primary.main, // ✅ Changed AppBar color to match project
-        }}
-      >
-        <Toolbar>
-          {isMobile && (
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleMobileMenuToggle}
-              sx={{ mr: 2 }}
+    <div className="relative">
+      {/* Main Navigation */}
+      <nav className="bg-blue-600 shadow-md">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            {/* Mobile menu button */}
+            <button
+              className="text-white md:hidden focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-lg p-1"
+              onClick={toggleMobileMenu}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
-              <MenuIcon />
-            </IconButton>
-          )}
+              {mobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
+            </button>
 
-          <Typography
-            variant="h6"
-            component={Link}
-            to="/"
-            sx={{
-              flexGrow: 1,
-              textDecoration: "none",
-              color: "white", // ✅ Ensure title is visible
-              fontWeight: "bold",
-              "&:hover": {
-                opacity: 0.8,
-              },
-            }}
-          >
-            Healthmint
-          </Typography>
+            {/* Logo */}
+            <Link
+              to="/"
+              className="text-white text-xl font-bold hover:opacity-80 transition-opacity flex items-center gap-2"
+            >
+              <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                <div className="w-5 h-5 bg-blue-600 rounded-full"></div>
+              </div>
+              Healthmint
+            </Link>
 
-          {!isMobile && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex md:items-center md:gap-1">
               {navigationItems.map((item) => (
-                <NavButton key={item.to} {...item} />
+                <NavLink key={item.to} {...item} />
               ))}
-            </Box>
-          )}
+            </div>
+
+            {/* User Account */}
+            {account && (
+              <div className="flex items-center">
+                <div className="bg-blue-700 text-white text-sm font-medium px-3 py-1 rounded-full">
+                  {`${account.slice(0, 6)}...${account.slice(-4)}`}
+                </div>
+                <div className="relative ml-3">
+                  <button
+                    onClick={toggleUserMenu}
+                    className="text-white p-1 rounded-full hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 flex items-center"
+                    aria-expanded={userMenuOpen}
+                    aria-haspopup="true"
+                  >
+                    <User size={22} />
+                    <ChevronDown
+                      size={16}
+                      className={`ml-1 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {/* User dropdown menu */}
+                  {userMenuOpen && (
+                    <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                      <div
+                        className="py-1"
+                        role="menu"
+                        aria-orientation="vertical"
+                      >
+                        <Link
+                          to="/profile"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          role="menuitem"
+                        >
+                          <Settings size={16} className="mr-2 text-gray-500" />
+                          Profile Settings
+                        </Link>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          role="menuitem"
+                        >
+                          <LogOut size={16} className="mr-2 text-gray-500" />
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity duration-300 md:hidden ${
+          mobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={toggleMobileMenu}
+        aria-hidden="true"
+      />
+
+      {/* Mobile Menu Drawer */}
+      <div
+        id="mobile-menu"
+        className={`fixed inset-y-0 left-0 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-40 md:hidden ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b">
+          <Link
+            to="/"
+            className="text-xl font-bold text-blue-600 flex items-center gap-2"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-5 h-5 bg-white rounded-full"></div>
+            </div>
+            Healthmint
+          </Link>
+          <button
+            onClick={toggleMobileMenu}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="space-y-1">
+            {navigationItems.map((item) => (
+              <NavLink
+                key={item.to}
+                {...item}
+                mobile
+                onClick={() => setMobileMenuOpen(false)}
+              />
+            ))}
+          </div>
 
           {account && (
-            <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
-              <Chip
-                label={`${account.slice(0, 6)}...${account.slice(-4)}`}
-                color="secondary"
-                sx={{
-                  color: "white",
-                  backgroundColor: theme.palette.secondary.main,
-                  "&:hover": {
-                    backgroundColor: theme.palette.secondary.dark,
-                  },
-                }}
-              />
-              <Tooltip title="Account settings">
-                <IconButton
-                  size="large"
-                  edge="end"
-                  color="inherit"
-                  aria-label="account menu"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenuOpen}
-                  sx={{ ml: 1 }}
+            <Fragment>
+              <div className="border-t border-gray-200 my-4 pt-4">
+                <div className="bg-blue-50 text-blue-700 font-medium px-4 py-2 rounded-lg mb-4 flex items-center justify-center">
+                  <User size={16} className="mr-2" />
+                  {`${account.slice(0, 6)}...${account.slice(-4)}`}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center w-full p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <User />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                id="menu-appbar"
-                anchorEl={menuAnchorEl}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "right",
-                }}
-                keepMounted
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                open={isMenuOpen}
-                onClose={handleMenuClose}
-              >
-                <MenuItem
-                  component={Link}
-                  to="/profile"
-                  onClick={handleMenuClose}
-                >
-                  <ListItemIcon>
-                    <Settings size={20} />
-                  </ListItemIcon>
-                  <ListItemText>Profile Settings</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>
-                  <ListItemIcon>
-                    <LogOut size={20} />
-                  </ListItemIcon>
-                  <ListItemText>Logout</ListItemText>
-                </MenuItem>
-              </Menu>
-            </Box>
+                  <LogOut size={20} className="mr-3 text-red-500" />
+                  <span className="font-medium">Logout</span>
+                </button>
+              </div>
+            </Fragment>
           )}
-        </Toolbar>
-      </AppBar>
-      {isMobile && renderMobileDrawer}
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };
 

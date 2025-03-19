@@ -1,5 +1,8 @@
 // dataSlice.js
-import { createSlice } from "@reduxjs/toolkit";
+import * as pkg from "@reduxjs/toolkit";
+
+const { createSlice } = pkg;
+
 
 const initialState = {
   healthRecords: [],

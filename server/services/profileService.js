@@ -1,9 +1,9 @@
 // src/services/profileService.js
-const User = require("../models/User");
-const hipaaCompliance = require("../middleware/hipaaCompliance");
-const { AUDIT_TYPES } = require("../constants");
+import User from "../models/User.js";
+import hipaaCompliance from "../middleware/hipaaCompliance.js";
+import { AUDIT_TYPES } from "../constants/index.js";
 
-class ProfileServiceError extends Error {
+export class ProfileServiceError extends Error {
   constructor(message, code = "PROFILE_SERVICE_ERROR", details = {}) {
     super(message);
     this.name = "ProfileServiceError";
@@ -335,4 +335,8 @@ const profileService = {
   },
 };
 
-module.exports = profileService;
+// Export the service for use in other modules
+export { profileService };
+
+// Default export
+export default profileService;

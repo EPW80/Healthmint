@@ -1,10 +1,10 @@
-// server/routes/browse.js
+// server/routes/data/browse.js
 import express from "express";
 import hipaaCompliance from "../../middleware/hipaaCompliance.js";
-import { ERROR_CODES } from '../../config/networkConfig.js';
+import { ERROR_CODES } from "../../config/hipaaConfig.js";
 import { ApiError } from "../../utils/apiError.js";
-import { secureStorageService } from "../../services/secureStorageService.js";
-import { userService } from "../../services/userService.js";
+import secureStorageService from "../../services/secureStorageService.js";
+import userService from "../../services/userService.js";
 import { rateLimiters } from "../../middleware/rateLimiter.js";
 
 const router = express.Router();
@@ -135,9 +135,8 @@ router.get("/categories", rateLimiters.api, async (req, res, next) => {
       action: "get_categories",
     };
 
-    const categories = await secureStorageService.getCategories(
-      requestMetadata
-    );
+    const categories =
+      await secureStorageService.getCategories(requestMetadata);
 
     res.json({
       success: true,

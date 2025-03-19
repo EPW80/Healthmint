@@ -1,3 +1,4 @@
+// server.js
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -11,6 +12,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
+// Initialize service dependencies first individually
+import hipaaComplianceService from "./services/hipaaComplianceService.js";
+import errorHandlingService from "./services/errorHandlingService.js";
+
+// Configure environment variables
+const NODE_ENV = process.env.NODE_ENV || "development";
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : [
+      "http://localhost:3000",
+      "http://localhost:5000",
+      "https://healthmint.com",
+    ];
+
 // Debugging Environment Variables
 console.log(
   "✅ Loaded ENCRYPTION_KEY:",
@@ -20,32 +35,64 @@ console.log(
   "✅ Loaded JWT_SECRET:",
   process.env.JWT_SECRET ? "Present" : "❌ Not Found"
 );
-console.log("✅ Running in:", process.env.NODE_ENV || "development");
+console.log("✅ Running in:", NODE_ENV);
+console.log("✅ Allowed Origins:", ALLOWED_ORIGINS);
+
+// Connect services after they are both initialized
+try {
+  errorHandlingService.setAuditLogger(hipaaComplianceService);
+  hipaaComplianceService.setErrorHandlingService(errorHandlingService);
+  console.log("✅ Services initialized successfully");
+} catch (error) {
+  console.error("❌ Error initializing services:", error);
+}
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
-// CORS Preflight Handling for OPTIONS requests
-app.options("*", (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  return res.sendStatus(204); // ✅ No Content response for preflight
-});
+// CORS Configuration - Make sure this is properly set up
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
 
-// Basic Middleware
+    // Check if origin is allowed
+    if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || NODE_ENV === "development") {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ Origin denied access: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true, // Allow cookies and authentication headers
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
+  exposedHeaders: ["Content-Length", "X-Request-ID"],
+  maxAge: 86400, // 24 hours - how long the browser should cache preflight results
+};
+
+// CORS Preflight Handling for OPTIONS requests
+app.options("*", cors(corsOptions));
+
+// Apply CORS middleware to all routes
+app.use(cors(corsOptions));
+
+// Basic Security middleware
 app.use(
-  cors({
-    origin: "http://localhost:3000", // Explicitly allow frontend origin
-    credentials: true, // Allow cookies and authentication headers
-    methods: "GET,POST,OPTIONS",
-    allowedHeaders: "Content-Type,Authorization",
+  helmet({
+    // Configure Content Security Policy as needed
+    contentSecurityPolicy: NODE_ENV === "production" ? undefined : false,
   })
 );
-app.use(helmet());
-app.use(express.json());
-app.use(morgan("dev")); // Log HTTP requests in the terminal
+
+// Parse JSON requests
+app.use(express.json({ limit: "50mb" }));
+
+// Parse URL-encoded requests (forms)
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Request logging
+app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
 
 // Import Routes with Error Handling
 let authRoutes, dataRoutes;
@@ -72,6 +119,7 @@ app.get("/health", (_req, res) => {
     success: true,
     message: "Service is operational",
     timestamp: new Date().toISOString(),
+    environment: NODE_ENV,
   });
 });
 
@@ -105,6 +153,7 @@ app.use((err, _req, res, _next) => {
     success: false,
     message: err.message || "Internal server error",
     timestamp: new Date().toISOString(),
+    error: NODE_ENV === "development" ? err.stack : undefined,
   });
 });
 
@@ -115,8 +164,10 @@ process.on("SIGINT", () => {
 });
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// In server.js, find the app.listen line and change it to:
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running and accessible at http://0.0.0.0:${PORT}`);
+  console.log(`🌐 Environment: ${NODE_ENV}`);
   console.log("Available routes:");
   console.log("  GET  /");
   console.log("  GET  /health");

@@ -1,332 +1,431 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
+import { useSelector, useDispatch } from "react-redux";
 import {
-  Box,
-  Container,
-  Typography,
-  Avatar,
-  CircularProgress,
-  IconButton,
-  Alert,
-  Tooltip,
-  Fade,
-  LinearProgress,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { Trash2, Camera } from "lucide-react";
-import { storageService } from "../services/storageService"; // New secure storage service
+  Save,
+  Lock,
+  Bell,
+  UserCheck,
+  FileText,
+  Database,
+  Award,
+  Briefcase,
+  AlertCircle,
+  X,
+} from "lucide-react";
+import { updateUserProfile } from "../redux/slices/userSlice.js";
+import { selectRole } from "../redux/slices/roleSlice.js";
+import { addNotification } from "../redux/slices/notificationSlice.js";
+import ProfileImageUploader from "./ProfileImageUploader.js";
+import ProfileTabs from "./ProfileTabs.js";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_FILE_TYPES = {
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-  "image/gif": [".gif"],
+// Tab Panel Component
+const TabPanel = ({ children, value, index, ...other }) => (
+  <div
+    role="tabpanel"
+    hidden={value !== index}
+    id={`profile-tabpanel-${index}`}
+    aria-labelledby={`profile-tab-${index}`}
+    {...other}
+  >
+    {value === index && <div className="py-6">{children}</div>}
+  </div>
+);
+
+TabPanel.propTypes = {
+  children: PropTypes.node,
+  index: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired,
 };
 
-const GlassContainer = styled(Box)(({ theme }) => ({
-  background: "rgba(255, 255, 255, 0.7)",
-  backdropFilter: "blur(10px)",
-  borderRadius: "24px",
-  padding: theme.spacing(4),
-  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-  border: "1px solid rgba(255, 255, 255, 0.3)",
-  transition: "transform 0.2s ease-in-out",
-  "&:hover": {
-    transform: "translateY(-4px)",
-  },
-}));
-
-const LargeAvatar = styled(Avatar)(({ theme }) => ({
-  width: 150,
-  height: 150,
-  border: "4px solid white",
-  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-  margin: "0 auto",
-  position: "relative",
-  cursor: "pointer",
-  transition: "transform 0.3s ease",
-  "&:hover": {
-    transform: "scale(1.05)",
-  },
-}));
-
-const UploadButton = styled("input")({
-  display: "none",
-});
-
-const ActionButton = styled(IconButton)(({ theme }) => ({
-  transition: "transform 0.2s ease-in-out, background-color 0.2s ease-in-out",
-  "&:hover": {
-    transform: "scale(1.1)",
-  },
-  "&:focus": {
-    outline: `2px solid ${theme.palette.primary.main}`,
-    outlineOffset: "2px",
-  },
-}));
-
+/**
+ * ProfileSettings Component
+ *
+ * A comprehensive profile management interface with tabbed navigation
+ */
 const ProfileSettings = ({
   onImageUpload,
   onImageRemove,
   defaultImage = "/default-avatar.png",
   userName,
+  onSave,
 }) => {
-  const [profileImage, setProfileImage] = useState(null);
+  const dispatch = useDispatch();
+  const userProfile = useSelector((state) => state.user.profile);
+  const userRole = useSelector(selectRole);
+  const walletAddress = useSelector((state) => state.wallet.address);
+
+  // State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [storageReference, setStorageReference] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const validateFile = useCallback((file) => {
-    if (!file) {
-      throw new Error("Please select a file");
-    }
-
-    if (!Object.keys(ALLOWED_FILE_TYPES).includes(file.type)) {
-      throw new Error("Please upload a valid image file (JPG, PNG, or GIF)");
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      throw new Error(
-        `File size should be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`
-      );
-    }
-
-    return true;
-  }, []);
-
-  const uploadToStorage = useCallback(
-    async (file) => {
-      try {
-        const result = await storageService.uploadProfileImage(file, {
-          userId: userName,
-          contentType: file.type,
-          onProgress: (progress) => {
-            setUploadProgress(Math.round(progress));
-          },
-        });
-        return result.reference;
-      } catch (error) {
-        console.error("Storage upload error:", error);
-        throw new Error("Failed to upload image. Please try again.");
-      }
-    },
-    [userName]
+  const [previewUrl, setPreviewUrl] = useState(
+    userProfile?.profileImage || null
   );
-
-  const handleImageUpload = useCallback(
-    async (event) => {
-      const file = event.target.files[0];
-      setError(null);
-      setUploadProgress(0);
-
-      try {
-        validateFile(file);
-        setLoading(true);
-
-        // Create local preview
-        const preview = URL.createObjectURL(file);
-        setPreviewUrl(preview);
-
-        // Upload to secure storage
-        const reference = await uploadToStorage(file);
-        setStorageReference(reference);
-        setProfileImage(file);
-
-        onImageUpload?.(reference);
-      } catch (error) {
-        console.error("Error uploading image:", error);
-        setError(error.message);
-        setPreviewUrl(null);
-      } finally {
-        setLoading(false);
-        if (event.target) {
-          event.target.value = "";
-        }
-      }
-    },
-    [validateFile, uploadToStorage, onImageUpload]
+  const [storageReference, setStorageReference] = useState(
+    userProfile?.profileImageHash || null
   );
+  const [tabValue, setTabValue] = useState(0);
+  const [formState, setFormState] = useState({
+    name: userProfile?.name || userName || "",
+    email: userProfile?.email || "",
+    age: userProfile?.age || "",
+    bio: userProfile?.bio || "",
+    sharingPreferences: userProfile?.sharingPreferences || {
+      anonymousSharing: true,
+      notifyOnAccess: true,
+      allowDirectContact: false,
+    },
+    emailNotifications: userProfile?.emailNotifications || {
+      dataAccess: true,
+      transactions: true,
+      updates: false,
+    },
+    inAppNotifications: userProfile?.inAppNotifications || {
+      messages: true,
+      dataUpdates: true,
+      announcements: false,
+    },
+    notificationPreferences: userProfile?.notificationPreferences || {
+      accessAlerts: true,
+      transactionAlerts: true,
+      researchUpdates: false,
+      newDatasets: true,
+    },
+    privacyPreferences: userProfile?.privacyPreferences || {
+      publicProfile: false,
+      showInstitution: true,
+    },
+    ethicsStatement: userProfile?.ethicsStatement || "",
+    ethicsAgreement: userProfile?.ethicsAgreement || false,
+    institution: userProfile?.institution || "",
+    credentials: userProfile?.credentials || "",
+    researchFocus: userProfile?.researchFocus || "",
+    publications: userProfile?.publications || [],
+  });
 
-  const handleRemoveImage = useCallback(async () => {
+  // Event handlers
+  const handleTabChange = (newValue) => setTabValue(newValue);
+
+  const handleFormChange = (event) => {
+    const { name, value, checked, type } = event.target;
+
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
+      setFormState((prev) => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: type === "checkbox" ? checked : value,
+        },
+      }));
+    } else {
+      setFormState((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
+    }
+  };
+
+  const handlePublicationChange = (newPublications) => {
+    setFormState((prev) => ({
+      ...prev,
+      publications: newPublications,
+    }));
+  };
+
+  const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      if (storageReference) {
-        await storageService.deleteProfileImage(storageReference);
+
+      if (!formState.name) throw new Error("Name is required");
+      if (formState.email && !/\S+@\S+\.\S+/.test(formState.email)) {
+        throw new Error("Please enter a valid email address");
       }
-      setProfileImage(null);
-      setPreviewUrl(null);
-      setStorageReference(null);
-      setError(null);
-      setUploadProgress(0);
-      onImageRemove?.();
+
+      const updatedProfile = {
+        ...userProfile,
+        ...formState,
+        profileImage: previewUrl,
+        profileImageHash: storageReference,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      dispatch(updateUserProfile(updatedProfile));
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Profile updated successfully",
+        })
+      );
+
+      if (onSave) onSave(updatedProfile);
     } catch (error) {
-      console.error("Error removing image:", error);
-      setError("Failed to remove image. Please try again.");
+      setError(error.message);
+      dispatch(
+        addNotification({
+          type: "error",
+          message: error.message,
+        })
+      );
     } finally {
       setLoading(false);
     }
-  }, [storageReference, onImageRemove]);
+  };
 
   return (
-    <Container maxWidth="sm">
-      <GlassContainer sx={{ mt: 4 }}>
-        <Typography
-          variant="h4"
-          align="center"
-          gutterBottom
-          sx={{
-            fontWeight: "bold",
-            background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            mb: 4,
-          }}
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+        Profile Settings
+      </h1>
+
+      {error && (
+        <div
+          className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2"
+          role="alert"
+          aria-live="assertive"
         >
-          Profile Settings
-        </Typography>
-
-        {userName && (
-          <Typography
-            variant="h6"
-            align="center"
-            sx={{ mb: 3, color: "text.secondary" }}
+          <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            className="text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 rounded-full"
+            onClick={() => setError(null)}
+            aria-label="Dismiss error"
           >
-            {userName}
-          </Typography>
-        )}
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-
-        <Box sx={{ position: "relative", mb: 4 }}>
-          <Tooltip title="Click to upload new image" arrow>
-            <LargeAvatar
-              src={previewUrl || defaultImage}
-              alt={`${userName || "User"}'s profile picture`}
-              imgProps={{
-                loading: "lazy",
-                onError: (e) => {
-                  e.target.src = defaultImage;
-                },
-              }}
+      {/* Profile header with image uploader */}
+      <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 mb-8 border border-white/30 shadow-lg">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+          <div className="md:col-span-4">
+            <ProfileImageUploader
+              previewUrl={previewUrl}
+              setPreviewUrl={setPreviewUrl}
+              storageReference={storageReference}
+              setStorageReference={setStorageReference}
+              error={error}
+              setError={setError}
+              loading={loading}
+              setLoading={setLoading}
+              defaultImage={defaultImage}
+              userIdentifier={formState.name || walletAddress || userName}
+              onImageUpload={onImageUpload}
+              onImageRemove={onImageRemove}
             />
-          </Tooltip>
+          </div>
 
-          <Fade in={loading}>
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                borderRadius: "50%",
-              }}
-            >
-              <CircularProgress color="primary" />
-            </Box>
-          </Fade>
-
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: -10,
-              left: "50%",
-              transform: "translateX(-50%)",
-              display: "flex",
-              gap: 1,
-              zIndex: 1,
-            }}
-          >
-            <Tooltip title="Upload new image" arrow>
-              <label htmlFor="profile-image">
-                <UploadButton
-                  accept={Object.entries(ALLOWED_FILE_TYPES)
-                    .flatMap(([_, exts]) => exts)
-                    .join(",")}
-                  id="profile-image"
-                  type="file"
-                  onChange={handleImageUpload}
-                  disabled={loading}
+          <div className="md:col-span-8">
+            <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formState.name}
+                  onChange={handleFormChange}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                  aria-required="true"
                 />
-                <ActionButton
-                  component="span"
-                  disabled={loading}
-                  sx={{
-                    bgcolor: "primary.main",
-                    color: "white",
-                    "&:hover": { bgcolor: "primary.dark" },
-                  }}
+              </div>
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  <Camera size={20} />
-                </ActionButton>
-              </label>
-            </Tooltip>
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formState.email}
+                  onChange={handleFormChange}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  aria-label="Email address"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="age"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Age
+                  </label>
+                  <input
+                    id="age"
+                    name="age"
+                    type="number"
+                    value={formState.age}
+                    onChange={handleFormChange}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    min="0"
+                    aria-label="Age"
+                  />
+                </div>
+                <div className="flex items-center h-full pt-6">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      userRole === "patient"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-purple-100 text-purple-800"
+                    }`}
+                  >
+                    {userRole === "patient" ? (
+                      <UserCheck className="mr-1" size={16} />
+                    ) : (
+                      <Briefcase className="mr-1" size={16} />
+                    )}
+                    {userRole === "patient" ? "Patient" : "Researcher"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {profileImage && (
-              <Tooltip title="Remove image" arrow>
-                <ActionButton
-                  onClick={handleRemoveImage}
-                  disabled={loading}
-                  sx={{
-                    bgcolor: "error.main",
-                    color: "white",
-                    "&:hover": { bgcolor: "error.dark" },
-                  }}
-                >
-                  <Trash2 size={20} />
-                </ActionButton>
-              </Tooltip>
+      {/* Tabbed section */}
+      <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg border border-white/30">
+        <div className="border-b border-gray-200">
+          <nav
+            className="flex overflow-x-auto"
+            aria-label="Profile settings tabs"
+          >
+            <button
+              onClick={() => handleTabChange(0)}
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+                tabValue === 0
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              id="profile-tab-0"
+              aria-controls="profile-tabpanel-0"
+              aria-selected={tabValue === 0}
+              role="tab"
+              type="button"
+            >
+              <FileText size={18} className="mr-2" />
+              Profile
+            </button>
+            <button
+              onClick={() => handleTabChange(1)}
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+                tabValue === 1
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              id="profile-tab-1"
+              aria-controls="profile-tabpanel-1"
+              aria-selected={tabValue === 1}
+              role="tab"
+              type="button"
+            >
+              <Database size={18} className="mr-2" />
+              Data
+            </button>
+            <button
+              onClick={() => handleTabChange(2)}
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+                tabValue === 2
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              id="profile-tab-2"
+              aria-controls="profile-tabpanel-2"
+              aria-selected={tabValue === 2}
+              role="tab"
+              type="button"
+            >
+              <Lock size={18} className="mr-2" />
+              Privacy
+            </button>
+            <button
+              onClick={() => handleTabChange(3)}
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+                tabValue === 3
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              id="profile-tab-3"
+              aria-controls="profile-tabpanel-3"
+              aria-selected={tabValue === 3}
+              role="tab"
+              type="button"
+            >
+              <Bell size={18} className="mr-2" />
+              Notifications
+            </button>
+            {userRole === "researcher" && (
+              <button
+                onClick={() => handleTabChange(4)}
+                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+                  tabValue === 4
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+                id="profile-tab-4"
+                aria-controls="profile-tabpanel-4"
+                aria-selected={tabValue === 4}
+                role="tab"
+                type="button"
+              >
+                <Award size={18} className="mr-2" />
+                Credentials
+              </button>
             )}
-          </Box>
-        </Box>
+          </nav>
+        </div>
 
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <Box sx={{ width: "100%", mt: 2 }}>
-            <LinearProgress variant="determinate" value={uploadProgress} />
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ mt: 1, display: "block", textAlign: "center" }}
-            >
-              Uploading: {uploadProgress}%
-            </Typography>
-          </Box>
-        )}
+        <ProfileTabs
+          tabValue={tabValue}
+          userRole={userRole}
+          formState={formState}
+          handleFormChange={handleFormChange}
+          handlePublicationChange={handlePublicationChange}
+          walletAddress={walletAddress}
+          userProfile={userProfile}
+          TabPanel={TabPanel}
+        />
+      </div>
 
-        {storageReference && (
-          <Tooltip title="Storage Reference ID" arrow>
-            <Typography
-              variant="body2"
-              color="textSecondary"
-              align="center"
-              sx={{ mt: 2 }}
-            >
-              Reference ID: {storageReference}
-            </Typography>
-          </Tooltip>
-        )}
-
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          align="center"
-          sx={{ mt: 2 }}
+      {/* Save button */}
+      <div className="flex justify-end mt-6 mb-8">
+        <button
+          type="button"
+          onClick={handleSaveProfile}
+          disabled={loading}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
+            loading
+              ? "bg-blue-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          } text-white font-medium shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+          aria-label="Save profile changes"
         >
-          Supported formats: JPG, PNG, GIF (max {MAX_FILE_SIZE / (1024 * 1024)}
-          MB)
-        </Typography>
-      </GlassContainer>
-    </Container>
+          {loading ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save size={18} />
+              <span>Save Profile</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -335,6 +434,7 @@ ProfileSettings.propTypes = {
   onImageRemove: PropTypes.func,
   defaultImage: PropTypes.string,
   userName: PropTypes.string,
+  onSave: PropTypes.func,
 };
 
 export default ProfileSettings;
