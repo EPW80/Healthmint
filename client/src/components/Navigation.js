@@ -1,7 +1,7 @@
 // src/components/Navigation.js
-import React, { useState, useCallback, Fragment } from "react";
+import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Home,
   Upload,
@@ -13,6 +13,7 @@ import {
   X,
   ChevronDown,
 } from "lucide-react";
+import useNavigation from "../hooks/useNavigation.js";
 
 // Navigation link component
 const NavLink = ({ to, icon: Icon, label, onClick, mobile = false }) => {
@@ -64,8 +65,8 @@ NavLink.propTypes = {
   mobile: PropTypes.bool,
 };
 
-const Navigation = ({ account, onLogout }) => {
-  const navigate = useNavigate();
+const Navigation = ({ account, onLogout, userName, role, network, onSwitchNetwork }) => {
+  const { navigateTo } = useNavigation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -83,8 +84,8 @@ const Navigation = ({ account, onLogout }) => {
     }
     setUserMenuOpen(false);
     setMobileMenuOpen(false);
-    navigate("/login");
-  }, [onLogout, navigate]);
+    navigateTo("/login");
+  }, [onLogout, navigateTo]);
 
   const navigationItems = [
     { to: "/", label: "Home", icon: Home },
@@ -232,7 +233,7 @@ const Navigation = ({ account, onLogout }) => {
           </div>
 
           {account && (
-            <Fragment>
+            <>
               <div className="border-t border-gray-200 my-4 pt-4">
                 <div className="bg-blue-50 text-blue-700 font-medium px-4 py-2 rounded-lg mb-4 flex items-center justify-center">
                   <User size={16} className="mr-2" />
@@ -246,7 +247,7 @@ const Navigation = ({ account, onLogout }) => {
                   <span className="font-medium">Logout</span>
                 </button>
               </div>
-            </Fragment>
+            </>
           )}
         </div>
       </div>
@@ -257,6 +258,10 @@ const Navigation = ({ account, onLogout }) => {
 Navigation.propTypes = {
   account: PropTypes.string,
   onLogout: PropTypes.func,
+  userName: PropTypes.string,
+  role: PropTypes.string,
+  network: PropTypes.object,
+  onSwitchNetwork: PropTypes.func,
 };
 
 export default Navigation;

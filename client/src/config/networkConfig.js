@@ -1,3 +1,4 @@
+// src/config/networkConfig.js
 export const ENV = {
   NODE_ENV: process.env.REACT_APP_ENV || "development",
   API_URL: process.env.REACT_APP_API_URL || "http://localhost:5000",
@@ -68,3 +69,14 @@ export const REQUEST_CONFIG = {
     Accept: "application/json",
   },
 };
+
+// Assign to a variable before exporting as default (to satisfy the linter)
+const networkConfig = {
+  ENV,
+  ENV_CONFIG,
+  NETWORKS,
+  REQUEST_CONFIG
+};
+
+// Default export for backward compatibility
+export default networkConfig;

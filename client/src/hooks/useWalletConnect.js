@@ -36,7 +36,7 @@ import { requiredNetwork } from "../config/networks.js";
  * @param {boolean} [options.autoConnect=false] - Whether to attempt connection on mount
  * @returns {Object} Wallet connection API
  */
-const useWalletConnection = (options = {}) => {
+const useWalletConnect = (options = {}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const cleanupRef = useRef();
@@ -437,4 +437,4 @@ const useWalletConnection = (options = {}) => {
   };
 };
 
-export default useWalletConnection;
+export default useWalletConnect;

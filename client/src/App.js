@@ -1,8 +1,6 @@
 // src/App.js
 import React from "react";
-import { Provider } from "react-redux";
 import { BrowserRouter as Router } from "react-router-dom";
-import { store } from "./redux/store.js";
 import AppContent from "./components/AppContent.js";
 import { HipaaComplianceProvider } from "./components/providers/HipaaComplianceProvider.js";
 import { NavigationProvider } from "./components/providers/NavigationProvider.js";
@@ -22,15 +20,13 @@ function App() {
   };
 
   return (
-    <Provider store={store}>
-      <Router>
-        <NavigationProvider>
-          <HipaaComplianceProvider options={hipaaOptions}>
-            <AppContent />
-          </HipaaComplianceProvider>
-        </NavigationProvider>
-      </Router>
-    </Provider>
+    <Router>
+      <NavigationProvider>
+        <HipaaComplianceProvider options={hipaaOptions}>
+          <AppContent />
+        </HipaaComplianceProvider>
+      </NavigationProvider>
+    </Router>
   );
 }
 
