@@ -1,4 +1,4 @@
-// /home/epw/Healthmint-copyone/Healthmint-two/server/config/config.js
+// /server/config/config.js
 
 /**
  * Server Configuration Module
@@ -16,7 +16,10 @@ const config = {
   RETRY_ATTEMPTS: parseInt(process.env.RETRY_ATTEMPTS || "3", 10),
 
   // Database Configuration
-  DB_URI: process.env.DB_URI || "mongodb://localhost:27017/healthmint",
+  DB_URI:
+    process.env.MONGODB_URI ||
+    process.env.DB_URI ||
+    "mongodb://localhost:27017/healthmint",
 
   // JWT Configuration
   JWT_SECRET: process.env.JWT_SECRET || "healthmint-dev-secret-key",

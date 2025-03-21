@@ -1,7 +1,9 @@
 // scripts/testConnection.js
-require("dotenv").config();
-const Web3 = require("web3");
-const HDWalletProvider = require("@truffle/hdwallet-provider");
+import dotenv from 'dotenv';
+import Web3 from 'web3';
+import HDWalletProvider from '@truffle/hdwallet-provider';
+
+dotenv.config();
 
 async function testConnection() {
   console.log("Testing Sepolia connection...");
