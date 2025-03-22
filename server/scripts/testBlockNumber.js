@@ -1,6 +1,6 @@
 require("dotenv").config({ path: "../../.env" }); // Adjust path based on your structure
-const Web3 = require("web3");
-const HDWalletProvider = require("@truffle/hdwallet-provider");
+import Web3 from "web3";
+import HDWalletProvider from "@truffle/hdwallet-provider";
 
 // Debugging: Print loaded values
 console.log("🔄 Using RPC URL:", process.env.SEPOLIA_RPC_URL);

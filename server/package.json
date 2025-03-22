@@ -1,7 +1,6 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "type": "module",
   "main": "server.js",
   "description": "Backend server for Healthmint API.",
   "scripts": {
@@ -66,6 +65,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/healthmint"
+    "url": "https://github.com/epw80/healthmint"
   }
 }

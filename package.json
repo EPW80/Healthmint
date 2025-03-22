@@ -2,7 +2,6 @@
   "name": "healthmint",
   "version": "1.0.0",
   "description": "Decentralized Health Data Marketplace",
-  "type": "module",
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
@@ -55,7 +54,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/healthmint"
+    "url": "https://github.com/epw80/healthmint"
   },
   "keywords": [
     "blockchain",

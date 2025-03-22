@@ -1,7 +1,8 @@
-// src/components/ProtectedRoute.js
+// src/components/ProtectedRoute.js - Fixed to prevent navigation loops
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
+import { Navigate } from "react-router-dom";
 import useWalletConnection from "../hooks/useWalletConnect.js";
 import {
   selectIsAuthenticated,
@@ -12,15 +13,8 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import useNavigation from "../hooks/useNavigation.js";
 
 /**
- * Protected Route Component
+ * Protected Route Component - Fixed to prevent navigation loops
  * Ensures users are authenticated with both wallet and backend before accessing protected routes
- * Also verifies that user has selected a role
- *
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child elements to render if authenticated
- * @param {Array<string>} props.allowedRoles - Roles allowed to access this route (optional)
- * @param {boolean} props.requireBackendAuth - Whether backend authentication is required (defaults to true)
- * @returns {React.ReactNode} - The protected content or null during redirect
  */
 const ProtectedRoute = ({
   children,
@@ -28,10 +22,11 @@ const ProtectedRoute = ({
   requireBackendAuth = true,
 }) => {
   const dispatch = useDispatch();
-  const { navigateTo, location } = useNavigation();
+  const { location } = useNavigation();
 
   // State for loading during auth checks
   const [isChecking, setIsChecking] = useState(true);
+  const [redirectTo, setRedirectTo] = useState(null);
 
   // Get all authentication states
   const { isConnected: isWalletConnected } = useWalletConnection();
@@ -47,10 +42,7 @@ const ProtectedRoute = ({
       try {
         // Step 1: Check wallet connection
         if (!isWalletConnected) {
-          navigateTo("/login", {
-            replace: true,
-            state: { from: location.pathname },
-          });
+          setRedirectTo("/login");
           return;
         }
 
@@ -63,20 +55,14 @@ const ProtectedRoute = ({
               throw new Error("Authentication failed");
             }
           } catch (error) {
-            navigateTo("/login", {
-              replace: true,
-              state: { from: location.pathname },
-            });
+            setRedirectTo("/login");
             return;
           }
         }
 
         // Step 3: Check role selection
         if (!isRoleSelected) {
-          navigateTo("/select-role", {
-            replace: true,
-            state: { from: location.pathname },
-          });
+          setRedirectTo("/select-role");
           return;
         }
 
@@ -90,9 +76,12 @@ const ProtectedRoute = ({
             })
           );
 
-          navigateTo("/dashboard", { replace: true });
+          setRedirectTo("/dashboard");
           return;
         }
+
+        // All checks passed, clear any redirect
+        setRedirectTo(null);
       } finally {
         setIsChecking(false);
       }
@@ -107,7 +96,6 @@ const ProtectedRoute = ({
     allowedRoles,
     requireBackendAuth,
     dispatch,
-    navigateTo,
     location.pathname,
   ]);
 
@@ -120,13 +108,15 @@ const ProtectedRoute = ({
     );
   }
 
-  // Only render children if all required conditions are met
-  return isWalletConnected &&
-    (!requireBackendAuth || isBackendAuthenticated) &&
-    isRoleSelected &&
-    (allowedRoles.length === 0 || allowedRoles.includes(userRole))
-    ? children
-    : null;
+  // Redirect if needed
+  if (redirectTo) {
+    return (
+      <Navigate to={redirectTo} state={{ from: location.pathname }} replace />
+    );
+  }
+
+  // Render children if authorized
+  return children;
 };
 
 ProtectedRoute.propTypes = {

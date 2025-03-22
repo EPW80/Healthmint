@@ -16,8 +16,9 @@ const RoleSelector = () => {
   const auth = useSelector(selectAuth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
-  // Check if user already has a role
+  // Check if user already has a role - do this in useEffect, not during render
   useEffect(() => {
     const checkExistingRole = async () => {
       try {
@@ -27,10 +28,10 @@ const RoleSelector = () => {
           auth.userRoles &&
           auth.userRoles.length > 0
         ) {
-          // If user already has a role, set it in Redux and redirect to dashboard
+          // If user already has a role, set it in Redux
           const primaryRole = auth.userRoles[0]; // Assume first role is primary
           dispatch(setRole(primaryRole));
-          navigateTo("/dashboard");
+          setShouldRedirect(true);
         }
       } catch (err) {
         console.error("Error checking existing role:", err);
@@ -38,7 +39,21 @@ const RoleSelector = () => {
     };
 
     checkExistingRole();
-  }, [auth.isAuthenticated, auth.userRoles, dispatch, navigateTo]);
+  }, [auth.isAuthenticated, auth.userRoles, dispatch]);
+
+  // Handle the redirect in a separate useEffect to avoid router updates during render
+  useEffect(() => {
+    if (shouldRedirect) {
+      navigateTo("/dashboard");
+    }
+  }, [shouldRedirect, navigateTo]);
+
+  // If not authenticated, use an effect to redirect instead of during render
+  useEffect(() => {
+    if (!auth.isAuthenticated) {
+      navigateTo("/login");
+    }
+  }, [auth.isAuthenticated, navigateTo]);
 
   const handleRoleSelect = async (role) => {
     try {
@@ -49,27 +64,40 @@ const RoleSelector = () => {
       dispatch(setRole(role));
 
       // 2. Send the role selection to the backend to update user profile
-      const response = await apiService.post("/api/user/role", { role });
+      try {
+        const response = await apiService.post("/api/user/role", { role });
 
-      // 3. Update user roles in auth state
-      if (response && response.success) {
-        dispatch(
-          updateUserRoles([role, ...auth.userRoles.filter((r) => r !== role)])
-        );
+        // 3. Update user roles in auth state
+        if (response && response.success) {
+          dispatch(
+            updateUserRoles([role, ...auth.userRoles.filter((r) => r !== role)])
+          );
 
-        // Show success notification
+          // Show success notification
+          dispatch(
+            addNotification({
+              type: "success",
+              message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
+              duration: 3000,
+            })
+          );
+
+          // 4. Navigate to dashboard - use state to trigger the navigation in useEffect
+          setShouldRedirect(true);
+        } else {
+          throw new Error(response?.message || "Failed to update role");
+        }
+      } catch (apiError) {
+        console.error("API error:", apiError);
+        // If API fails, still set the role locally and continue
         dispatch(
           addNotification({
-            type: "success",
-            message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
-            duration: 3000,
+            type: "warning",
+            message: "Set role locally only. Server update failed.",
+            duration: 5000,
           })
         );
-
-        // 4. Navigate to dashboard
-        navigateTo("/dashboard");
-      } else {
-        throw new Error(response?.message || "Failed to update role");
+        setShouldRedirect(true);
       }
     } catch (err) {
       console.error("Role selection error:", err);
@@ -87,10 +115,9 @@ const RoleSelector = () => {
     }
   };
 
+  // Don't try to navigate during render - if not authenticated, an effect will handle it
   if (!auth.isAuthenticated) {
-    // Redirect to login if not authenticated
-    navigateTo("/login");
-    return null;
+    return null; // Return null instead of navigating during render
   }
 
   return (

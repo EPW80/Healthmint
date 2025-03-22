@@ -1,32 +1,31 @@
-// src/App.js
+// src/App.js - Debugging version
 import React from "react";
-import { BrowserRouter as Router } from "react-router-dom";
-import AppContent from "./components/AppContent.js";
-import { HipaaComplianceProvider } from "./components/providers/HipaaComplianceProvider.js";
-import { NavigationProvider } from "./components/providers/NavigationProvider.js";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary.js";
 
-/**
- * Main App component that wraps the application with necessary providers.
- * Now includes the HIPAA Compliance Provider to ensure consistent application
- * of HIPAA compliance throughout the application.
- */
+// Simple component for testing
+const TestPage = () => (
+  <div className="p-8 max-w-4xl mx-auto">
+    <h1 className="text-3xl font-bold mb-6">Healthmint Test Page</h1>
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <p>
+        This is a debugging test page to verify React is rendering correctly.
+      </p>
+    </div>
+  </div>
+);
+
 function App() {
-  // HIPAA compliance provider options
-  const hipaaOptions = {
-    autoVerifyConsent: true, // Automatically verify consent when needed
-    autoRequestConsent: true, // Automatically request consent if missing
-    requiredConsent: null, // Default consent type (set to null for no default)
-    consentPurpose: "Access to health information in the Healthmint platform",
-  };
-
   return (
-    <Router>
-      <NavigationProvider>
-        <HipaaComplianceProvider options={hipaaOptions}>
-          <AppContent />
-        </HipaaComplianceProvider>
-      </NavigationProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            <Route path="*" element={<TestPage />} />
+          </Routes>
+        </div>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
