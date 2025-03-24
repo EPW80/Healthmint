@@ -1,30 +1,40 @@
-// src/App.js - Debugging version
+// src/App.js
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router } from "react-router-dom";
+import { Provider } from "react-redux";
+import { store } from "./redux/store.js";
 import ErrorBoundary from "./components/ErrorBoundary.js";
+import NavigationProvider from "./components/providers/NavigationProvider.js";
+import HipaaComplianceProvider from "./components/providers/HipaaComplianceProvider.js";
+import AppContent from "./components/AppContent.js";
+import NotificationsContainer from "./components/ui/NotificationsContainer.js";
 
-// Simple component for testing
-const TestPage = () => (
-  <div className="p-8 max-w-4xl mx-auto">
-    <h1 className="text-3xl font-bold mb-6">Healthmint Test Page</h1>
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <p>
-        This is a debugging test page to verify React is rendering correctly.
-      </p>
-    </div>
-  </div>
-);
-
+/**
+ * Main App component with all required providers
+ */
 function App() {
+  // Options for HIPAA compliance
+  const hipaaOptions = {
+    autoVerifyConsent: true,
+    autoRequestConsent: true,
+    consentPurpose: "Access to health information in the Healthmint platform",
+  };
+
   return (
     <ErrorBoundary>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Routes>
-            <Route path="*" element={<TestPage />} />
-          </Routes>
-        </div>
-      </Router>
+      <Provider store={store}>
+        <Router>
+          {/* Use basename if deployed to a subdirectory */}
+          <NavigationProvider>
+            <HipaaComplianceProvider options={hipaaOptions}>
+              <div className="min-h-screen flex flex-col bg-gray-50">
+                <AppContent />
+                <NotificationsContainer />
+              </div>
+            </HipaaComplianceProvider>
+          </NavigationProvider>
+        </Router>
+      </Provider>
     </ErrorBoundary>
   );
 }

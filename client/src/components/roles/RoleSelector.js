@@ -1,104 +1,75 @@
 // src/components/roles/RoleSelector.js
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { User, Microscope, Loader } from "lucide-react";
-import { setRole } from "../../redux/slices/roleSlice.js";
-import { selectAuth, updateUserRoles } from "../../redux/slices/authSlice.js";
+import { User, Microscope, Loader, AlertCircle } from "lucide-react";
+import { setRole, selectIsRoleSelected } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
-import apiService from "../../services/apiService.js";
-import useNavigation from "../../hooks/useNavigation.js";
+import { updateUserProfile } from "../../redux/slices/userSlice.js";
 
+/**
+ * Role Selector Component with direct redirection
+ */
 const RoleSelector = () => {
   const dispatch = useDispatch();
-  const { navigateTo } = useNavigation();
+  const isRoleSelected = useSelector(selectIsRoleSelected);
 
-  // Get authentication state from Redux
-  const auth = useSelector(selectAuth);
+  // Local state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [redirecting, setRedirecting] = useState(false);
 
-  // Check if user already has a role - do this in useEffect, not during render
+  // Check if we already have a role and redirect if needed
   useEffect(() => {
-    const checkExistingRole = async () => {
-      try {
-        // If user is authenticated and has roles, check if they already have a role
-        if (
-          auth.isAuthenticated &&
-          auth.userRoles &&
-          auth.userRoles.length > 0
-        ) {
-          // If user already has a role, set it in Redux
-          const primaryRole = auth.userRoles[0]; // Assume first role is primary
-          dispatch(setRole(primaryRole));
-          setShouldRedirect(true);
-        }
-      } catch (err) {
-        console.error("Error checking existing role:", err);
-      }
-    };
-
-    checkExistingRole();
-  }, [auth.isAuthenticated, auth.userRoles, dispatch]);
-
-  // Handle the redirect in a separate useEffect to avoid router updates during render
-  useEffect(() => {
-    if (shouldRedirect) {
-      navigateTo("/dashboard");
+    if (isRoleSelected && !redirecting) {
+      console.log("Role already selected, redirecting to dashboard");
+      window.location.href = "/dashboard";
     }
-  }, [shouldRedirect, navigateTo]);
+  }, [isRoleSelected, redirecting]);
 
-  // If not authenticated, use an effect to redirect instead of during render
-  useEffect(() => {
-    if (!auth.isAuthenticated) {
-      navigateTo("/login");
-    }
-  }, [auth.isAuthenticated, navigateTo]);
-
+  /**
+   * Handle role selection with forced navigation
+   */
   const handleRoleSelect = async (role) => {
     try {
+      // Prevent multiple submissions
+      if (loading) return;
+
       setLoading(true);
       setError(null);
+      setSelectedRole(role);
+      setRedirecting(true);
 
-      // 1. Set role in Redux store
+      console.log(`Setting role: ${role}`); // Debug log
+
+      // Dispatch role selection action
       dispatch(setRole(role));
 
-      // 2. Send the role selection to the backend to update user profile
-      try {
-        const response = await apiService.post("/api/user/role", { role });
+      // Update user profile with role information
+      dispatch(
+        updateUserProfile({
+          role,
+          lastUpdated: new Date().toISOString(),
+        })
+      );
 
-        // 3. Update user roles in auth state
-        if (response && response.success) {
-          dispatch(
-            updateUserRoles([role, ...auth.userRoles.filter((r) => r !== role)])
-          );
+      // Success notification
+      dispatch(
+        addNotification({
+          type: "success",
+          message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
+          duration: 3000,
+        })
+      );
 
-          // Show success notification
-          dispatch(
-            addNotification({
-              type: "success",
-              message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
-              duration: 3000,
-            })
-          );
+      // Save role selection directly to localStorage as a backup
+      localStorage.setItem("healthmint_user_role", role);
 
-          // 4. Navigate to dashboard - use state to trigger the navigation in useEffect
-          setShouldRedirect(true);
-        } else {
-          throw new Error(response?.message || "Failed to update role");
-        }
-      } catch (apiError) {
-        console.error("API error:", apiError);
-        // If API fails, still set the role locally and continue
-        dispatch(
-          addNotification({
-            type: "warning",
-            message: "Set role locally only. Server update failed.",
-            duration: 5000,
-          })
-        );
-        setShouldRedirect(true);
-      }
+      // Force navigation to dashboard
+      console.log("Forcing navigation to dashboard");
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 500);
     } catch (err) {
       console.error("Role selection error:", err);
       setError(err.message || "Failed to set role. Please try again.");
@@ -107,95 +78,110 @@ const RoleSelector = () => {
         addNotification({
           type: "error",
           message: err.message || "Failed to set role. Please try again.",
-          duration: 5000,
         })
       );
-    } finally {
+
       setLoading(false);
+      setRedirecting(false);
     }
   };
-
-  // Don't try to navigate during render - if not authenticated, an effect will handle it
-  if (!auth.isAuthenticated) {
-    return null; // Return null instead of navigating during render
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       {error && (
-        <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-md">
-          {error}
+        <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-md flex items-center gap-2">
+          <AlertCircle size={20} className="flex-shrink-0 text-red-500" />
+          <span>{error}</span>
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6 justify-center items-center max-w-4xl w-full">
-        {/* Patient Card */}
-        <div
-          className="w-full md:w-72 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
-          onClick={() => !loading && handleRoleSelect("patient")}
-        >
-          <div className="p-8 flex flex-col items-center gap-4">
-            <div className="bg-blue-50 p-4 rounded-full">
-              <User className="w-12 h-12 text-blue-500" />
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-800">Patient</h2>
-            <p className="text-sm text-gray-600 text-center leading-relaxed">
-              Share and manage your health data securely on the blockchain
-            </p>
-            <button
-              className={`w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
-                loading ? "opacity-75 cursor-not-allowed" : ""
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                !loading && handleRoleSelect("patient");
-              }}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Setting Role...
-                </>
-              ) : (
-                "Select Patient Role"
-              )}
-            </button>
-          </div>
+      <div className="max-w-4xl w-full">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold mb-2">Choose Your Role</h1>
+          <p className="text-gray-600">
+            Select how you want to use the Healthmint platform
+          </p>
         </div>
 
-        {/* Researcher Card */}
-        <div
-          className="w-full md:w-72 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
-          onClick={() => !loading && handleRoleSelect("researcher")}
-        >
-          <div className="p-8 flex flex-col items-center gap-4">
-            <div className="bg-purple-50 p-4 rounded-full">
-              <Microscope className="w-12 h-12 text-purple-500" />
+        <div className="flex flex-col md:flex-row gap-6 justify-center items-stretch">
+          {/* Patient Card */}
+          <div
+            className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
+              selectedRole === "patient" ? "ring-2 ring-blue-500" : ""
+            } ${loading ? "opacity-75 pointer-events-none" : ""}`}
+            onClick={() => !loading && handleRoleSelect("patient")}
+          >
+            <div className="p-8 flex flex-col items-center gap-4 h-full">
+              <div className="bg-blue-50 p-4 rounded-full">
+                <User className="w-12 h-12 text-blue-500" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800">Patient</h2>
+              <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
+                Share and manage your health data securely on the blockchain.
+                Control access to your records and potentially earn rewards for
+                contributing to medical research.
+              </p>
+              <button
+                className={`w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
+                  loading ? "opacity-75 cursor-not-allowed" : ""
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !loading && handleRoleSelect("patient");
+                }}
+                disabled={loading}
+              >
+                {loading && selectedRole === "patient" ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Setting Patient Role...
+                  </>
+                ) : (
+                  "Select Patient Role"
+                )}
+              </button>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-800">Researcher</h2>
-            <p className="text-sm text-gray-600 text-center leading-relaxed">
-              Access and analyze anonymized health data for research purposes
-            </p>
-            <button
-              className={`w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
-                loading ? "opacity-75 cursor-not-allowed" : ""
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                !loading && handleRoleSelect("researcher");
-              }}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Setting Role...
-                </>
-              ) : (
-                "Select Researcher Role"
-              )}
-            </button>
+          </div>
+
+          {/* Researcher Card */}
+          <div
+            className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
+              selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
+            } ${loading ? "opacity-75 pointer-events-none" : ""}`}
+            onClick={() => !loading && handleRoleSelect("researcher")}
+          >
+            <div className="p-8 flex flex-col items-center gap-4 h-full">
+              <div className="bg-purple-50 p-4 rounded-full">
+                <Microscope className="w-12 h-12 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Researcher
+              </h2>
+              <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
+                Access and analyze anonymized health data for research purposes.
+                Discover patterns, conduct studies, and contribute to medical
+                advancements with blockchain-verified data integrity.
+              </p>
+              <button
+                className={`w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
+                  loading ? "opacity-75 cursor-not-allowed" : ""
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !loading && handleRoleSelect("researcher");
+                }}
+                disabled={loading}
+              >
+                {loading && selectedRole === "researcher" ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Setting Researcher Role...
+                  </>
+                ) : (
+                  "Select Researcher Role"
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

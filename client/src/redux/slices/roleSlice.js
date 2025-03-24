@@ -1,3 +1,4 @@
+// src/redux/slices/roleSlice.js
 import * as pkg from "@reduxjs/toolkit";
 
 const { createSlice } = pkg;
@@ -10,15 +11,37 @@ export const USER_ROLES = {
   ADMIN: "admin",
 };
 
-// Initial state with validation
-const initialState = {
-  role: null,
-  isRoleSelected: false,
-  permissions: [],
-  loading: false,
-  error: null,
-  lastUpdated: null,
+// Try to load role from localStorage
+const loadInitialState = () => {
+  try {
+    const savedRole = localStorage.getItem("healthmint_user_role");
+    if (savedRole && Object.values(USER_ROLES).includes(savedRole)) {
+      console.log(`Loaded role from storage: ${savedRole}`);
+      return {
+        role: savedRole,
+        isRoleSelected: true,
+        permissions: getRolePermissions(savedRole),
+        loading: false,
+        error: null,
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+  } catch (e) {
+    console.error("Error loading role from storage:", e);
+  }
+
+  return {
+    role: null,
+    isRoleSelected: false,
+    permissions: [],
+    loading: false,
+    error: null,
+    lastUpdated: null,
+  };
 };
+
+// Initial state with validation and localStorage loading
+const initialState = loadInitialState();
 
 // Role validation helper
 const isValidRole = (role) => {
@@ -39,6 +62,17 @@ const roleSlice = createSlice({
       state.isRoleSelected = true;
       state.error = null;
       state.lastUpdated = new Date().toISOString();
+
+      // Save to localStorage for persistence
+      try {
+        localStorage.setItem("healthmint_user_role", role);
+        console.log(`Saved role to storage: ${role}`);
+      } catch (e) {
+        console.error("Error saving role to storage:", e);
+      }
+
+      // Set default permissions for the role
+      state.permissions = getRolePermissions(role);
     },
 
     clearRole: (state) => {
@@ -47,6 +81,13 @@ const roleSlice = createSlice({
       state.permissions = [];
       state.error = null;
       state.lastUpdated = new Date().toISOString();
+
+      // Remove from localStorage
+      try {
+        localStorage.removeItem("healthmint_user_role");
+      } catch (e) {
+        console.error("Error removing role from storage:", e);
+      }
     },
 
     setPermissions: (state, action) => {
