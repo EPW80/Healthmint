@@ -1,20 +1,19 @@
-import webpack from "webpack";
+// webpack.config.js
+import { ProvidePlugin } from 'webpack';
 
-export default {
-  resolve: {
-    fallback: {},
-  },
-  module: {
-    rules: [
-      {
-        test: /\.json$/,
-        type: "json", 
-      },
-    ],
-  },
-  plugins: [
-    new webpack.ProvidePlugin({
-      process: "process/browser",
-    }),
+export const resolve = {
+  fallback: {},
+};
+export const module = {
+  rules: [
+    {
+      test: /\.json$/,
+      type: "json",
+    },
   ],
 };
+export const plugins = [
+  new ProvidePlugin({
+    process: "process/browser",
+  }),
+];

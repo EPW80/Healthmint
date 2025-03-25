@@ -21,8 +21,12 @@ import {
   selectRole,
   selectIsRoleSelected,
   setRole,
+  clearRole,
 } from "../redux/slices/roleSlice.js";
-import { updateUserProfile } from "../redux/slices/userSlice.js";
+import {
+  updateUserProfile,
+  clearUserProfile,
+} from "../redux/slices/userSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 
 /**
@@ -31,9 +35,6 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 function AppContent() {
   const dispatch = useDispatch();
   const location = useLocation();
-
-  // Keep track of the current route for debugging
-  const [currentRoute, setCurrentRoute] = useState(location.pathname);
 
   // Debug pathname to track navigation
   console.log("Current pathname:", location.pathname);
@@ -57,22 +58,60 @@ function AppContent() {
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Check current route to get better debug info
+  // Add this useEffect to handle initialization
   useEffect(() => {
-    setCurrentRoute(location.pathname);
-    console.log(
-      `Route changed to: ${location.pathname} | Role Selected: ${isRoleSelected} | Role: ${userRole}`
-    );
-  }, [location.pathname, isRoleSelected, userRole]);
+    // Check wallet connection status from localStorage or Redux store
+    const checkAuthStatus = async () => {
+      try {
+        // Load any stored wallet connection info
+        const storedAddress = localStorage.getItem("healthmint_wallet_address");
+        const storedConnection = localStorage.getItem(
+          "healthmint_wallet_connection"
+        );
 
-  // Handle logout
+        // If we have stored connection info, update the state
+        if (storedAddress && storedConnection) {
+          // You may need to call connectWallet() here with the stored info
+          // or update the connection state directly
+        }
+
+        // Try to load stored role
+        const storedRole = localStorage.getItem("healthmint_user_role");
+        if (storedRole && !isRoleSelected) {
+          dispatch(setRole(storedRole));
+        }
+      } catch (err) {
+        console.error("Error initializing authentication:", err);
+      } finally {
+        // Mark initialization as complete regardless of result
+        setIsInitialized(true);
+      }
+    };
+
+    checkAuthStatus();
+  }, [dispatch, isRoleSelected]);
+
+  // Handle logout - Complete reset of all auth states
   const handleLogout = async () => {
     try {
+      console.log("Logging out and clearing all auth state...");
+
+      // 1. Disconnect wallet first
       await disconnectWallet();
 
-      // Clear any stored role
-      localStorage.removeItem("healthmint_user_role");
+      // 2. Clear role in Redux
+      dispatch(clearRole());
 
+      // 3. Clear user profile
+      dispatch(clearUserProfile());
+
+      // 4. Clear all related localStorage items directly for redundancy
+      localStorage.removeItem("healthmint_user_role");
+      localStorage.removeItem("healthmint_user_profile");
+      localStorage.removeItem("healthmint_auth_token");
+      localStorage.removeItem("healthmint_wallet_state");
+
+      // 5. Notification of success
       dispatch(
         addNotification({
           type: "info",
@@ -80,10 +119,22 @@ function AppContent() {
         })
       );
 
-      // Force navigation to login
-      window.location.href = "/login";
+      // 6. Hard redirect to login page
+      console.log("Redirecting to login page...");
+
+      // Use replace to avoid having the logout page in history
+      window.location.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
+
+      // Even on error, try to clear everything and redirect
+      dispatch(clearRole());
+      dispatch(clearUserProfile());
+
+      localStorage.removeItem("healthmint_user_role");
+      localStorage.removeItem("healthmint_user_profile");
+
+      window.location.replace("/login");
     }
   };
 
@@ -114,7 +165,9 @@ function AppContent() {
     try {
       // Check for stored role (backup check in case Redux doesn't load it)
       const storedRole = localStorage.getItem("healthmint_user_role");
-      if (storedRole && !isRoleSelected) {
+
+      // Only set role if user is connected (important!)
+      if (storedRole && isConnected && !isRoleSelected) {
         console.log(`Found stored role in localStorage: ${storedRole}`);
         dispatch(setRole(storedRole));
       }
@@ -123,15 +176,11 @@ function AppContent() {
     } finally {
       setIsInitialized(true);
     }
-  }, [dispatch, isRoleSelected]);
+  }, [dispatch, isRoleSelected, isConnected]);
 
   // Determine dashboard component based on role
   const getDashboardComponent = () => {
-    // We need to explicitly check here to avoid stale role data
-    const currentStoredRole = localStorage.getItem("healthmint_user_role");
-    const effectiveRole = userRole || currentStoredRole;
-
-    if (effectiveRole === "researcher") {
+    if (userRole === "researcher") {
       return <ResearcherDashboard />;
     }
     return <PatientDashboard />;
@@ -239,9 +288,14 @@ function AppContent() {
 
           {/* Default redirect - Catch all other routes */}
           <Route
-            path="*"
+            path="/"
             element={
-              !isConnected ? (
+              !isInitialized ? (
+                // Show loading while initializing
+                <div className="flex justify-center items-center min-h-screen">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+              ) : !isConnected ? (
                 <Navigate to="/login" replace />
               ) : !isRoleSelected ? (
                 <Navigate to="/select-role" replace />

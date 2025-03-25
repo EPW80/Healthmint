@@ -11,6 +11,23 @@ export const USER_ROLES = {
   ADMIN: "admin",
 };
 
+// Helper function to get permissions based on role
+// IMPORTANT: Moved this function up before it's used
+const getRolePermissions = (role) => {
+  switch (role) {
+    case USER_ROLES.PATIENT:
+      return ["view_records", "manage_permissions", "upload_data"];
+    case USER_ROLES.RESEARCHER:
+      return ["view_anonymized_data", "request_access", "run_analysis"];
+    case USER_ROLES.PROVIDER:
+      return ["view_records", "add_records", "manage_patients"];
+    case USER_ROLES.ADMIN:
+      return ["manage_users", "manage_roles", "view_logs", "system_config"];
+    default:
+      return [];
+  }
+};
+
 // Try to load role from localStorage
 const loadInitialState = () => {
   try {
@@ -137,22 +154,6 @@ export const setRoleWithValidation = (role) => (dispatch) => {
     dispatch(setError(error.message));
   } finally {
     dispatch(setLoading(false));
-  }
-};
-
-// Helper function to get permissions based on role
-const getRolePermissions = (role) => {
-  switch (role) {
-    case USER_ROLES.PATIENT:
-      return ["view_records", "manage_permissions", "upload_data"];
-    case USER_ROLES.RESEARCHER:
-      return ["view_anonymized_data", "request_access", "run_analysis"];
-    case USER_ROLES.PROVIDER:
-      return ["view_records", "add_records", "manage_patients"];
-    case USER_ROLES.ADMIN:
-      return ["manage_users", "manage_roles", "view_logs", "system_config"];
-    default:
-      return [];
   }
 };
 
