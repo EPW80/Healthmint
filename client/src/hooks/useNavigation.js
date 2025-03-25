@@ -4,7 +4,7 @@ import { NavigationContext } from "../components/providers/NavigationProvider.js
 
 /**
  * Custom hook to access the navigation context
- * @returns {Object} Navigation context
+ * @returns {Object} Navigation context with navigation methods
  */
 const useNavigation = () => {
   const context = useContext(NavigationContext);
