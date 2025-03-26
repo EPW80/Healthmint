@@ -10,12 +10,12 @@ import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
 /**
  * User Registration Component
- * 
+ *
  * Handles new user registration with HIPAA compliant data collection
  */
 const UserRegistration = ({ walletAddress, onComplete }) => {
   const dispatch = useDispatch();
-  
+
   // Form state
   const [formState, setFormState] = useState({
     name: "",
@@ -26,161 +26,158 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
     agreeToHipaa: false,
     address: walletAddress || "",
   });
-  
+
   // Registration step state
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
-  
+
   // Handle input changes
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    setFormState(prev => ({
+    setFormState((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   }, []);
-  
+
   // Handle role selection
   const handleRoleSelect = useCallback((role) => {
     setSelectedRole(role);
-    setFormState(prev => ({
+    setFormState((prev) => ({
       ...prev,
-      role
+      role,
     }));
   }, []);
-  
+
   // Move to next step
   const nextStep = useCallback(() => {
-    setStep(prevStep => prevStep + 1);
+    setStep((prevStep) => prevStep + 1);
   }, []);
-  
+
   // Move to previous step
   const prevStep = useCallback(() => {
-    setStep(prevStep => Math.max(1, prevStep - 1));
+    setStep((prevStep) => Math.max(1, prevStep - 1));
   }, []);
-  
+
   // Create HIPAA consent
   const createHipaaConsent = useCallback(async () => {
     try {
       // Log consent for HIPAA compliance
       await hipaaComplianceService.recordConsent(
         hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-        true, 
+        true,
         {
           userId: walletAddress,
           timestamp: new Date().toISOString(),
           ip: "client-collected", // Server will log actual IP
-          details: "Initial user registration consent"
+          details: "Initial user registration consent",
         }
       );
-      
+
       // Create audit log entry
       await hipaaComplianceService.createAuditLog("REGISTRATION_CONSENT", {
         userId: walletAddress,
         consentType: "HIPAA_DATA_SHARING",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       return true;
     } catch (error) {
       console.error("Error recording HIPAA consent:", error);
       return false;
     }
   }, [walletAddress]);
-  
+
   // Handle form submission
-  const handleSubmit = useCallback(async (e) => {
-    if (e) e.preventDefault();
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Validate form
-      if (!formState.name.trim()) {
-        throw new Error("Name is required");
+  const handleSubmit = useCallback(
+    async (e) => {
+      if (e) e.preventDefault();
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Validate form
+        if (!formState.name.trim()) {
+          throw new Error("Name is required");
+        }
+
+        if (!formState.role) {
+          throw new Error("Please select a role");
+        }
+
+        if (!formState.agreeToTerms) {
+          throw new Error("You must agree to the terms and conditions");
+        }
+
+        if (!formState.agreeToHipaa) {
+          throw new Error("You must acknowledge the HIPAA consent");
+        }
+
+        // Handle HIPAA consent
+        const hipaaConsentRecorded = await createHipaaConsent();
+        if (!hipaaConsentRecorded) {
+          throw new Error("Failed to record HIPAA consent. Please try again.");
+        }
+
+        // Register user with the service
+        const userData = {
+          ...formState,
+          address: walletAddress,
+          registrationDate: new Date().toISOString(),
+        };
+
+        // Sanitize data for HIPAA compliance
+        const sanitizedData = hipaaComplianceService.sanitizeData(userData, {
+          excludeFields: ["agreeToTerms", "agreeToHipaa"],
+        });
+
+        // Register the user
+        await userService.registerUser(sanitizedData);
+
+        // Set the role in Redux
+        dispatch(setRole(formState.role));
+
+        // Create audit log for registration
+        await hipaaComplianceService.createAuditLog("USER_REGISTRATION", {
+          userId: walletAddress,
+          role: formState.role,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Registration completed successfully!",
+            duration: 5000,
+          })
+        );
+
+        // Call the onComplete callback
+        if (onComplete) {
+          onComplete(sanitizedData);
+        }
+      } catch (err) {
+        console.error("Registration error:", err);
+        setError(err.message || "Registration failed. Please try again.");
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message: err.message || "Registration failed. Please try again.",
+            duration: 5000,
+          })
+        );
+      } finally {
+        setLoading(false);
       }
-      
-      if (!formState.role) {
-        throw new Error("Please select a role");
-      }
-      
-      if (!formState.agreeToTerms) {
-        throw new Error("You must agree to the terms and conditions");
-      }
-      
-      if (!formState.agreeToHipaa) {
-        throw new Error("You must acknowledge the HIPAA consent");
-      }
-      
-      // Handle HIPAA consent
-      const hipaaConsentRecorded = await createHipaaConsent();
-      if (!hipaaConsentRecorded) {
-        throw new Error("Failed to record HIPAA consent. Please try again.");
-      }
-      
-      // Register user with the service
-      const userData = {
-        ...formState,
-        address: walletAddress,
-        registrationDate: new Date().toISOString()
-      };
-      
-      // Sanitize data for HIPAA compliance
-      const sanitizedData = hipaaComplianceService.sanitizeData(userData, {
-        excludeFields: ["agreeToTerms", "agreeToHipaa"],
-      });
-      
-      // Register the user
-      await userService.registerUser(sanitizedData);
-      
-      // Set the role in Redux
-      dispatch(setRole(formState.role));
-      
-      // Create audit log for registration
-      await hipaaComplianceService.createAuditLog("USER_REGISTRATION", {
-        userId: walletAddress,
-        role: formState.role,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Success notification
-      dispatch(
-        addNotification({
-          type: "success",
-          message: "Registration completed successfully!",
-          duration: 5000,
-        })
-      );
-      
-      // Call the onComplete callback
-      if (onComplete) {
-        onComplete(sanitizedData);
-      }
-    } catch (err) {
-      console.error("Registration error:", err);
-      setError(err.message || "Registration failed. Please try again.");
-      
-      dispatch(
-        addNotification({
-          type: "error",
-          message: err.message || "Registration failed. Please try again.",
-          duration: 5000,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    formState, 
-    walletAddress, 
-    createHipaaConsent, 
-    dispatch, 
-    onComplete
-  ]);
-  
+    },
+    [formState, walletAddress, createHipaaConsent, dispatch, onComplete]
+  );
+
   // Render different steps
   const renderStep = () => {
     switch (step) {
@@ -194,12 +191,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         return renderRoleSelection();
     }
   };
-  
+
   // Step 1: Role Selection
   const renderRoleSelection = () => (
     <div className="mb-8">
       <h2 className="text-2xl font-semibold mb-6">Choose Your Role</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Patient Role Card */}
         <div
@@ -214,12 +211,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             </div>
             <h3 className="text-xl font-medium mb-2">Patient</h3>
             <p className="text-gray-600 text-center">
-              Share and manage your health data securely. Control who can access 
+              Share and manage your health data securely. Control who can access
               your medical information.
             </p>
           </div>
         </div>
-        
+
         {/* Researcher Role Card */}
         <div
           className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg ${
@@ -233,20 +230,22 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             </div>
             <h3 className="text-xl font-medium mb-2">Researcher</h3>
             <p className="text-gray-600 text-center">
-              Access anonymized health data for research with proper consent and 
+              Access anonymized health data for research with proper consent and
               HIPAA compliance.
             </p>
           </div>
         </div>
       </div>
-      
+
       <div className="mt-8 flex justify-end">
         <button
           type="button"
           onClick={nextStep}
           disabled={!selectedRole || loading}
           className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center ${
-            !selectedRole || loading ? "bg-blue-300 cursor-not-allowed" : "hover:bg-blue-600"
+            !selectedRole || loading
+              ? "bg-blue-300 cursor-not-allowed"
+              : "hover:bg-blue-600"
           }`}
         >
           Next Step
@@ -254,15 +253,18 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
     </div>
   );
-  
+
   // Step 2: Personal Information
   const renderPersonalInfo = () => (
     <div className="mb-8">
       <h2 className="text-2xl font-semibold mb-6">Personal Information</h2>
-      
+
       <div className="space-y-6">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Full Name *
           </label>
           <input
@@ -275,9 +277,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             required
           />
         </div>
-        
+
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Email Address
           </label>
           <input
@@ -288,11 +293,16 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             onChange={handleInputChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
-          <p className="mt-1 text-xs text-gray-500">Optional but recommended for notifications</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Optional but recommended for notifications
+          </p>
         </div>
-        
+
         <div>
-          <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="age"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Age
           </label>
           <input
@@ -306,9 +316,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
-        
+
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="address"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Wallet Address
           </label>
           <input
@@ -319,10 +332,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             disabled
             className="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
           />
-          <p className="mt-1 text-xs text-gray-500">Connected wallet address (non-editable)</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Connected wallet address (non-editable)
+          </p>
         </div>
       </div>
-      
+
       <div className="mt-8 flex justify-between">
         <button
           type="button"
@@ -331,13 +346,15 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         >
           Back
         </button>
-        
+
         <button
           type="button"
           onClick={nextStep}
           disabled={!formState.name || loading}
           className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center ${
-            !formState.name || loading ? "bg-blue-300 cursor-not-allowed" : "hover:bg-blue-600"
+            !formState.name || loading
+              ? "bg-blue-300 cursor-not-allowed"
+              : "hover:bg-blue-600"
           }`}
         >
           Next Step
@@ -345,12 +362,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
     </div>
   );
-  
+
   // Step 3: HIPAA Consent
   const renderHipaaConsent = () => (
     <div className="mb-8">
       <h2 className="text-2xl font-semibold mb-6">HIPAA Consent</h2>
-      
+
       <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-6">
         <div className="flex items-start mb-4">
           <div className="flex-shrink-0 mt-0.5">
@@ -362,22 +379,27 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             </h3>
           </div>
         </div>
-        
+
         <div className="text-blue-700 text-sm">
           <p className="mb-4">
-            HealthMint is committed to protecting your health information in accordance 
-            with the Health Insurance Portability and Accountability Act (HIPAA). 
-            By using our platform, you understand that:
+            HealthMint is committed to protecting your health information in
+            accordance with the Health Insurance Portability and Accountability
+            Act (HIPAA). By using our platform, you understand that:
           </p>
-          
+
           <ul className="list-disc pl-5 space-y-2 mb-4">
-            <li>Your health information will be stored securely on the blockchain</li>
+            <li>
+              Your health information will be stored securely on the blockchain
+            </li>
             <li>You control who has access to your health data</li>
             <li>All data access is logged and auditable</li>
-            <li>Your data may be used in anonymized form for research with your consent</li>
+            <li>
+              Your data may be used in anonymized form for research with your
+              consent
+            </li>
             <li>You can revoke access to your data at any time</li>
           </ul>
-          
+
           <p>
             For more details, please review our complete{" "}
             <a href="/privacy" className="text-blue-600 underline">
@@ -391,7 +413,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           </p>
         </div>
       </div>
-      
+
       <div className="space-y-4">
         <label className="flex items-start cursor-pointer">
           <input
@@ -413,7 +435,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             .
           </span>
         </label>
-        
+
         <label className="flex items-start cursor-pointer">
           <input
             type="checkbox"
@@ -423,4 +445,132 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span className="ml-2 text-sm text-gray-700">
-            I acknowledge that I have rea
+            I acknowledge that I have read and understand the HIPAA Privacy
+            Notice, and I consent to the collection and use of my health data as
+            described.
+          </span>
+        </label>
+      </div>
+
+      <div className="mt-8 flex justify-between">
+        <button
+          type="button"
+          onClick={prevStep}
+          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
+          Back
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={
+            !formState.agreeToTerms || !formState.agreeToHipaa || loading
+          }
+          className={`px-6 py-2 rounded-lg flex items-center gap-2 ${
+            !formState.agreeToTerms || !formState.agreeToHipaa || loading
+              ? "bg-blue-300 cursor-not-allowed text-white"
+              : "bg-blue-500 hover:bg-blue-600 text-white"
+          }`}
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>Completing Registration...</span>
+            </>
+          ) : (
+            <>
+              <Save size={18} />
+              <span>Complete Registration</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Render form wrapper
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="max-w-3xl w-full">
+        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30">
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold mb-2">Create Your Account</h1>
+            <p className="text-gray-600">
+              Complete the registration to start using Healthmint
+            </p>
+          </div>
+
+          {/* Progress steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {[1, 2, 3].map((stepNumber) => (
+                <div key={stepNumber} className="flex flex-col items-center">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                      step === stepNumber
+                        ? "border-blue-500 bg-blue-500 text-white"
+                        : step > stepNumber
+                          ? "border-green-500 bg-green-500 text-white"
+                          : "border-gray-300 text-gray-500"
+                    }`}
+                  >
+                    {step > stepNumber ? <CheckCircle size={18} /> : stepNumber}
+                  </div>
+                  <div className="text-xs mt-1">
+                    {stepNumber === 1
+                      ? "Role"
+                      : stepNumber === 2
+                        ? "Info"
+                        : "Consent"}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="relative flex items-center justify-between mt-1">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-200"></div>
+              <div
+                className="absolute top-0 left-0 h-[2px] bg-blue-500 transition-all duration-300"
+                style={{ width: `${(step - 1) * 50}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+              <AlertCircle
+                size={20}
+                className="text-red-500 mr-2 flex-shrink-0"
+              />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Main form content */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (step === 3) {
+                handleSubmit();
+              } else {
+                nextStep();
+              }
+            }}
+          >
+            {renderStep()}
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+UserRegistration.propTypes = {
+  walletAddress: PropTypes.string.isRequired,
+  onComplete: PropTypes.func.isRequired,
+};
+
+export default UserRegistration;
+
+// 09exe

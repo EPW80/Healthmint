@@ -1,11 +1,11 @@
 // src/hooks/updatedUseAuth.js
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import useWalletConnection from "./useWalletConnection";
+import useWalletConnection from "./useWalletConnect.js";
 import authService from "../services/authService";
 import userService from "../services/userService";
 import errorHandlingService from "../services/errorHandlingService";
-import { SECURITY_CONFIG } from "../config/envConfig";
+import { SECURITY_CONFIG } from "../config/environmentConfig";
 
 import {
   loginAsync,
