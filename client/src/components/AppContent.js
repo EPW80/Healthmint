@@ -14,9 +14,11 @@ import ResearcherDashboard from "./dashboard/ResearcherDashboard.js";
 import ProfileSettings from "./ProfileSettings.js";
 import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
+import UserRegistration from "./UserRegistration.js";
 
 // Hooks and Redux
 import useWalletConnect from "../hooks/useWalletConnect.js";
+import useAuth from "../hooks/useAuth.js"; // Import the auth hook
 import {
   selectRole,
   selectIsRoleSelected,
@@ -26,6 +28,7 @@ import {
 import {
   updateUserProfile,
   clearUserProfile,
+  selectUserProfile,
 } from "../redux/slices/userSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { clearWalletConnection } from "../redux/slices/walletSlice.js";
@@ -52,13 +55,20 @@ function AppContent() {
     autoConnect: false, // Force explicit login
   });
 
-  // Get role information from Redux
+  // Get user information from Redux
   const userRole = useSelector(selectRole);
   const isRoleSelected = useSelector(selectIsRoleSelected);
+  const userProfile = useSelector(selectUserProfile);
+
+  // Get auth state
+  const { isAuthenticated, isNewUser, verifyAuth } = useAuth();
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
   const [forceLogout, setForceLogout] = useState(false);
+
+  // Track user registration status
+  const [needsRegistration, setNeedsRegistration] = useState(false);
 
   // First useEffect - Check if we need to force logout on startup (development mode)
   useEffect(() => {
@@ -70,6 +80,37 @@ function AppContent() {
       setForceLogout(true);
     }
   }, []);
+
+  // Check if user is authenticated but profile is incomplete - this would indicate a new user
+  useEffect(() => {
+    if (isConnected && address) {
+      // Check if user needs to complete registration
+      const checkRegistrationStatus = async () => {
+        try {
+          // Verify authentication state
+          await verifyAuth();
+
+          // If the user is authenticated but doesn't have a complete profile
+          // or is explicitly marked as a new user, they need registration
+          if (isAuthenticated) {
+            const profileIncomplete = !userProfile?.name || !userProfile?.role;
+            setNeedsRegistration(isNewUser || profileIncomplete);
+          }
+        } catch (error) {
+          console.error("Error checking registration status:", error);
+        }
+      };
+
+      checkRegistrationStatus();
+    }
+  }, [
+    isConnected,
+    address,
+    isAuthenticated,
+    isNewUser,
+    userProfile,
+    verifyAuth,
+  ]);
 
   // Second useEffect - Handle initialization and potential forced logout
   useEffect(() => {
@@ -200,6 +241,11 @@ function AppContent() {
           })
         );
 
+        // After successful connection, check if this is a new user
+        setNeedsRegistration(
+          isNewUser || !userProfile?.name || !userProfile?.role
+        );
+
         return true;
       }
       return false;
@@ -207,6 +253,23 @@ function AppContent() {
       console.error("Wallet connection error:", error);
       return false;
     }
+  };
+
+  // Handle user registration completion
+  const handleRegistrationComplete = (userData) => {
+    // Update user profile with registration data
+    dispatch(updateUserProfile(userData));
+
+    // Clear the registration flag
+    setNeedsRegistration(false);
+
+    // Notification of success
+    dispatch(
+      addNotification({
+        type: "success",
+        message: "Registration completed successfully!",
+      })
+    );
   };
 
   // Determine dashboard component based on role
@@ -229,7 +292,7 @@ function AppContent() {
   return (
     <>
       {/* Only show navigation when authenticated */}
-      {isConnected && (
+      {isConnected && !needsRegistration && (
         <Navigation
           account={address}
           onLogout={handleLogout}
@@ -246,13 +309,37 @@ function AppContent() {
             path="/login"
             element={
               isConnected ? (
-                // Redirect depending on role selection status
+                // If connected and needs registration, go to registration
+                // Otherwise follow normal flow to role selection or dashboard
+                needsRegistration ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
+              ) : (
+                <WalletConnect onConnect={handleConnect} />
+              )
+            }
+          />
+
+          {/* Registration Route - NEW */}
+          <Route
+            path="/register"
+            element={
+              !isConnected ? (
+                <Navigate to="/login" replace />
+              ) : needsRegistration ? (
+                <UserRegistration
+                  walletAddress={address}
+                  onComplete={handleRegistrationComplete}
+                />
+              ) : (
                 <Navigate
                   to={isRoleSelected ? "/dashboard" : "/select-role"}
                   replace
                 />
-              ) : (
-                <WalletConnect onConnect={handleConnect} />
               )
             }
           />
@@ -261,7 +348,13 @@ function AppContent() {
           <Route
             path="/select-role"
             element={
-              !isConnected ? <Navigate to="/login" replace /> : <RoleSelector />
+              !isConnected ? (
+                <Navigate to="/login" replace />
+              ) : needsRegistration ? (
+                <Navigate to="/register" replace />
+              ) : (
+                <RoleSelector />
+              )
             }
           />
 
@@ -270,7 +363,11 @@ function AppContent() {
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={[]} requireBackendAuth={false}>
-                {getDashboardComponent()}
+                {needsRegistration ? (
+                  <Navigate to="/register" replace />
+                ) : (
+                  getDashboardComponent()
+                )}
               </ProtectedRoute>
             }
           />
@@ -280,7 +377,11 @@ function AppContent() {
             path="/profile"
             element={
               <ProtectedRoute requireBackendAuth={false}>
-                <ProfileSettings />
+                {needsRegistration ? (
+                  <Navigate to="/register" replace />
+                ) : (
+                  <ProfileSettings />
+                )}
               </ProtectedRoute>
             }
           />
@@ -289,7 +390,11 @@ function AppContent() {
             path="/upload"
             element={
               <ProtectedRoute requireBackendAuth={false}>
-                <DataUpload />
+                {needsRegistration ? (
+                  <Navigate to="/register" replace />
+                ) : (
+                  <DataUpload />
+                )}
               </ProtectedRoute>
             }
           />
@@ -298,7 +403,11 @@ function AppContent() {
             path="/browse"
             element={
               <ProtectedRoute requireBackendAuth={false}>
-                <DataBrowser />
+                {needsRegistration ? (
+                  <Navigate to="/register" replace />
+                ) : (
+                  <DataBrowser />
+                )}
               </ProtectedRoute>
             }
           />
@@ -309,6 +418,8 @@ function AppContent() {
             element={
               !isConnected ? (
                 <Navigate to="/login" replace />
+              ) : needsRegistration ? (
+                <Navigate to="/register" replace />
               ) : !isRoleSelected ? (
                 <Navigate to="/select-role" replace />
               ) : (
@@ -328,6 +439,8 @@ function AppContent() {
                 </div>
               ) : !isConnected ? (
                 <Navigate to="/login" replace />
+              ) : needsRegistration ? (
+                <Navigate to="/register" replace />
               ) : !isRoleSelected ? (
                 <Navigate to="/select-role" replace />
               ) : (
