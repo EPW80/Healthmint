@@ -28,6 +28,7 @@ import {
   clearUserProfile,
 } from "../redux/slices/userSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
+import { clearWalletConnection } from "../redux/slices/walletSlice.js";
 
 /**
  * Main content component with routing
@@ -48,7 +49,7 @@ function AppContent() {
     disconnectWallet,
     switchNetwork,
   } = useWalletConnect({
-    autoConnect: false, // Changed to false to force explicit login
+    autoConnect: false, // Force explicit login
   });
 
   // Get role information from Redux
@@ -57,39 +58,81 @@ function AppContent() {
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
+  const [forceLogout, setForceLogout] = useState(false);
 
-  // Add this useEffect to handle initialization
+  // First useEffect - Check if we need to force logout on startup (development mode)
   useEffect(() => {
-    // Check wallet connection status from localStorage or Redux store
-    const checkAuthStatus = async () => {
+    const isDevelopment = process.env.NODE_ENV === "development";
+
+    // Always force logout in development mode when starting the app
+    if (isDevelopment) {
+      console.log("Development mode detected - clearing auth state on startup");
+      setForceLogout(true);
+    }
+  }, []);
+
+  // Second useEffect - Handle initialization and potential forced logout
+  useEffect(() => {
+    const initializeApp = async () => {
       try {
-        // Load any stored wallet connection info
-        const storedAddress = localStorage.getItem("healthmint_wallet_address");
-        const storedConnection = localStorage.getItem(
-          "healthmint_wallet_connection"
-        );
+        if (forceLogout) {
+          // Clear all auth data for development mode
+          console.log("Performing forced logout for clean development start");
 
-        // If we have stored connection info, update the state
-        if (storedAddress && storedConnection) {
-          // You may need to call connectWallet() here with the stored info
-          // or update the connection state directly
-        }
+          // Clear wallet connection
+          await disconnectWallet();
+          dispatch(clearWalletConnection());
 
-        // Try to load stored role
-        const storedRole = localStorage.getItem("healthmint_user_role");
-        if (storedRole && !isRoleSelected) {
-          dispatch(setRole(storedRole));
+          // Clear role and user profile
+          dispatch(clearRole());
+          dispatch(clearUserProfile());
+
+          // Clear localStorage items
+          localStorage.removeItem("healthmint_wallet_address");
+          localStorage.removeItem("healthmint_wallet_connection");
+          localStorage.removeItem("healthmint_user_role");
+          localStorage.removeItem("healthmint_user_profile");
+          localStorage.removeItem("healthmint_auth_token");
+          localStorage.removeItem("healthmint_wallet_state");
+          localStorage.removeItem("healthmint_refresh_token");
+          localStorage.removeItem("healthmint_token_expiry");
+
+          console.log("Auth state cleared for development");
+        } else {
+          // Normal initialization flow
+
+          // Load any stored wallet connection info
+          const storedAddress = localStorage.getItem(
+            "healthmint_wallet_address"
+          );
+          const storedConnection = localStorage.getItem(
+            "healthmint_wallet_connection"
+          );
+
+          // If we have stored connection info, update the state
+          if (storedAddress && storedConnection) {
+            // You may need to call connectWallet() here with the stored info
+            // or update the connection state directly
+          }
+
+          // Try to load stored role
+          const storedRole = localStorage.getItem("healthmint_user_role");
+          if (storedRole && !isRoleSelected) {
+            dispatch(setRole(storedRole));
+          }
         }
       } catch (err) {
-        console.error("Error initializing authentication:", err);
+        console.error("Error during app initialization:", err);
       } finally {
-        // Mark initialization as complete regardless of result
+        // Mark initialization as complete
         setIsInitialized(true);
+        // Reset force logout flag
+        setForceLogout(false);
       }
     };
 
-    checkAuthStatus();
-  }, [dispatch, isRoleSelected]);
+    initializeApp();
+  }, [dispatch, disconnectWallet, forceLogout, isRoleSelected]);
 
   // Handle logout - Complete reset of all auth states
   const handleLogout = async () => {
@@ -99,19 +142,22 @@ function AppContent() {
       // 1. Disconnect wallet first
       await disconnectWallet();
 
-      // 2. Clear role in Redux
+      // 2. Clear Redux states
+      dispatch(clearWalletConnection());
       dispatch(clearRole());
-
-      // 3. Clear user profile
       dispatch(clearUserProfile());
 
-      // 4. Clear all related localStorage items directly for redundancy
+      // 3. Clear all related localStorage items directly
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
       localStorage.removeItem("healthmint_user_role");
       localStorage.removeItem("healthmint_user_profile");
       localStorage.removeItem("healthmint_auth_token");
       localStorage.removeItem("healthmint_wallet_state");
+      localStorage.removeItem("healthmint_refresh_token");
+      localStorage.removeItem("healthmint_token_expiry");
 
-      // 5. Notification of success
+      // 4. Notification of success
       dispatch(
         addNotification({
           type: "info",
@@ -119,22 +165,25 @@ function AppContent() {
         })
       );
 
-      // 6. Hard redirect to login page
+      // 5. Hard redirect to login page
       console.log("Redirecting to login page...");
-
-      // Use replace to avoid having the logout page in history
-      window.location.replace("/login");
+      window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
 
-      // Even on error, try to clear everything and redirect
+      // Even on error, clear everything and redirect
+      dispatch(clearWalletConnection());
       dispatch(clearRole());
       dispatch(clearUserProfile());
 
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
       localStorage.removeItem("healthmint_user_role");
       localStorage.removeItem("healthmint_user_profile");
+      localStorage.removeItem("healthmint_auth_token");
+      localStorage.removeItem("healthmint_wallet_state");
 
-      window.location.replace("/login");
+      window.location.href = "/login";
     }
   };
 
@@ -159,24 +208,6 @@ function AppContent() {
       return false;
     }
   };
-
-  // Set initialized after loading stored data
-  useEffect(() => {
-    try {
-      // Check for stored role (backup check in case Redux doesn't load it)
-      const storedRole = localStorage.getItem("healthmint_user_role");
-
-      // Only set role if user is connected (important!)
-      if (storedRole && isConnected && !isRoleSelected) {
-        console.log(`Found stored role in localStorage: ${storedRole}`);
-        dispatch(setRole(storedRole));
-      }
-    } catch (err) {
-      console.error("Error checking stored role:", err);
-    } finally {
-      setIsInitialized(true);
-    }
-  }, [dispatch, isRoleSelected, isConnected]);
 
   // Determine dashboard component based on role
   const getDashboardComponent = () => {
@@ -288,7 +319,7 @@ function AppContent() {
 
           {/* Default redirect - Catch all other routes */}
           <Route
-            path="/"
+            path="*"
             element={
               !isInitialized ? (
                 // Show loading while initializing
