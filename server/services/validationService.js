@@ -1,7 +1,5 @@
 import ethers from "ethers";
-import {
-  DATA_CATEGORIES,
-} from "../constants/index.js";
+import { DATA_CATEGORIES } from "../constants/index.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 
 class ValidationServiceError extends Error {
@@ -170,7 +168,7 @@ class ValidationService {
   }
 }
 
-// ✅ Export individual functions so they can be used as named imports
+// ✅ Export individual functions as named exports
 export const validateAddress = ValidationService.validateAddress;
 export const validateHealthData = ValidationService.validateHealthData;
 export const validateTransaction = ValidationService.validateTransaction;
@@ -178,3 +176,6 @@ export const sanitizeUserData = ValidationService.sanitizeUserData;
 export const validateContractAddress =
   ValidationService.validateContractAddress;
 export const validateUserData = ValidationService.validateUserData;
+
+// ✅ Add default export for the ValidationService class
+export default ValidationService;

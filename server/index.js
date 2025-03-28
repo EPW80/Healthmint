@@ -8,19 +8,28 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Try to load environment variables
-try {
-  const envPath = path.resolve(__dirname, ".env");
+// Define standard locations for .env files
+const possibleEnvPaths = [
+  path.resolve(__dirname, "../.env"), // Project root .env
+  path.resolve(__dirname, ".env"), // Server directory .env
+  path.resolve(process.cwd(), ".env"), // Current working directory .env
+];
+
+// Load environment variables from the first available .env file
+let envLoaded = false;
+for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
-    console.log("✅ Loaded environment variables from .env");
-  } else {
-    console.warn("⚠️ No .env file found, using system environment variables");
-    dotenv.config();
+    console.log(`✅ Loaded environment variables from ${envPath}`);
+    envLoaded = true;
+    break;
   }
-} catch (error) {
-  console.error("❌ Error loading environment variables:", error.message);
-  process.exit(1);
+}
+
+// Fall back to system environment variables if no .env file found
+if (!envLoaded) {
+  console.warn("⚠️ No .env file found, using system environment variables");
+  dotenv.config();
 }
 
 // Initialize required directories
@@ -38,9 +47,27 @@ dirs.forEach((dir) => {
 });
 
 // Check for critical environment variables
-const requiredEnvVars = ["ENCRYPTION_KEY", "JWT_SECRET"];
-const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+const requiredEnvVars = [
+  { name: "ENCRYPTION_KEY", fallback: null },
+  { name: "JWT_SECRET", fallback: null },
+  { name: "PORT", fallback: "5000" },
+  { name: "NODE_ENV", fallback: "development" },
+];
 
+// Apply fallback values and track missing required variables
+const missingVars = [];
+requiredEnvVars.forEach(({ name, fallback }) => {
+  if (!process.env[name]) {
+    if (fallback !== null) {
+      process.env[name] = fallback;
+      console.warn(`⚠️ Using fallback value for ${name}: ${fallback}`);
+    } else {
+      missingVars.push(name);
+    }
+  }
+});
+
+// Exit if critical variables are missing
 if (missingVars.length > 0) {
   console.error(
     `❌ Missing required environment variables: ${missingVars.join(", ")}`
@@ -61,7 +88,8 @@ const startServer = async () => {
     // Initialize all services
     await initializeServices();
 
-    // Start server (server.js handles listening on PORT)
+    // We don't need to explicitly call a method on the server object
+    // since server.js already sets up the HTTP server listening
     console.log("✅ Server initialization complete");
   } catch (error) {
     console.error("❌ Fatal error starting server:", error);

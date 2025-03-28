@@ -9,6 +9,49 @@ export class ValidationError extends Error {
   }
 }
 
+// Validate Ethereum address
+export const validateAddress = (address) => {
+  const result = ValidationService.validateAddress(address);
+  if (!result.isValid) {
+    throw new ValidationError(result.error, "INVALID_ADDRESS");
+  }
+  return result.normalizedAddress;
+};
+
+// Validate hash (for IPFS hashes, image hashes, etc.)
+export const validateHash = (hash) => {
+  if (!hash || typeof hash !== "string") {
+    throw new ValidationError("Valid hash is required", "INVALID_HASH");
+  }
+  // Simple hash validation - can be expanded for specific hash types
+  return hash.trim();
+};
+
+// Validate profile update data
+export const validateProfileUpdate = (data) => {
+  if (!data || typeof data !== "object") {
+    throw new ValidationError("Valid update data is required", "INVALID_DATA");
+  }
+
+  // Add validation for specific fields as needed
+
+  return data;
+};
+
+// Validate consent settings
+export const validateConsent = (consentSettings) => {
+  if (!consentSettings || typeof consentSettings !== "object") {
+    throw new ValidationError(
+      "Valid consent settings are required",
+      "INVALID_CONSENT"
+    );
+  }
+
+  // Add validation for specific consent fields as needed
+
+  return consentSettings;
+};
+
 // Validate name with enhanced security
 const validateName = (name) => {
   if (!name || typeof name !== "string") {
@@ -258,7 +301,7 @@ export const validateConsentUpdate = (req, res, next) => {
   }
 };
 
-// Named exports
+// Named exports for internal validators
 export {
   validateName,
   validateAge,
@@ -272,5 +315,9 @@ export default {
   validateRegistration,
   validateDataAccess,
   validateConsentUpdate,
+  validateAddress,
+  validateHash,
+  validateProfileUpdate,
+  validateConsent,
   ValidationError,
 };

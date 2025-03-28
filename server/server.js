@@ -7,14 +7,16 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 
+// Import standardized error handling
+import { errorHandler } from "./utils/errorUtils.js";
+
+// Import HIPAA middleware
+import hipaaCompliance from "./middleware/hipaaCompliance.js";
+
 // Resolve the correct .env path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
-
-// Initialize service dependencies first individually
-import hipaaComplianceService from "./services/hipaaComplianceService.js";
-import errorHandlingService from "./services/errorHandlingService.js";
 
 // Configure environment variables
 const NODE_ENV = process.env.NODE_ENV || "development";
@@ -25,6 +27,10 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
       "http://localhost:5000",
       "https://healthmint.com",
     ];
+
+// Initialize service dependencies first individually
+import hipaaComplianceService from "./services/hipaaComplianceService.js";
+import errorHandlingService from "./services/errorHandlingService.js";
 
 // Debugging Environment Variables
 console.log(
@@ -95,10 +101,12 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
 
 // Import Routes with Error Handling
-let authRoutes, dataRoutes;
+let authRoutes, dataRoutes, profileRoutes, usersRoutes;
 try {
   authRoutes = (await import("./routes/auth.js")).default;
   dataRoutes = (await import("./routes/data.js")).default;
+  profileRoutes = (await import("./routes/profile.js")).default;
+  usersRoutes = (await import("./routes/users.js")).default;
 } catch (err) {
   console.error("❌ Failed to import routes:", err.message);
   process.exit(1); // Stops the server if routes fail to load
@@ -123,39 +131,41 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Mount Routes
+// Create API Router for /api routes
+const apiRouter = express.Router();
+
+// Apply HIPAA compliance middleware centrally to all API routes
+// This eliminates the need to apply these in individual route files
+console.log("Applying HIPAA compliance middleware to all API routes");
+apiRouter.use(hipaaCompliance.validatePHI);
+apiRouter.use(hipaaCompliance.auditLog);
+
+// Mount Routes to the API Router
 console.log("Mounting auth routes at /api/auth");
-app.use("/api/auth", authRoutes);
+apiRouter.use("/auth", authRoutes);
 
 console.log("Mounting data routes at /api/data");
-app.use("/api/data", dataRoutes);
+apiRouter.use("/data", dataRoutes);
 
-// Log All Requests
-app.use((req, _res, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
+console.log("Mounting profile routes at /api/profile");
+apiRouter.use("/profile", profileRoutes);
+
+console.log("Mounting users routes at /api/users");
+apiRouter.use("/users", usersRoutes);
+
+// Mount the API Router to the app
+app.use("/api", apiRouter);
+
+// 404 Handler - Convert to standardized error
+app.use((req, res, next) => {
+  const error = new Error(`Route ${req.originalUrl} not found`);
+  error.statusCode = 404;
+  error.code = "NOT_FOUND";
+  next(error);
 });
 
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
-    method: req.method,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Global Error Handler
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal server error",
-    timestamp: new Date().toISOString(),
-    error: NODE_ENV === "development" ? err.stack : undefined,
-  });
-});
+// Global Error Handler - Use standardized error handler
+app.use(errorHandler);
 
 // Graceful Shutdown Handling
 process.on("SIGINT", () => {
@@ -164,8 +174,7 @@ process.on("SIGINT", () => {
 });
 
 // Start Server
-// In server.js, find the app.listen line and change it to:
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running and accessible at http://0.0.0.0:${PORT}`);
   console.log(`🌐 Environment: ${NODE_ENV}`);
   console.log("Available routes:");

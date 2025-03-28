@@ -7,17 +7,16 @@ import {
 } from "../middleware/validation.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENDPOINTS } from "../config/networkConfig.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { createApiError } from "../utils/apiError.js";
+import { asyncHandler, createError } from "../utils/errorUtils.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { userService } from "../services/userService.js";
 import authMiddleware, { authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Apply HIPAA middleware to all routes
-router.use(hipaaCompliance.validatePHI);
-router.use(hipaaCompliance.auditLog);
+// Remove redundant HIPAA middleware - now handled in server.js
+// router.use(hipaaCompliance.validatePHI);
+// router.use(hipaaCompliance.auditLog);
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
@@ -35,7 +34,7 @@ router.get(
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw createApiError.unauthorized("Authentication required");
+      throw createError.unauthorized("Authentication required");
     }
 
     const normalizedAddress = validateAddress(address || requestedBy);
@@ -64,7 +63,7 @@ router.get(
     );
 
     if (!user) {
-      throw createApiError.notFound("User not found");
+      throw createError.notFound("User not found");
     }
 
     // Return full profile for own user, otherwise public profile
@@ -101,7 +100,7 @@ router.put(
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw createApiError.unauthorized("Authentication required");
+      throw createError.unauthorized("Authentication required");
     }
 
     const normalizedAddress = validateAddress(address || requestedBy);
@@ -136,7 +135,7 @@ router.put(
     );
 
     if (!updatedUser) {
-      throw createApiError.notFound("User not found");
+      throw createError.notFound("User not found");
     }
 
     // Get profile data to return
@@ -174,12 +173,12 @@ router.post(
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw createApiError.unauthorized("Authentication required");
+      throw createError.unauthorized("Authentication required");
     }
 
     // Check if role is valid
     if (!role || !["patient", "researcher", "provider"].includes(role)) {
-      throw createApiError.validation("Invalid role specified");
+      throw createError.validation("Invalid role specified");
     }
 
     // Determine which address to update - defaults to requesting user
@@ -192,7 +191,7 @@ router.post(
       // Check if user has admin privileges
       const isAdmin = req.user.roles.includes("admin");
       if (!isAdmin) {
-        throw createApiError.forbidden(
+        throw createError.forbidden(
           "Only administrators can update other users' roles"
         );
       }
@@ -215,7 +214,7 @@ router.post(
     );
 
     if (!result) {
-      throw createApiError.notFound("User not found");
+      throw createError.notFound("User not found");
     }
 
     // Create audit log
@@ -254,7 +253,7 @@ router.get(
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw createApiError.unauthorized("Authentication required");
+      throw createError.unauthorized("Authentication required");
     }
 
     const normalizedAddress = validateAddress(address || requestedBy);
@@ -264,53 +263,7 @@ router.get(
     const isAdmin = req.user.roles.includes("admin");
 
     if (!isSelf && !isAdmin) {
-      throw createApiError.forbidden("Access denied");
-    }
-
-    const requestMetadata = {
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      timestamp: new Date(),
-      action: "view_access_log",
-      requestedBy,
-    };
-
-    const accessLog = await userService.getAccessLog(
-      normalizedAddress,
-      requestMetadata
-    );
-
-    res.json({
-      success: true,
-      accessLog: await hipaaCompliance.sanitizeAuditLog(accessLog),
-    });
-  })
-);
-
-/**
- * @route   POST /consent
- * @desc    Update user's HIPAA consent settings
- * @access  Private (Self only)
- */
-router.post(
-  ENDPOINTS.USERS.CONSENT,
-  rateLimiters.api,
-  asyncHandler(async (req, res) => {
-    const { address, consentSettings } = req.body;
-    const requestedBy = req.user?.address;
-
-    if (!requestedBy) {
-      throw createApiError.unauthorized("Authentication required");
-    }
-
-    const normalizedAddress = validateAddress(address || requestedBy);
-    const validatedConsent = validateConsent(consentSettings);
-
-    // Only the user themselves can update their consent settings
-    if (requestedBy !== normalizedAddress) {
-      throw createApiError.forbidden(
-        "Only the user can update their consent settings"
-      );
+      throw createError.forbidden("Access denied");
     }
 
     const requestMetadata = {
@@ -361,7 +314,7 @@ router.get(
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw createApiError.unauthorized("Authentication required");
+      throw createError.unauthorized("Authentication required");
     }
 
     const requestMetadata = {
@@ -372,13 +325,13 @@ router.get(
       requestedBy,
     };
 
-    const settings = await userService.getUserSettings(
+    const settings = await userService.getUserStats(
       requestedBy,
       requestMetadata
     );
 
     if (!settings) {
-      throw createApiError.notFound("User settings not found");
+      throw createError.notFound("User settings not found");
     }
 
     res.json({

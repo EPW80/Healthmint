@@ -88,4 +88,34 @@ export const ERROR_CODES = {
   },
 };
 
+// Add the missing ENDPOINTS export
+export const ENDPOINTS = {
+  USERS: {
+    PROFILE: "/profile",
+    SETTINGS: "/settings",
+    ACCESS_LOG: "/access-log",
+    CONSENT: "/consent",
+  },
+  PROFILE: {
+    STATS: "/stats",
+    UPDATE: "/update",
+    IMAGE: "/image",
+    AUDIT: "/audit",
+    DELETE: "/delete",
+  },
+  DATA: {
+    UPLOAD: "/upload",
+    PURCHASE: "/purchase",
+    BROWSE: "/browse",
+    AUDIT: "/audit",
+    EMERGENCY: "/emergency-access",
+  },
+  AUTH: {
+    LOGIN: "/login",
+    REGISTER: "/register",
+    VERIFY: "/verify",
+    CONNECT: "/wallet/connect",
+  },
+};
+
 export const requiredNetwork = NETWORKS.SEPOLIA;

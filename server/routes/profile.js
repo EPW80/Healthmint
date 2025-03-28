@@ -8,41 +8,36 @@ import {
   validateHash,
 } from "../middleware/validation.js";
 import { ENDPOINTS, ERROR_CODES } from "../config/networkConfig.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/apiError.js";
+import { asyncHandler, createError } from "../utils/errorUtils.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
-// Security middleware setup
-const secureRouter = express.Router();
-secureRouter.use(hipaaCompliance.auditLog);
-secureRouter.use(hipaaCompliance.accessControl());
-secureRouter.use(hipaaCompliance.validatePHI);
+// Helper function to require specific access level
+const requireAccessControl = (accessLevel = "read") => {
+  return hipaaCompliance.accessControl({ requiredLevel: accessLevel });
+};
 
 /**
  * @route   GET /api/v1/profile/stats
  * @desc    Get user profile statistics with HIPAA compliance
  * @access  Private
  */
-secureRouter.get(
+router.get(
   ENDPOINTS.PROFILE.STATS,
   asyncHandler(async (req, res) => {
     const { address } = req.query;
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Authentication required"
-      );
+      throw createError.unauthorized("Authentication required");
     }
 
     // Validate address
     const normalizedAddress = validateAddress(address);
 
     // Verify access with HIPAA compliance
-    await hipaaCompliance.verifyAccess(requestedBy, normalizedAddress, "read");
+    hipaaCompliance.verifyAccess(requestedBy, normalizedAddress, "read");
 
     const requestMetadata = {
       ipAddress: req.ip,
@@ -57,7 +52,7 @@ secureRouter.get(
     );
 
     if (!stats) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND.code, "Profile not found");
+      throw createError.notFound("Profile not found");
     }
 
     res.json({
@@ -72,26 +67,23 @@ secureRouter.get(
  * @desc    Update user profile with HIPAA compliance
  * @access  Private
  */
-secureRouter.put(
+router.put(
   ENDPOINTS.PROFILE.UPDATE,
   rateLimiters.profile,
+  requireAccessControl("write"), // Apply specific access control
   asyncHandler(async (req, res) => {
     const { address, ...updateData } = req.body;
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Authentication required"
-      );
+      throw createError.unauthorized("Authentication required");
     }
 
     // Validate address and data
     const normalizedAddress = validateAddress(address);
     const validatedData = validateProfileUpdate(updateData);
 
-    // Verify write access
-    await hipaaCompliance.verifyAccess(requestedBy, normalizedAddress, "write");
+    // Verify already handled by requireAccessControl middleware
 
     const requestMetadata = {
       ipAddress: req.ip,
@@ -108,7 +100,7 @@ secureRouter.put(
     );
 
     if (!updatedProfile) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND.code, "Profile not found");
+      throw createError.notFound("Profile not found");
     }
 
     res.json({
@@ -123,26 +115,23 @@ secureRouter.put(
  * @desc    Update profile image with HIPAA compliance
  * @access  Private
  */
-secureRouter.put(
+router.put(
   ENDPOINTS.PROFILE.IMAGE,
   rateLimiters.profile,
+  requireAccessControl("write"), // Apply specific access control
   asyncHandler(async (req, res) => {
     const { address, imageHash } = req.body;
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Authentication required"
-      );
+      throw createError.unauthorized("Authentication required");
     }
 
     // Validate address and image hash
     const normalizedAddress = validateAddress(address);
     const validatedHash = validateHash(imageHash);
 
-    // Verify write access
-    await hipaaCompliance.verifyAccess(requestedBy, normalizedAddress, "write");
+    // Verify already handled by requireAccessControl middleware
 
     const requestMetadata = {
       ipAddress: req.ip,
@@ -158,7 +147,7 @@ secureRouter.put(
     );
 
     if (!updatedProfile) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND.code, "Profile not found");
+      throw createError.notFound("Profile not found");
     }
 
     res.json({
@@ -174,24 +163,21 @@ secureRouter.put(
  * @desc    Get profile audit log
  * @access  Private (Admin)
  */
-secureRouter.get(
+router.get(
   ENDPOINTS.PROFILE.AUDIT,
+  requireAccessControl("admin"), // Apply specific access control
   asyncHandler(async (req, res) => {
     const { address } = req.query;
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Authentication required"
-      );
+      throw createError.unauthorized("Authentication required");
     }
 
     // Validate address
     const normalizedAddress = validateAddress(address);
 
-    // Verify admin access
-    await hipaaCompliance.verifyAccess(requestedBy, normalizedAddress, "admin");
+    // Verify already handled by requireAccessControl middleware
 
     // Add audit metadata
     const requestMetadata = {
@@ -218,7 +204,7 @@ secureRouter.get(
  * @desc    Delete user profile
  * @access  Private (Admin or Self)
  */
-secureRouter.delete(
+router.delete(
   ENDPOINTS.PROFILE.DELETE,
   rateLimiters.profile,
   asyncHandler(async (req, res) => {
@@ -226,10 +212,7 @@ secureRouter.delete(
     const requestedBy = req.user?.address;
 
     if (!requestedBy) {
-      throw new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Authentication required"
-      );
+      throw createError.unauthorized("Authentication required");
     }
 
     // Validate address
@@ -259,8 +242,5 @@ secureRouter.delete(
     });
   })
 );
-
-// Use secure router for all profile routes
-router.use("/", secureRouter);
 
 export default router;

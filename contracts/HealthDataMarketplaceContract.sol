@@ -11,7 +11,12 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  * @title HealthDataMarketplace
  * @dev HIPAA-compliant marketplace for health data
  */
-contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl, Ownable {
+contract HealthDataMarketplace is
+    ReentrancyGuard,
+    Pausable,
+    AccessControl,
+    Ownable
+{
     using Counters for Counters.Counter;
 
     // Roles
@@ -234,9 +239,53 @@ contract HealthDataMarketplace is ReentrancyGuard, Pausable, AccessControl, Owna
         whenNotPaused
         nonReentrant
     {
-        // Function implementation goes here
-    }
+        HealthData storage data = healthData[_id];
 
+        // Check if data is available for purchase
+        require(data.isAvailable, "Data not available for purchase");
+
+        // Check that the buyer is not the owner
+        require(
+            msg.sender != data.owner,
+            "Owner cannot purchase their own data"
+        );
+
+        // Verify payment amount matches the price
+        require(msg.value >= data.price, "Insufficient payment");
+
+        // Calculate platform fee
+        uint256 fee = (data.price * platformFee) / 10000;
+        uint256 sellerAmount = data.price - fee;
+
+        // Transfer payment to the seller (minus platform fee)
+        (bool success, ) = data.owner.call{value: sellerAmount}("");
+        require(success, "Payment to seller failed");
+
+        // Grant access to the buyer
+        uint256 accessExpiration = block.timestamp + MAX_ACCESS_DURATION;
+        _grantAccess(_id, msg.sender, _purpose, accessExpiration);
+
+        // Update user statistics
+        users[msg.sender].purchaseCount++;
+
+        // Emit events
+        emit DataPurchased(_id, msg.sender, data.owner, data.price);
+
+        // Add audit entry
+        _addAuditEntry(
+            _id,
+            msg.sender,
+            "DATA_PURCHASED",
+            string(abi.encodePacked("Data purchased with purpose: ", _purpose))
+        );
+
+        // Refund excess payment if any
+        if (msg.value > data.price) {
+            uint256 refundAmount = msg.value - data.price;
+            (bool refundSuccess, ) = msg.sender.call{value: refundAmount}("");
+            require(refundSuccess, "Refund failed");
+        }
+    }
     function _grantAccess(
         uint256 _id,
         address _user,

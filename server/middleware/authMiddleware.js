@@ -2,7 +2,7 @@
 import jwt from "jsonwebtoken";
 import { ApiError, createApiError } from "../utils/apiError.js";
 import { ERROR_CODES } from "../config/networkConfig.js";
-import { User } from "../models/User.js";
+import User from "../models/User.js"; // Use default import
 
 /**
  * Authentication middleware

@@ -1,3 +1,4 @@
+// server/models/User.js
 import mongoose from "mongoose";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 
@@ -123,21 +124,21 @@ userSchema.pre("save", async function (next) {
     if (this.isModified("protectedInfo")) {
       // Encrypt name if modified
       if (this.isModified("protectedInfo.name")) {
-        this.protectedInfo.name = await hipaaCompliance.encrypt(
+        this.protectedInfo.name = hipaaCompliance.encrypt(
           this.protectedInfo.name
         );
       }
 
       // Encrypt email if modified
       if (this.isModified("protectedInfo.email")) {
-        this.protectedInfo.email = await hipaaCompliance.encrypt(
+        this.protectedInfo.email = hipaaCompliance.encrypt(
           this.protectedInfo.email.toLowerCase()
         );
       }
 
       // Encrypt age if modified
       if (this.isModified("protectedInfo.age")) {
-        this.protectedInfo.age = await hipaaCompliance.encrypt(
+        this.protectedInfo.age = hipaaCompliance.encrypt(
           this.protectedInfo.age.toString()
         );
       }
@@ -238,4 +239,8 @@ userSchema.index({
 });
 userSchema.index({ "security.lastActive": 1 });
 
+// Create the User model - named export
 export const User = mongoose.model("User", userSchema);
+
+// Default export (for easier imports)
+export default User;
