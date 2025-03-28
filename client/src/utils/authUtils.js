@@ -14,10 +14,32 @@ export const isNewUser = (address) => {
   if (!address) return true;
 
   try {
-    // Check explicit flag
+    // Check explicit flag first
     const isNewUserFlag = localStorage.getItem("healthmint_is_new_user");
-    if (isNewUserFlag === "true") return true;
     if (isNewUserFlag === "false") return false;
+
+    // If flag is explicitly true, double-check profile
+    if (isNewUserFlag === "true") {
+      try {
+        const userProfileStr = localStorage.getItem("healthmint_user_profile");
+        if (userProfileStr && userProfileStr !== "{}") {
+          const userProfile = JSON.parse(userProfileStr);
+          // If profile has name and role, it's not really a new user despite the flag
+          if (userProfile.name && userProfile.role) {
+            // Fix the inconsistency
+            localStorage.setItem("healthmint_is_new_user", "false");
+            return false;
+          }
+        }
+      } catch (e) {
+        console.error(
+          "Error checking profile while verifying new user flag:",
+          e
+        );
+      }
+
+      return true;
+    }
 
     // Check for profile completeness
     const userProfileStr = localStorage.getItem("healthmint_user_profile");
@@ -95,7 +117,23 @@ export const needsRegistration = (user, address) => {
 
   // Check explicit new user flag
   const isNewUserFlag = localStorage.getItem("healthmint_is_new_user");
-  if (isNewUserFlag === "true") return true;
+  if (isNewUserFlag === "true") {
+    // Double-check profile
+    try {
+      const profileStr = localStorage.getItem("healthmint_user_profile");
+      if (profileStr && profileStr !== "{}") {
+        const profile = JSON.parse(profileStr);
+        // If profile is complete despite flag, fix inconsistency
+        if (profile.name && profile.role) {
+          localStorage.setItem("healthmint_is_new_user", "false");
+          return false;
+        }
+      }
+    } catch (e) {
+      console.error("Error checking profile in needsRegistration:", e);
+    }
+    return true;
+  }
 
   // Check for complete profile
   const profileIncomplete = !user?.name || !user?.role;
@@ -109,18 +147,54 @@ export const needsRegistration = (user, address) => {
 export const initializeNewConnection = (address) => {
   if (!address) return;
 
-  // Check if this is a first-time connection
-  const userProfileStr = localStorage.getItem("healthmint_user_profile");
+  try {
+    // Check if this is a first-time connection by examining profile
+    const userProfileStr = localStorage.getItem("healthmint_user_profile");
+    let existingProfile = null;
 
-  if (!userProfileStr || userProfileStr === "{}") {
+    // Try to parse existing profile
+    try {
+      if (userProfileStr && userProfileStr !== "{}") {
+        existingProfile = JSON.parse(userProfileStr);
+      }
+    } catch (e) {
+      console.error("Error parsing user profile during initialization:", e);
+    }
+
+    // Determine if this is a new user
+    const newUser =
+      !existingProfile || !existingProfile.name || !existingProfile.role;
+
     // Set new user flag
-    localStorage.setItem("healthmint_is_new_user", "true");
+    localStorage.setItem("healthmint_is_new_user", newUser.toString());
 
-    // Initialize empty profile with address
+    // Initialize profile if needed
+    if (newUser) {
+      let profile = existingProfile || {};
+      profile.address = address;
+      localStorage.setItem("healthmint_user_profile", JSON.stringify(profile));
+    } else if (existingProfile) {
+      // Make sure existing profile has the address
+      if (existingProfile.address !== address) {
+        existingProfile.address = address;
+        localStorage.setItem(
+          "healthmint_user_profile",
+          JSON.stringify(existingProfile)
+        );
+      }
+    }
+
+    console.log(`Connection initialized. New user: ${newUser}`);
+    return { isNewUser: newUser, profile: existingProfile || { address } };
+  } catch (e) {
+    console.error("Error initializing connection:", e);
+
+    // Fallback: initialize minimal profile
     localStorage.setItem(
       "healthmint_user_profile",
       JSON.stringify({ address })
     );
+    return { isNewUser: true, profile: { address } };
   }
 };
 

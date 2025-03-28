@@ -1,5 +1,5 @@
 // src/components/roles/RoleSelector.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { User, Microscope, Loader, AlertCircle } from "lucide-react";
@@ -7,6 +7,7 @@ import { setRole, selectIsRoleSelected } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../../redux/slices/userSlice.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
+import authService from "../../services/authService.js";
 
 /**
  * Role Selector Component with improved navigation
@@ -22,20 +23,38 @@ const RoleSelector = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [redirecting, setRedirecting] = useState(false);
 
-  // Track when we've already redirected to avoid loops
-  const [hasRedirected, setHasRedirected] = useState(false);
+  // Check for an existing role in localStorage or user profile
+  useEffect(() => {
+    const checkExistingRole = () => {
+      // Check user profile first
+      const userProfile = authService.getCurrentUser();
+      if (userProfile && userProfile.role) {
+        console.log(`Existing role found: ${userProfile.role}`);
+        dispatch(setRole(userProfile.role));
+        return;
+      }
+
+      // Check localStorage as fallback
+      const storedRole = localStorage.getItem("healthmint_user_role");
+      if (storedRole) {
+        console.log(`Role found in localStorage: ${storedRole}`);
+        dispatch(setRole(storedRole));
+      }
+    };
+
+    checkExistingRole();
+  }, [dispatch]);
 
   // Check if we already have a role and redirect if needed
   useEffect(() => {
-    if (isRoleSelected && !redirecting && !hasRedirected) {
+    if (isRoleSelected && !loading && !redirecting) {
       console.log("Role already selected, redirecting to dashboard");
-      setHasRedirected(true);
       navigate("/dashboard", { replace: true });
     }
-  }, [isRoleSelected, redirecting, hasRedirected, navigate]);
+  }, [isRoleSelected, loading, redirecting, navigate]);
 
   /**
-   * Handle role selection with improved navigation
+   * Handle role selection with improved user data persistence
    */
   const handleRoleSelect = async (role) => {
     try {
@@ -56,16 +75,22 @@ const RoleSelector = () => {
         action: "SELECT",
       });
 
+      // Get current user data to merge with role
+      const userData = authService.getCurrentUser() || {};
+      const updatedUserData = {
+        ...userData,
+        role,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // Update user data in authService
+      authService.completeRegistration(updatedUserData);
+
       // Dispatch role selection action to Redux
       dispatch(setRole(role));
 
       // Update user profile with role information
-      dispatch(
-        updateUserProfile({
-          role,
-          lastUpdated: new Date().toISOString(),
-        })
-      );
+      dispatch(updateUserProfile(updatedUserData));
 
       // Success notification
       dispatch(
@@ -76,15 +101,8 @@ const RoleSelector = () => {
         })
       );
 
-      // Save role selection directly to localStorage as a backup
-      localStorage.setItem("healthmint_user_role", role);
-
-      // Redirect to the appropriate dashboard using React Router's navigate
-      console.log(`Redirecting to dashboard for role: ${role}`);
-
       // Use React Router's navigate for a cleaner SPA experience
       setTimeout(() => {
-        setHasRedirected(true);
         navigate("/dashboard", { replace: true });
       }, 500);
     } catch (err) {

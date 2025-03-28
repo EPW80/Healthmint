@@ -19,7 +19,7 @@ import {
 
 /**
  * Enhanced authentication hook combining wallet connection and JWT auth
- * with improved error handling and environment configuration
+ * with improved error handling and registration flow management
  *
  * @param {Object} options - Hook options
  * @returns {Object} Authentication state and methods
@@ -47,26 +47,22 @@ const useAuth = (options = {}) => {
   const [authState, setAuthState] = useState({
     status: "idle", // idle, connecting, authenticating, authenticated, error
     user: null,
-    isNewUser: localStorage.getItem("healthmint_is_new_user") === "true", // Get initial new user state from localStorage
+    isNewUser: false,
+    isRegistrationComplete: false,
   });
 
-  // Check localStorage for existing user profile to determine new user status
+  // Check if registration is complete on mount
   useEffect(() => {
-    try {
-      const userProfile = localStorage.getItem("healthmint_user_profile");
-      // Set isNewUser to true if no profile exists
-      const isNewUser = !userProfile || userProfile === "{}";
-
-      // Update state and localStorage
+    const checkRegistration = () => {
+      const isComplete = authService.isRegistrationComplete();
       setAuthState((prev) => ({
         ...prev,
-        isNewUser,
+        isNewUser: !isComplete,
+        isRegistrationComplete: isComplete,
       }));
+    };
 
-      localStorage.setItem("healthmint_is_new_user", isNewUser.toString());
-    } catch (error) {
-      console.error("Error checking new user status:", error);
-    }
+    checkRegistration();
   }, []);
 
   // Update activity periodically to keep session alive
@@ -121,10 +117,10 @@ const useAuth = (options = {}) => {
    */
   const login = useCallback(async () => {
     try {
-      setAuthState({
-        ...authState,
+      setAuthState((prev) => ({
+        ...prev,
         status: "connecting",
-      });
+      }));
 
       // 1. Connect wallet
       const walletResult = await connectWallet();
@@ -133,74 +129,35 @@ const useAuth = (options = {}) => {
         throw new Error(walletResult.error || "Failed to connect wallet");
       }
 
-      setAuthState({
-        ...authState,
+      setAuthState((prev) => ({
+        ...prev,
         status: "authenticating",
+      }));
+
+      // Check if registration is complete
+      const isRegistrationComplete = authService.isRegistrationComplete();
+
+      // 2. & 3. Auth with wallet and get token
+      const authResult = await authService.authenticateWithWallet(
+        walletResult.address
+      );
+
+      // 4. Set auth state based on registration status
+      const userData = authResult.user || {};
+
+      setAuthState({
+        status: "authenticated",
+        isNewUser: !isRegistrationComplete && !userData.role,
+        isRegistrationComplete:
+          isRegistrationComplete || Boolean(userData.role),
+        user: userData,
       });
 
-      // For mock implementation, simulate new user checking
-      const existingUser = localStorage.getItem("healthmint_user_profile");
-      const mockIsNewUser = !existingUser || existingUser === "{}";
-
-      // Store new user status
-      localStorage.setItem("healthmint_is_new_user", mockIsNewUser.toString());
-
-      // 2. & 3. Auth with wallet and get token - MOCK IMPLEMENTATION
-      // In a real implementation, this would use the loginAsync action
-      const mockAuthResult = {
-        isNewUser: mockIsNewUser,
-        token: "mock-token-" + Date.now(),
-        user: {
-          address: walletResult.address,
-          role: "",
-          name: "",
-        },
+      return {
+        success: true,
+        isNewUser: !isRegistrationComplete && !userData.role,
+        needsRoleSelection: !userData.role && isRegistrationComplete,
       };
-
-      // Store mock token
-      localStorage.setItem(authService.tokenKey, mockAuthResult.token);
-      localStorage.setItem(
-        authService.userKey,
-        JSON.stringify(mockAuthResult.user)
-      );
-      localStorage.setItem(
-        authService.tokenExpiryKey,
-        (Date.now() + 3600 * 1000).toString()
-      );
-
-      // 4. Set auth state based on new user status
-      if (mockAuthResult.isNewUser) {
-        setAuthState({
-          status: "authenticated",
-          isNewUser: true,
-          user: null,
-        });
-      } else {
-        try {
-          const userProfile = await userService.getCurrentUser();
-
-          setAuthState({
-            status: "authenticated",
-            isNewUser: false,
-            user: userProfile,
-          });
-        } catch (profileError) {
-          // Log the error but don't fail the login
-          errorHandlingService.handleError(profileError, {
-            code: "PROFILE_FETCH_ERROR",
-            context: "User Profile",
-            userVisible: false,
-          });
-
-          setAuthState({
-            status: "authenticated",
-            isNewUser: false,
-            user: null,
-          });
-        }
-      }
-
-      return true;
     } catch (error) {
       // Use error handling service for consistent handling
       errorHandlingService.handleError(error, {
@@ -213,14 +170,14 @@ const useAuth = (options = {}) => {
         },
       });
 
-      setAuthState({
-        ...authState,
+      setAuthState((prev) => ({
+        ...prev,
         status: "error",
-      });
+      }));
 
-      return false;
+      return { success: false, error: error.message };
     }
-  }, [authState, connectWallet, walletAddress]);
+  }, [connectWallet, walletAddress]);
 
   /**
    * Complete logout flow:
@@ -241,10 +198,8 @@ const useAuth = (options = {}) => {
         status: "idle",
         user: null,
         isNewUser: false,
+        isRegistrationComplete: false,
       });
-
-      // Clear localStorage
-      localStorage.removeItem("healthmint_is_new_user");
 
       return true;
     } catch (error) {
@@ -261,10 +216,8 @@ const useAuth = (options = {}) => {
         status: "idle",
         user: null,
         isNewUser: false,
+        isRegistrationComplete: false,
       });
-
-      // Clear localStorage
-      localStorage.removeItem("healthmint_is_new_user");
 
       return true; // Return success anyway since we've cleared local state
     }
@@ -290,21 +243,20 @@ const useAuth = (options = {}) => {
           address: walletAddress,
         };
 
-        // Mock registration - store in localStorage
-        localStorage.setItem(
-          "healthmint_user_profile",
-          JSON.stringify(registerData)
-        );
+        // Save user data and complete registration
+        const success = authService.completeRegistration(registerData);
+
+        if (!success) {
+          throw new Error("Failed to complete registration");
+        }
 
         // Update local state
         setAuthState({
           status: "authenticated",
           isNewUser: false,
+          isRegistrationComplete: true,
           user: registerData,
         });
-
-        // Update new user flag in localStorage
-        localStorage.setItem("healthmint_is_new_user", "false");
 
         return true;
       } catch (error) {
@@ -334,78 +286,27 @@ const useAuth = (options = {}) => {
     if (!isAuthenticated && !isWalletConnected) return false;
 
     try {
-      // For mock implementation with localStorage
-      if (isWalletConnected) {
-        // Get saved user profile to check
-        const userProfileStr = localStorage.getItem("healthmint_user_profile");
-        let isNewUserFlag =
-          localStorage.getItem("healthmint_is_new_user") === "true";
+      // Check registration status
+      const isComplete = authService.isRegistrationComplete();
 
-        // If the profile doesn't exist or is empty, the user is new
-        if (!userProfileStr || userProfileStr === "{}") {
-          // Force new user state
-          setAuthState((prev) => ({
-            ...prev,
-            isNewUser: true,
-          }));
-          localStorage.setItem("healthmint_is_new_user", "true");
-          return true;
-        }
+      // Get current user data
+      const userData = authService.getCurrentUser();
 
-        try {
-          const userProfile = JSON.parse(userProfileStr);
+      // Update state based on findings
+      setAuthState((prev) => ({
+        ...prev,
+        isNewUser: !isComplete,
+        isRegistrationComplete: isComplete,
+        user: userData || prev.user,
+      }));
 
-          // Check if profile has required fields
-          const profileIncomplete = !userProfile.name || !userProfile.role;
-
-          // If profile is incomplete, mark as new user
-          if (profileIncomplete) {
-            setAuthState((prev) => ({
-              ...prev,
-              isNewUser: true,
-            }));
-            localStorage.setItem("healthmint_is_new_user", "true");
-          } else if (isNewUserFlag) {
-            // Profile exists but was marked as new - fix this inconsistency
-            setAuthState((prev) => ({
-              ...prev,
-              isNewUser: false,
-              user: userProfile,
-            }));
-            localStorage.setItem("healthmint_is_new_user", "false");
-          } else {
-            // Update user in state
-            setAuthState((prev) => ({
-              ...prev,
-              user: userProfile,
-            }));
-          }
-        } catch (error) {
-          console.error("Error parsing user profile:", error);
-          setAuthState((prev) => ({
-            ...prev,
-            isNewUser: true,
-          }));
-          localStorage.setItem("healthmint_is_new_user", "true");
-        }
-
-        return true;
-      }
-
-      return false;
+      return Boolean(userData);
     } catch (error) {
       errorHandlingService.handleError(error, {
         code: "AUTH_VERIFICATION_ERROR",
         context: "Auth Verification",
         userVisible: false,
       });
-
-      // On error, assume user is new to force registration
-      setAuthState((prev) => ({
-        ...prev,
-        isNewUser: true,
-      }));
-      localStorage.setItem("healthmint_is_new_user", "true");
 
       return false;
     }
@@ -420,6 +321,7 @@ const useAuth = (options = {}) => {
     error: authError || walletError,
     user: authState.user,
     isNewUser: authState.isNewUser,
+    isRegistrationComplete: authState.isRegistrationComplete,
     status: authState.status,
     walletAddress,
     userRoles,
@@ -429,12 +331,6 @@ const useAuth = (options = {}) => {
     logout,
     register,
     verifyAuth,
-
-    // For testing/development, allow forced new user state
-    setIsNewUser: (value) => {
-      setAuthState((prev) => ({ ...prev, isNewUser: value }));
-      localStorage.setItem("healthmint_is_new_user", value.toString());
-    },
 
     // Underlying services for advanced usage
     authService,

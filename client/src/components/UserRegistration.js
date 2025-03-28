@@ -16,7 +16,8 @@ import { setRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
-import { forceRegistrationComplete } from "../utils/registrationUtils.js";
+import authService from "../services/authService.js";
+import useAuth from "../hooks/useAuth.js";
 
 /**
  * User Registration Component
@@ -26,6 +27,7 @@ import { forceRegistrationComplete } from "../utils/registrationUtils.js";
 const UserRegistration = ({ walletAddress, onComplete }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   // Form state
   const [formState, setFormState] = useState({
@@ -163,21 +165,6 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           throw new Error("You must acknowledge the HIPAA consent");
         }
 
-        // Create minimal user profile first
-        // This ensures we have a user to associate with consent
-        const minimalUserData = {
-          address: walletAddress,
-          name: formState.name,
-          role: formState.role,
-          registrationInProgress: true,
-        };
-
-        // Store minimal profile for HIPAA compliance
-        localStorage.setItem(
-          "healthmint_user_profile",
-          JSON.stringify(minimalUserData)
-        );
-
         // Handle HIPAA consent
         const hipaaConsentRecorded = await createHipaaConsent();
         if (!hipaaConsentRecorded) {
@@ -189,7 +176,6 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           ...formState,
           address: walletAddress,
           registrationDate: new Date().toISOString(),
-          registrationInProgress: false, // Mark as complete
         };
 
         // Sanitize data for HIPAA compliance
@@ -197,22 +183,32 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           excludeFields: ["agreeToTerms", "agreeToHipaa"],
         });
 
-        // Force registration to be completed (fixes inconsistencies)
-        forceRegistrationComplete(formState.role, walletAddress, sanitizedData);
+        // 1. Register the user with auth service
+        const registered = await register(sanitizedData);
 
-        // Set the role in Redux
+        if (!registered) {
+          throw new Error("Registration failed. Please try again.");
+        }
+
+        // 2. Mark registration as complete in authService
+        authService.completeRegistration(sanitizedData);
+
+        // 3. Set the role in Redux
         dispatch(setRole(formState.role));
 
-        // Update user profile in Redux store
+        // 4. Update user profile in Redux store
         dispatch(updateUserProfile(sanitizedData));
 
-        // Create audit log for registration
+        // 5. Create audit log for registration
         await hipaaComplianceService.createAuditLog("USER_REGISTRATION", {
           userId: walletAddress,
           walletAddress,
           role: formState.role,
           timestamp: new Date().toISOString(),
         });
+
+        // 6. Clear any new user flags
+        localStorage.removeItem("healthmint_is_new_user");
 
         // Success notification
         dispatch(
@@ -245,7 +241,14 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         setLoading(false);
       }
     },
-    [formState, walletAddress, createHipaaConsent, dispatch, onComplete]
+    [
+      formState,
+      walletAddress,
+      createHipaaConsent,
+      dispatch,
+      onComplete,
+      register,
+    ]
   );
 
   // Render different steps
@@ -668,7 +671,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
 
 UserRegistration.propTypes = {
   walletAddress: PropTypes.string.isRequired,
-  onComplete: PropTypes.func.isRequired,
+  onComplete: PropTypes.func,
 };
 
 export default UserRegistration;

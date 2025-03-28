@@ -27,7 +27,6 @@ import {
 import {
   updateUserProfile,
   clearUserProfile,
-  selectUserProfile,
 } from "../redux/slices/userSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { clearWalletConnection } from "../redux/slices/walletSlice.js";
@@ -40,37 +39,29 @@ function AppContent() {
   const location = useLocation();
 
   // Get wallet connection state
-  const {
-    isConnected,
-    address,
-    network,
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-  } = useWalletConnect({
-    autoConnect: false, // Force explicit login
-  });
+  const { isConnected, address, network, disconnectWallet, switchNetwork } =
+    useWalletConnect();
 
   // Get user information from Redux
   const userRole = useSelector(selectRole);
   const isRoleSelected = useSelector(selectIsRoleSelected);
-  const userProfile = useSelector(selectUserProfile);
 
   // Get auth state
-  const { isAuthenticated, isNewUser, verifyAuth } = useAuth();
+  const {
+    isNewUser,
+    verifyAuth,
+    logout,
+  } = useAuth();
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
-  const [needsRegistration, setNeedsRegistration] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
 
   // Handle user registration completion
   const handleRegistrationComplete = useCallback(
     (userData) => {
       // Update user profile with registration data
       dispatch(updateUserProfile(userData));
-
-      // Clear the registration flag
-      setNeedsRegistration(false);
 
       // Notification of success
       dispatch(
@@ -83,112 +74,30 @@ function AppContent() {
     [dispatch]
   );
 
-  // Ensure proper redirection on first load
+  // Verify authentication on first load
   useEffect(() => {
-    if (isInitialized) {
-      // If not connected, redirect to login
-      if (!isConnected) {
-        if (window.location.pathname !== "/login") {
-          window.location.replace("/login");
-        }
-        return;
-      }
-
-      // If connected but needs registration, redirect there
-      if (needsRegistration || isNewUser) {
-        if (window.location.pathname !== "/register") {
-          window.location.replace("/register");
-        }
-        return;
-      }
-
-      // If connected but no role, redirect to role selection
-      if (!isRoleSelected) {
-        if (window.location.pathname !== "/select-role") {
-          window.location.replace("/select-role");
-        }
-        return;
-      }
-
-      // If everything is set up, redirect to dashboard from root or login
-      if (
-        window.location.pathname === "/" ||
-        window.location.pathname === "/login"
-      ) {
-        window.location.replace("/dashboard");
-      }
-    }
-  }, [
-    isInitialized,
-    isConnected,
-    needsRegistration,
-    isNewUser,
-    isRoleSelected,
-  ]);
-
-  // Initialize the app
-  useEffect(() => {
-    const initializeApp = async () => {
+    const initAuth = async () => {
+      setIsVerifying(true);
       try {
-        // When running with mock data, we don't need to wait for actual connections
-        // Initialize immediately to prevent loading state delays
-        setIsInitialized(true);
+        await verifyAuth();
       } catch (error) {
-        console.error("Error during app initialization:", error);
+        console.error("Auth verification error:", error);
+      } finally {
+        setIsVerifying(false);
         setIsInitialized(true);
       }
     };
 
-    initializeApp();
-  }, []);
-
-  // Check if user needs registration when connected
-  useEffect(() => {
-    if (isConnected && address) {
-      // Check if user needs to complete registration
-      const checkRegistrationStatus = async () => {
-        try {
-          // Verify authentication state
-          await verifyAuth();
-
-          // If the user is authenticated but doesn't have a complete profile
-          // or is explicitly marked as a new user, they need registration
-          if (isAuthenticated) {
-            const profileIncomplete = !userProfile?.name || !userProfile?.role;
-            const requiresRegistration = isNewUser || profileIncomplete;
-
-            // Set registration flag more aggressively for new users
-            setNeedsRegistration(requiresRegistration);
-
-            // Make sure we redirect to registration immediately if needed
-            if (requiresRegistration && location.pathname !== "/register") {
-              // Use window.location to force a clean navigation
-              window.location.replace("/register");
-            }
-          }
-        } catch (error) {
-          console.error("Error checking registration status:", error);
-        }
-      };
-
-      checkRegistrationStatus();
-    }
-  }, [
-    isConnected,
-    address,
-    isAuthenticated,
-    isNewUser,
-    userProfile,
-    verifyAuth,
-    location.pathname,
-  ]);
+    initAuth();
+  }, [verifyAuth]);
 
   // Handle logout - Complete reset of all auth states
   const handleLogout = useCallback(async () => {
     try {
       console.log("Logging out and clearing all auth state...");
 
-      // Disconnect wallet first
+      // Logout and disconnect
+      await logout();
       await disconnectWallet();
 
       // Clear Redux states
@@ -226,39 +135,7 @@ function AppContent() {
       dispatch(clearUserProfile());
       window.location.replace("/login");
     }
-  }, [disconnectWallet, dispatch]);
-
-  // Handle wallet connection
-  const handleConnect = useCallback(async () => {
-    try {
-      const result = await connectWallet();
-      if (result.success) {
-        dispatch(updateUserProfile({ address: result.address }));
-        dispatch(
-          addNotification({
-            type: "success",
-            message: "Wallet connected successfully",
-          })
-        );
-
-        // After successful connection, check if this is a new user
-        const profileIncomplete = !userProfile?.name || !userProfile?.role;
-        const requiresRegistration = isNewUser || profileIncomplete;
-        setNeedsRegistration(requiresRegistration);
-
-        if (requiresRegistration) {
-          // Redirect to registration immediately
-          window.location.replace("/register");
-        }
-
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      return false;
-    }
-  }, [connectWallet, dispatch, isNewUser, userProfile]);
+  }, [disconnectWallet, dispatch, logout]);
 
   // Determine dashboard component based on role
   const getDashboardComponent = useCallback(() => {
@@ -269,7 +146,7 @@ function AppContent() {
   }, [userRole]);
 
   // Show loading state on initial render
-  if (!isInitialized) {
+  if (!isInitialized || isVerifying) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -281,7 +158,7 @@ function AppContent() {
     <>
       {/* Only show navigation when authenticated and not in registration */}
       {isConnected &&
-        !needsRegistration &&
+        !isNewUser &&
         location.pathname !== "/login" &&
         location.pathname !== "/register" && (
           <Navigation
@@ -295,22 +172,24 @@ function AppContent() {
 
       <div className="flex-1">
         <Routes>
-          {/* Login Route - Always accessible, redirects appropriately */}
+          {/* Login Route */}
           <Route
             path="/login"
             element={
               isConnected ? (
-                // If connected and needs registration, go to registration
-                // Otherwise follow normal flow to role selection or dashboard
-                needsRegistration ? (
+                isNewUser ? (
+                  // If connected but needs registration, go to registration
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
+                  // If no role selected, go to role selection
                   <Navigate to="/select-role" replace />
                 ) : (
+                  // If everything is set up, go to dashboard
                   <Navigate to="/dashboard" replace />
                 )
               ) : (
-                <WalletConnect onConnect={handleConnect} />
+                // If not connected, show login screen
+                <WalletConnect />
               )
             }
           />
@@ -321,7 +200,7 @@ function AppContent() {
             element={
               !isConnected ? (
                 <Navigate to="/login" replace />
-              ) : needsRegistration ? (
+              ) : isNewUser ? (
                 <UserRegistration
                   walletAddress={address}
                   onComplete={handleRegistrationComplete}
@@ -341,7 +220,7 @@ function AppContent() {
             element={
               !isConnected ? (
                 <Navigate to="/login" replace />
-              ) : needsRegistration ? (
+              ) : isNewUser ? (
                 <Navigate to="/register" replace />
               ) : (
                 <RoleSelector />
@@ -354,8 +233,10 @@ function AppContent() {
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={[]} requireBackendAuth={false}>
-                {needsRegistration ? (
+                {isNewUser ? (
                   <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
                 ) : (
                   getDashboardComponent()
                 )}
@@ -368,8 +249,10 @@ function AppContent() {
             path="/profile"
             element={
               <ProtectedRoute requireBackendAuth={false}>
-                {needsRegistration ? (
+                {isNewUser ? (
                   <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
                 ) : (
                   <ProfileSettings />
                 )}
@@ -381,8 +264,10 @@ function AppContent() {
             path="/upload"
             element={
               <ProtectedRoute requireBackendAuth={false}>
-                {needsRegistration ? (
+                {isNewUser ? (
                   <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
                 ) : (
                   <DataUpload />
                 )}
@@ -394,8 +279,10 @@ function AppContent() {
             path="/browse"
             element={
               <ProtectedRoute requireBackendAuth={false}>
-                {needsRegistration ? (
+                {isNewUser ? (
                   <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
                 ) : (
                   <DataBrowser />
                 )}
@@ -409,7 +296,7 @@ function AppContent() {
             element={
               !isConnected ? (
                 <Navigate to="/login" replace />
-              ) : needsRegistration ? (
+              ) : isNewUser ? (
                 <Navigate to="/register" replace />
               ) : !isRoleSelected ? (
                 <Navigate to="/select-role" replace />
@@ -429,7 +316,7 @@ function AppContent() {
                 </div>
               ) : !isConnected ? (
                 <Navigate to="/login" replace />
-              ) : needsRegistration ? (
+              ) : isNewUser ? (
                 <Navigate to="/register" replace />
               ) : !isRoleSelected ? (
                 <Navigate to="/select-role" replace />

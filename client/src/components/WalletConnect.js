@@ -4,20 +4,23 @@ import PropTypes from "prop-types";
 import { WalletIcon, AlertCircle } from "../icons/index.js";
 import { X, CheckCircle, AlertTriangle, Loader } from "lucide-react";
 import useWalletConnection from "../hooks/useWalletConnect.js";
-import { initializeNewConnection } from "../utils/authUtils";
+import useAuth from "../hooks/useAuth.js";
+import { useNavigate } from "react-router-dom";
 
 // Constants
 const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
 
 const WalletConnect = ({ onConnect }) => {
+  const navigate = useNavigate();
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
+  // Get wallet connection state
   const {
     connectWallet,
     switchNetwork,
-    error,
-    loading,
+    error: walletError,
+    loading: walletLoading,
     address,
     isConnected,
     network,
@@ -25,63 +28,61 @@ const WalletConnect = ({ onConnect }) => {
     autoConnect: true, // Try to auto-connect on page load
   });
 
+  // Get auth state with registration info
+  const {
+    login,
+    isRegistrationComplete,
+    isNewUser,
+    error: authError,
+    loading: authLoading,
+  } = useAuth();
+
+  // Combined error and loading states
+  const error = walletError || authError;
+  const loading = walletLoading || authLoading || isConnecting;
+
   // If auto-connect fails, we want to make it easy for the user to initiate the connection
   const showNetworkWarning = isConnected && network && !network.isSupported;
 
-  // Handle auto-connect attempt on component mount
+  // Handle redirection after successful connection
   useEffect(() => {
-    const attemptAutoConnect = async () => {
-      try {
-        if (!isConnected && !loading) {
-          // Don't show the connecting indicator for auto-connect
-          const result = await connectWallet("metamask");
-
-          // If successful, trigger the onConnect callback
-          if (result.success && onConnect) {
-            onConnect();
-          }
+    if (isConnected && !loading) {
+      const redirectUser = async () => {
+        if (isRegistrationComplete) {
+          // If registration is complete, go to role selection or dashboard
+          navigate("/select-role", { replace: true });
+        } else if (isNewUser) {
+          // If new user, go to registration
+          navigate("/register", { replace: true });
         }
-      } catch (error) {
-        console.error("Auto-connect failed:", error);
-        // We don't show an error for auto-connect failures
-      }
-    };
+      };
 
-    attemptAutoConnect();
-  }, [connectWallet, isConnected, loading, onConnect]);
+      redirectUser();
+    }
+  }, [isConnected, loading, isRegistrationComplete, isNewUser, navigate]);
 
+  // Handle connect button click
   const handleConnect = async () => {
     setErrorDismissed(false);
     setIsConnecting(true);
 
     try {
-      const result = await connectWallet("metamask");
+      // First connect wallet
+      const walletResult = await connectWallet();
 
-      if (result.success) {
-        // Initialize local storage for new connection
-        initializeNewConnection(result.address);
+      if (walletResult.success) {
+        // Then handle authentication and user state
+        const authResult = await login();
 
-        // Check if this is a new user
-        const userProfileStr = localStorage.getItem("healthmint_user_profile");
-        const isNewUser =
-          !userProfileStr ||
-          userProfileStr === "{}" ||
-          localStorage.getItem("healthmint_is_new_user") === "true";
-
-        // If new user, redirect to registration
-        if (isNewUser) {
-          localStorage.setItem("healthmint_is_new_user", "true");
-          window.location.replace("/register");
-          return;
-        }
-
-        // Pass to parent component callback
-        if (onConnect) {
-          await onConnect();
+        if (authResult.success) {
+          // Navigation is handled by the useEffect above based on user state
+          if (onConnect) {
+            onConnect(authResult);
+          }
         }
       }
-    } catch (error) {
-      console.error("Connect failed:", error);
+    } catch (err) {
+      console.error("Connection error:", err);
     } finally {
       setIsConnecting(false);
     }

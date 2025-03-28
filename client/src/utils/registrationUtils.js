@@ -20,50 +20,78 @@ export const forceRegistrationComplete = (
   console.log("Role:", role);
   console.log("Address:", walletAddress);
 
-  // 1. Ensure user is not marked as new
-  localStorage.setItem("healthmint_is_new_user", "false");
-
-  // 2. Ensure role is selected
-  localStorage.setItem("healthmint_user_role", role);
-
-  // 3. Ensure profile exists with required fields
-  const existingProfile = localStorage.getItem("healthmint_user_profile");
-  let profile = {};
-
-  try {
-    if (existingProfile) {
-      profile = JSON.parse(existingProfile);
-    }
-  } catch (error) {
-    console.error("Error parsing profile:", error);
-    profile = {};
+  if (!role || !walletAddress) {
+    console.error("Missing required parameters for forceRegistrationComplete");
+    return null;
   }
 
-  // Merge with new data, ensuring critical fields exist
-  const updatedProfile = {
-    ...profile,
-    ...userData,
-    name: userData.name || profile.name || "User",
-    role: role,
-    address: walletAddress,
-    registrationComplete: true,
-    registrationDate: new Date().toISOString(),
-  };
+  try {
+    // 1. Ensure user is not marked as new
+    localStorage.setItem("healthmint_is_new_user", "false");
 
-  localStorage.setItem(
-    "healthmint_user_profile",
-    JSON.stringify(updatedProfile)
-  );
+    // 2. Ensure role is selected
+    localStorage.setItem("healthmint_user_role", role);
 
-  // 4. Add a bypass flag to prevent further checks temporarily
-  sessionStorage.setItem("bypass_registration_check", "true");
-  sessionStorage.setItem(
-    "bypass_registration_until",
-    (Date.now() + 30000).toString()
-  );
+    // 3. Ensure profile exists with required fields
+    const existingProfileStr = localStorage.getItem("healthmint_user_profile");
+    let existingProfile = {};
 
-  // 5. Return the complete profile for use in state updates
-  return updatedProfile;
+    try {
+      if (existingProfileStr && existingProfileStr !== "{}") {
+        existingProfile = JSON.parse(existingProfileStr);
+      }
+    } catch (error) {
+      console.error("Error parsing profile:", error);
+      existingProfile = {};
+    }
+
+    // Merge with new data, ensuring critical fields exist
+    const updatedProfile = {
+      ...existingProfile,
+      ...userData,
+      name: userData.name || existingProfile.name || "User",
+      role: role,
+      address: walletAddress,
+      registrationComplete: true,
+      registrationDate: new Date().toISOString(),
+    };
+
+    localStorage.setItem(
+      "healthmint_user_profile",
+      JSON.stringify(updatedProfile)
+    );
+
+    // 4. Add a bypass flag in sessionStorage for temporary bypass of checks
+    sessionStorage.setItem("bypass_registration_check", "true");
+    sessionStorage.setItem(
+      "bypass_registration_until",
+      (Date.now() + 60000).toString() // Increased to 1 minute
+    );
+
+    // 5. Return the complete profile for use in state updates
+    return updatedProfile;
+  } catch (error) {
+    console.error("Error in forceRegistrationComplete:", error);
+
+    // Still try to set the minimum required values
+    localStorage.setItem("healthmint_is_new_user", "false");
+    localStorage.setItem("healthmint_user_role", role);
+    localStorage.setItem(
+      "healthmint_user_profile",
+      JSON.stringify({
+        name: userData.name || "User",
+        role: role,
+        address: walletAddress,
+        registrationComplete: true,
+      })
+    );
+
+    return {
+      name: userData.name || "User",
+      role: role,
+      address: walletAddress,
+    };
+  }
 };
 
 /**
@@ -95,6 +123,20 @@ export const isRegistrationComplete = () => {
   // Then check if marked as a new user
   const isNewUser = localStorage.getItem("healthmint_is_new_user") === "true";
   if (isNewUser) {
+    // Double-check profile
+    try {
+      const profileStr = localStorage.getItem("healthmint_user_profile");
+      if (profileStr && profileStr !== "{}") {
+        const profile = JSON.parse(profileStr);
+        if (profile.name && profile.role) {
+          // Fix inconsistency
+          localStorage.setItem("healthmint_is_new_user", "false");
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error("Error checking profile in isRegistrationComplete:", e);
+    }
     return false;
   }
 
