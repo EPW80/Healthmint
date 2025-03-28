@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { WalletIcon, AlertCircle } from "../icons/index.js";
 import { X, CheckCircle, AlertTriangle, Loader } from "lucide-react";
 import useWalletConnection from "../hooks/useWalletConnect.js";
+import { initializeNewConnection } from "../utils/authUtils";
 
 // Constants
 const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
@@ -56,8 +57,28 @@ const WalletConnect = ({ onConnect }) => {
     try {
       const result = await connectWallet("metamask");
 
-      if (result.success && onConnect) {
-        await onConnect();
+      if (result.success) {
+        // Initialize local storage for new connection
+        initializeNewConnection(result.address);
+
+        // Check if this is a new user
+        const userProfileStr = localStorage.getItem("healthmint_user_profile");
+        const isNewUser =
+          !userProfileStr ||
+          userProfileStr === "{}" ||
+          localStorage.getItem("healthmint_is_new_user") === "true";
+
+        // If new user, redirect to registration
+        if (isNewUser) {
+          localStorage.setItem("healthmint_is_new_user", "true");
+          window.location.replace("/register");
+          return;
+        }
+
+        // Pass to parent component callback
+        if (onConnect) {
+          await onConnect();
+        }
       }
     } catch (error) {
       console.error("Connect failed:", error);

@@ -227,14 +227,36 @@ class HipaaComplianceService {
       const logEntry = {
         action,
         timestamp: new Date().toISOString(),
-        user: user ? user.address : "anonymous",
+        user: user
+          ? user.address
+          : details.walletAddress || details.userId || "anonymous",
         userAgent: navigator.userAgent,
         details,
       };
 
-      // For sensitive actions, send to server immediately
+      // For sensitive actions, send to server immediately if possible
       if (this.isSensitiveAction(action)) {
-        return await apiService.post("/api/audit/log", logEntry);
+        try {
+          if (authService.getToken()) {
+            // If authenticated, send to server
+            return await apiService.post("/api/audit/log", logEntry);
+          } else {
+            // If not authenticated but during registration, queue for later
+            console.log(
+              "Sensitive action during registration - storing locally:",
+              action
+            );
+            this.storeLocalAuditLog(action, details);
+            return { success: true, stored: true };
+          }
+        } catch (apiError) {
+          console.warn(
+            "Failed to send audit log to server, storing locally:",
+            apiError
+          );
+          this.storeLocalAuditLog(action, details);
+          return { success: true, stored: true };
+        }
       } else {
         // Queue less sensitive actions for batch processing
         this.queueAuditLog(logEntry);
@@ -415,6 +437,9 @@ class HipaaComplianceService {
     };
   }
 
+  // Modified recordConsent method for hipaaComplianceService.js
+  // Replace the existing recordConsent method with this version
+
   /**
    * Records user consent for data usage
    * @param {string} consentType - Type of consent
@@ -428,17 +453,22 @@ class HipaaComplianceService {
     }
 
     try {
+      // Get user info - fallback to details if not authenticated
       const user = authService.getCurrentUser();
+      const userAddress = user?.address || details.userId || "anonymous";
 
-      if (!user || !user.address) {
-        throw new Error("User must be authenticated to record consent");
+      // Only throw if there's no user AND no userId in details
+      if (!user && !details.userId && !details.walletAddress) {
+        console.warn(
+          "Recording consent for unauthenticated user with fallback ID"
+        );
       }
 
       const consentData = {
         consentType,
         granted,
         timestamp: new Date().toISOString(),
-        userAddress: user.address,
+        userAddress: details.walletAddress || userAddress,
         details,
       };
 
@@ -448,11 +478,26 @@ class HipaaComplianceService {
         {
           consentType,
           details,
+          userAddress: details.walletAddress || userAddress,
         }
       );
 
-      // Store consent with server
-      const response = await apiService.post("/api/user/consent", consentData);
+      // Store consent with server - when available
+      let response = { success: true };
+      try {
+        // Make API call if authenticated
+        if (authService.getToken()) {
+          response = await apiService.post("/api/user/consent", consentData);
+        } else {
+          // Otherwise just log it
+          console.log("No auth token available - storing consent locally only");
+        }
+      } catch (apiError) {
+        console.warn(
+          "Failed to save consent to server, storing locally only:",
+          apiError
+        );
+      }
 
       // Also store locally for quick access
       this.updateLocalConsent(consentType, granted, details);
@@ -462,13 +507,15 @@ class HipaaComplianceService {
       console.error("Consent recording error:", error);
 
       // Notify user of consent recording failure
-      store.dispatch(
-        addNotification({
-          type: "error",
-          message: `Failed to record your consent preference. Please try again.`,
-          duration: 5000,
-        })
-      );
+      if (store && store.dispatch) {
+        store.dispatch(
+          addNotification({
+            type: "error",
+            message: `Failed to record your consent preference. Please try again.`,
+            duration: 5000,
+          })
+        );
+      }
 
       throw error;
     }

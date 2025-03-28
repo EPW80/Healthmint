@@ -1,5 +1,5 @@
 // src/components/AppContent.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -64,32 +64,72 @@ function AppContent() {
   const [needsRegistration, setNeedsRegistration] = useState(false);
 
   // Handle user registration completion
-  const handleRegistrationComplete = (userData) => {
-    // Update user profile with registration data
-    dispatch(updateUserProfile(userData));
+  const handleRegistrationComplete = useCallback(
+    (userData) => {
+      // Update user profile with registration data
+      dispatch(updateUserProfile(userData));
 
-    // Clear the registration flag
-    setNeedsRegistration(false);
+      // Clear the registration flag
+      setNeedsRegistration(false);
 
-    // Notification of success
-    dispatch(
-      addNotification({
-        type: "success",
-        message: "Registration completed successfully!",
-      })
-    );
-  };
+      // Notification of success
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Registration completed successfully!",
+        })
+      );
+    },
+    [dispatch]
+  );
 
-  // First useEffect - Always initialize the app
+  // Ensure proper redirection on first load
+  useEffect(() => {
+    if (isInitialized) {
+      // If not connected, redirect to login
+      if (!isConnected) {
+        if (window.location.pathname !== "/login") {
+          window.location.replace("/login");
+        }
+        return;
+      }
+
+      // If connected but needs registration, redirect there
+      if (needsRegistration || isNewUser) {
+        if (window.location.pathname !== "/register") {
+          window.location.replace("/register");
+        }
+        return;
+      }
+
+      // If connected but no role, redirect to role selection
+      if (!isRoleSelected) {
+        if (window.location.pathname !== "/select-role") {
+          window.location.replace("/select-role");
+        }
+        return;
+      }
+
+      // If everything is set up, redirect to dashboard from root or login
+      if (
+        window.location.pathname === "/" ||
+        window.location.pathname === "/login"
+      ) {
+        window.location.replace("/dashboard");
+      }
+    }
+  }, [
+    isInitialized,
+    isConnected,
+    needsRegistration,
+    isNewUser,
+    isRoleSelected,
+  ]);
+
+  // Initialize the app
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Check if we're in development mode and clear the state on initial load for testing
-        if (process.env.NODE_ENV === "development") {
-          // Uncomment the next line to force a clean state on every reload (for testing)
-          // await handleLogout();
-        }
-
         // When running with mock data, we don't need to wait for actual connections
         // Initialize immediately to prevent loading state delays
         setIsInitialized(true);
@@ -102,7 +142,7 @@ function AppContent() {
     initializeApp();
   }, []);
 
-  // Second useEffect - Check if user needs registration when connected
+  // Check if user needs registration when connected
   useEffect(() => {
     if (isConnected && address) {
       // Check if user needs to complete registration
@@ -123,7 +163,7 @@ function AppContent() {
             // Make sure we redirect to registration immediately if needed
             if (requiresRegistration && location.pathname !== "/register") {
               // Use window.location to force a clean navigation
-              window.location.href = "/register";
+              window.location.replace("/register");
             }
           }
         } catch (error) {
@@ -144,7 +184,7 @@ function AppContent() {
   ]);
 
   // Handle logout - Complete reset of all auth states
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       console.log("Logging out and clearing all auth state...");
 
@@ -165,6 +205,7 @@ function AppContent() {
       localStorage.removeItem("healthmint_wallet_state");
       localStorage.removeItem("healthmint_refresh_token");
       localStorage.removeItem("healthmint_token_expiry");
+      localStorage.removeItem("healthmint_is_new_user");
 
       // Notification of success
       dispatch(
@@ -175,7 +216,7 @@ function AppContent() {
       );
 
       // Hard redirect to login page
-      window.location.href = "/login";
+      window.location.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -183,12 +224,12 @@ function AppContent() {
       dispatch(clearWalletConnection());
       dispatch(clearRole());
       dispatch(clearUserProfile());
-      window.location.href = "/login";
+      window.location.replace("/login");
     }
-  };
+  }, [disconnectWallet, dispatch]);
 
   // Handle wallet connection
-  const handleConnect = async () => {
+  const handleConnect = useCallback(async () => {
     try {
       const result = await connectWallet();
       if (result.success) {
@@ -207,7 +248,7 @@ function AppContent() {
 
         if (requiresRegistration) {
           // Redirect to registration immediately
-          window.location.href = "/register";
+          window.location.replace("/register");
         }
 
         return true;
@@ -217,15 +258,15 @@ function AppContent() {
       console.error("Wallet connection error:", error);
       return false;
     }
-  };
+  }, [connectWallet, dispatch, isNewUser, userProfile]);
 
   // Determine dashboard component based on role
-  const getDashboardComponent = () => {
+  const getDashboardComponent = useCallback(() => {
     if (userRole === "researcher") {
       return <ResearcherDashboard />;
     }
     return <PatientDashboard />;
-  };
+  }, [userRole]);
 
   // Show loading state on initial render
   if (!isInitialized) {
@@ -362,7 +403,7 @@ function AppContent() {
             }
           />
 
-          {/* Root path - Immediate redirect to login */}
+          {/* Root path - Immediate redirect based on auth state */}
           <Route
             path="/"
             element={

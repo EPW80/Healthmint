@@ -338,11 +338,12 @@ const useAuth = (options = {}) => {
       if (isWalletConnected) {
         // Get saved user profile to check
         const userProfileStr = localStorage.getItem("healthmint_user_profile");
-        const isNewUser =
+        let isNewUserFlag =
           localStorage.getItem("healthmint_is_new_user") === "true";
 
+        // If the profile doesn't exist or is empty, the user is new
         if (!userProfileStr || userProfileStr === "{}") {
-          // No profile exists, user is new
+          // Force new user state
           setAuthState((prev) => ({
             ...prev,
             isNewUser: true,
@@ -356,13 +357,15 @@ const useAuth = (options = {}) => {
 
           // Check if profile has required fields
           const profileIncomplete = !userProfile.name || !userProfile.role;
+
+          // If profile is incomplete, mark as new user
           if (profileIncomplete) {
             setAuthState((prev) => ({
               ...prev,
               isNewUser: true,
             }));
             localStorage.setItem("healthmint_is_new_user", "true");
-          } else if (isNewUser) {
+          } else if (isNewUserFlag) {
             // Profile exists but was marked as new - fix this inconsistency
             setAuthState((prev) => ({
               ...prev,
@@ -396,6 +399,14 @@ const useAuth = (options = {}) => {
         context: "Auth Verification",
         userVisible: false,
       });
+
+      // On error, assume user is new to force registration
+      setAuthState((prev) => ({
+        ...prev,
+        isNewUser: true,
+      }));
+      localStorage.setItem("healthmint_is_new_user", "true");
+
       return false;
     }
   }, [isAuthenticated, isWalletConnected]);

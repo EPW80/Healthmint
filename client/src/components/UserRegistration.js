@@ -98,15 +98,18 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         true,
         {
           userId: walletAddress,
+          walletAddress: walletAddress, // Explicitly pass wallet address
           timestamp: new Date().toISOString(),
           ip: "client-collected", // Server will log actual IP
           details: "Initial user registration consent",
+          registrationFlow: true, // Flag this as part of registration
         }
       );
 
       // Create audit log entry
       await hipaaComplianceService.createAuditLog("REGISTRATION_CONSENT", {
         userId: walletAddress,
+        walletAddress: walletAddress,
         consentType: "HIPAA_DATA_SHARING",
         timestamp: new Date().toISOString(),
       });
@@ -119,6 +122,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   }, [walletAddress]);
 
   // Handle form submission
+  // Replace the handleSubmit function in UserRegistration.js
   const handleSubmit = useCallback(
     async (e) => {
       if (e) e.preventDefault();
@@ -144,17 +148,33 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           throw new Error("You must acknowledge the HIPAA consent");
         }
 
+        // Create minimal user profile first
+        // This ensures we have a user to associate with consent
+        const minimalUserData = {
+          address: walletAddress,
+          name: formState.name,
+          role: formState.role,
+          registrationInProgress: true,
+        };
+
+        // Store minimal profile for HIPAA compliance
+        localStorage.setItem(
+          "healthmint_user_profile",
+          JSON.stringify(minimalUserData)
+        );
+
         // Handle HIPAA consent
         const hipaaConsentRecorded = await createHipaaConsent();
         if (!hipaaConsentRecorded) {
           throw new Error("Failed to record HIPAA consent. Please try again.");
         }
 
-        // Register user with the service - Create a complete user object
+        // Complete the user profile with all fields
         const userData = {
           ...formState,
           address: walletAddress,
           registrationDate: new Date().toISOString(),
+          registrationInProgress: false, // Mark as complete
         };
 
         // Sanitize data for HIPAA compliance
@@ -162,7 +182,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           excludeFields: ["agreeToTerms", "agreeToHipaa"],
         });
 
-        // For mock implementation, store in localStorage
+        // Store final profile in localStorage
         localStorage.setItem(
           "healthmint_user_profile",
           JSON.stringify(sanitizedData)
@@ -175,6 +195,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         // Create audit log for registration
         await hipaaComplianceService.createAuditLog("USER_REGISTRATION", {
           userId: walletAddress,
+          walletAddress,
           role: formState.role,
           timestamp: new Date().toISOString(),
         });
