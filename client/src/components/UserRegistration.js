@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   Save,
   User,
@@ -13,7 +14,9 @@ import {
 } from "lucide-react";
 import { setRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
+import { updateUserProfile } from "../redux/slices/userSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
+import { forceRegistrationComplete } from "../utils/registrationUtils.js";
 
 /**
  * User Registration Component
@@ -22,6 +25,7 @@ import hipaaComplianceService from "../services/hipaaComplianceService.js";
  */
 const UserRegistration = ({ walletAddress, onComplete }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // Form state
   const [formState, setFormState] = useState({
@@ -39,6 +43,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
+  const [registrationSuccessful, setRegistrationSuccessful] = useState(false);
 
   // Check for existing wallet address on mount and update form state
   useEffect(() => {
@@ -46,6 +51,17 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       setFormState((prev) => ({ ...prev, address: walletAddress }));
     }
   }, [walletAddress, formState.address]);
+
+  // Redirect if registration is already successful
+  useEffect(() => {
+    if (registrationSuccessful) {
+      const timer = setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [registrationSuccessful, navigate]);
 
   // Handle input changes
   const handleInputChange = useCallback((e) => {
@@ -121,8 +137,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
     }
   }, [walletAddress]);
 
-  // Handle form submission
-  // Replace the handleSubmit function in UserRegistration.js
+  // Handle form submission with direct role setting
   const handleSubmit = useCallback(
     async (e) => {
       if (e) e.preventDefault();
@@ -182,15 +197,14 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           excludeFields: ["agreeToTerms", "agreeToHipaa"],
         });
 
-        // Store final profile in localStorage
-        localStorage.setItem(
-          "healthmint_user_profile",
-          JSON.stringify(sanitizedData)
-        );
-        localStorage.setItem("healthmint_is_new_user", "false");
+        // Force registration to be completed (fixes inconsistencies)
+        forceRegistrationComplete(formState.role, walletAddress, sanitizedData);
 
         // Set the role in Redux
         dispatch(setRole(formState.role));
+
+        // Update user profile in Redux store
+        dispatch(updateUserProfile(sanitizedData));
 
         // Create audit log for registration
         await hipaaComplianceService.createAuditLog("USER_REGISTRATION", {
@@ -214,8 +228,8 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           onComplete(sanitizedData);
         }
 
-        // Navigate to dashboard after successful registration
-        window.location.href = "/dashboard";
+        // Mark registration as successful to trigger redirect
+        setRegistrationSuccessful(true);
       } catch (err) {
         console.error("Registration error:", err);
         setError(err.message || "Registration failed. Please try again.");
@@ -522,7 +536,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         </button>
 
         <button
-          type="button"
+          type="submit"
           onClick={handleSubmit}
           disabled={
             !formState.agreeToTerms || !formState.agreeToHipaa || loading
@@ -548,6 +562,30 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
     </div>
   );
+
+  // Show success message when registration is complete
+  if (registrationSuccessful) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
+          <div className="bg-green-100 p-4 rounded-full inline-flex mb-4">
+            <CheckCircle size={48} className="text-green-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-4">Registration Complete!</h2>
+          <p className="text-gray-600 mb-6">
+            You have successfully registered as a{" "}
+            {formState.role === "patient" ? "Patient" : "Researcher"}.
+            Redirecting you to the dashboard...
+          </p>
+          <div className="animate-pulse flex justify-center">
+            <div className="w-8 h-1 rounded-full bg-blue-500 mx-1"></div>
+            <div className="w-8 h-1 rounded-full bg-blue-500 mx-1"></div>
+            <div className="w-8 h-1 rounded-full bg-blue-500 mx-1"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Render form wrapper
   return (

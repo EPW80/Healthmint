@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import useWalletConnection from "../hooks/useWalletConnect.js";
 import {
   selectIsAuthenticated,
@@ -13,8 +13,10 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import useNavigation from "../hooks/useNavigation.js";
 
 /**
- * Protected Route Component
+ * Enhanced Protected Route Component
+ *
  * Ensures users are authenticated with both wallet and backend before accessing protected routes
+ * Provides improved role-based access control and redirect management
  */
 const ProtectedRoute = ({
   children,
@@ -30,15 +32,38 @@ const ProtectedRoute = ({
   // State for loading during auth checks
   const [isLoading, setIsLoading] = useState(true);
   const [redirectPath, setRedirectPath] = useState(null);
+  const [lastRedirectAttempt, setLastRedirectAttempt] = useState(null);
 
   // Get all authentication states
-  const { isConnected: isWalletConnected } = useWalletConnection();
+  const { isConnected: isWalletConnected, address: walletAddress } =
+    useWalletConnection();
   const isBackendAuthenticated = useSelector(selectIsAuthenticated);
   const isRoleSelected = useSelector(selectIsRoleSelected);
   const userRole = useSelector(selectRole);
 
   // Component mounted status for avoiding state updates after unmount
   const isMounted = useRef(true);
+
+  // Debug log the current state
+  useEffect(() => {
+    console.log("ProtectedRoute state:", {
+      isWalletConnected,
+      isBackendAuthenticated,
+      isRoleSelected,
+      userRole,
+      currentPath: location.pathname,
+      allowedRoles,
+      requireBackendAuth,
+    });
+  }, [
+    isWalletConnected,
+    isBackendAuthenticated,
+    isRoleSelected,
+    userRole,
+    location.pathname,
+    allowedRoles,
+    requireBackendAuth,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -51,8 +76,17 @@ const ProtectedRoute = ({
   useEffect(() => {
     // Comprehensive auth check function
     const checkAuth = async () => {
-      // Don't run checks if we've already determined a redirect or are currently checking
-      if (redirectPath !== null || isCheckingRef.current) {
+      // Avoid duplicate checks
+      if (isCheckingRef.current) {
+        return;
+      }
+
+      // Don't recheck if we've just redirected
+      if (
+        redirectPath !== null &&
+        lastRedirectAttempt &&
+        Date.now() - lastRedirectAttempt < 2000
+      ) {
         return;
       }
 
@@ -66,23 +100,35 @@ const ProtectedRoute = ({
       try {
         // Step 1: Check wallet connection
         if (!isWalletConnected) {
+          console.log(
+            "ProtectedRoute: Wallet not connected, redirecting to login"
+          );
           if (isMounted.current) {
             setRedirectPath("/login");
+            setLastRedirectAttempt(Date.now());
           }
           return;
         }
 
         // Step 2: Check backend authentication if required
         if (requireBackendAuth && !isBackendAuthenticated) {
+          console.log(
+            "ProtectedRoute: Backend auth required but not authenticated"
+          );
           // Try to refresh token first before redirecting
           try {
+            console.log("ProtectedRoute: Attempting to refresh token");
             const refreshResult = await dispatch(refreshTokenAsync()).unwrap();
             if (!refreshResult) {
               throw new Error("Authentication failed");
             }
           } catch (error) {
+            console.log(
+              "ProtectedRoute: Token refresh failed, redirecting to login"
+            );
             if (isMounted.current) {
               setRedirectPath("/login");
+              setLastRedirectAttempt(Date.now());
             }
             return;
           }
@@ -90,14 +136,21 @@ const ProtectedRoute = ({
 
         // Step 3: Check role selection
         if (!isRoleSelected) {
+          console.log(
+            "ProtectedRoute: Role not selected, redirecting to role selection"
+          );
           if (isMounted.current) {
             setRedirectPath("/select-role");
+            setLastRedirectAttempt(Date.now());
           }
           return;
         }
 
         // Step 4: Check role permissions if allowedRoles is provided
         if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+          console.log(
+            `ProtectedRoute: User role ${userRole} not in allowed roles: ${allowedRoles.join(", ")}`
+          );
           dispatch(
             addNotification({
               type: "error",
@@ -108,6 +161,7 @@ const ProtectedRoute = ({
 
           if (isMounted.current) {
             setRedirectPath("/dashboard");
+            setLastRedirectAttempt(Date.now());
           }
           return;
         }
@@ -135,7 +189,8 @@ const ProtectedRoute = ({
     allowedRoles,
     requireBackendAuth,
     dispatch,
-    redirectPath, // Added to fix the ESLint warning
+    redirectPath,
+    lastRedirectAttempt,
   ]);
 
   // Show loading state while checking
@@ -149,6 +204,9 @@ const ProtectedRoute = ({
 
   // Redirect if needed
   if (redirectPath) {
+    console.log(
+      `ProtectedRoute: Redirecting from ${location.pathname} to ${redirectPath}`
+    );
     return (
       <Navigate to={redirectPath} state={{ from: location.pathname }} replace />
     );

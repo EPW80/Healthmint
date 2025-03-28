@@ -1,16 +1,19 @@
 // src/components/roles/RoleSelector.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { User, Microscope, Loader, AlertCircle } from "lucide-react";
 import { setRole, selectIsRoleSelected } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../../redux/slices/userSlice.js";
+import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 
 /**
- * Role Selector Component with direct redirection
+ * Role Selector Component with improved navigation
  */
 const RoleSelector = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const isRoleSelected = useSelector(selectIsRoleSelected);
 
   // Local state
@@ -19,16 +22,20 @@ const RoleSelector = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [redirecting, setRedirecting] = useState(false);
 
+  // Track when we've already redirected to avoid loops
+  const [hasRedirected, setHasRedirected] = useState(false);
+
   // Check if we already have a role and redirect if needed
   useEffect(() => {
-    if (isRoleSelected && !redirecting) {
+    if (isRoleSelected && !redirecting && !hasRedirected) {
       console.log("Role already selected, redirecting to dashboard");
-      window.location.href = "/dashboard";
+      setHasRedirected(true);
+      navigate("/dashboard", { replace: true });
     }
-  }, [isRoleSelected, redirecting]);
+  }, [isRoleSelected, redirecting, hasRedirected, navigate]);
 
   /**
-   * Handle role selection with forced navigation
+   * Handle role selection with improved navigation
    */
   const handleRoleSelect = async (role) => {
     try {
@@ -42,7 +49,14 @@ const RoleSelector = () => {
 
       console.log(`Setting role: ${role}`); // Debug log
 
-      // Dispatch role selection action
+      // Audit role selection for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("ROLE_SELECTION", {
+        role,
+        timestamp: new Date().toISOString(),
+        action: "SELECT",
+      });
+
+      // Dispatch role selection action to Redux
       dispatch(setRole(role));
 
       // Update user profile with role information
@@ -65,10 +79,13 @@ const RoleSelector = () => {
       // Save role selection directly to localStorage as a backup
       localStorage.setItem("healthmint_user_role", role);
 
-      // Force navigation to dashboard
-      console.log("Forcing navigation to dashboard");
+      // Redirect to the appropriate dashboard using React Router's navigate
+      console.log(`Redirecting to dashboard for role: ${role}`);
+
+      // Use React Router's navigate for a cleaner SPA experience
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        setHasRedirected(true);
+        navigate("/dashboard", { replace: true });
       }, 500);
     } catch (err) {
       console.error("Role selection error:", err);
@@ -130,6 +147,7 @@ const RoleSelector = () => {
                   !loading && handleRoleSelect("patient");
                 }}
                 disabled={loading}
+                aria-label="Select Patient Role"
               >
                 {loading && selectedRole === "patient" ? (
                   <>
@@ -171,6 +189,7 @@ const RoleSelector = () => {
                   !loading && handleRoleSelect("researcher");
                 }}
                 disabled={loading}
+                aria-label="Select Researcher Role"
               >
                 {loading && selectedRole === "researcher" ? (
                   <>
