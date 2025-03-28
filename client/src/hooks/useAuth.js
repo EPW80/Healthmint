@@ -1,4 +1,4 @@
-// src/hooks/updatedUseAuth.js
+// src/hooks/useAuth.js
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import useWalletConnection from "./useWalletConnect.js";
@@ -8,7 +8,6 @@ import errorHandlingService from "../services/errorHandlingService";
 import { SECURITY_CONFIG } from "../config/environmentConfig";
 
 import {
-  loginAsync,
   logoutAsync,
   refreshTokenAsync,
   selectIsAuthenticated,
@@ -48,8 +47,27 @@ const useAuth = (options = {}) => {
   const [authState, setAuthState] = useState({
     status: "idle", // idle, connecting, authenticating, authenticated, error
     user: null,
-    isNewUser: false,
+    isNewUser: localStorage.getItem("healthmint_is_new_user") === "true", // Get initial new user state from localStorage
   });
+
+  // Check localStorage for existing user profile to determine new user status
+  useEffect(() => {
+    try {
+      const userProfile = localStorage.getItem("healthmint_user_profile");
+      // Set isNewUser to true if no profile exists
+      const isNewUser = !userProfile || userProfile === "{}";
+
+      // Update state and localStorage
+      setAuthState((prev) => ({
+        ...prev,
+        isNewUser,
+      }));
+
+      localStorage.setItem("healthmint_is_new_user", isNewUser.toString());
+    } catch (error) {
+      console.error("Error checking new user status:", error);
+    }
+  }, []);
 
   // Update activity periodically to keep session alive
   useEffect(() => {
@@ -74,7 +92,10 @@ const useAuth = (options = {}) => {
   useEffect(() => {
     const checkTokenRefresh = async () => {
       try {
-        if (authService.needsRefresh(SECURITY_CONFIG.REFRESH_WINDOW)) {
+        if (
+          authService.needsRefresh &&
+          authService.needsRefresh(SECURITY_CONFIG.REFRESH_WINDOW)
+        ) {
           await dispatch(refreshTokenAsync());
         }
       } catch (error) {
@@ -117,17 +138,38 @@ const useAuth = (options = {}) => {
         status: "authenticating",
       });
 
-      // 2. & 3. Auth with wallet and get token
-      const authResult = await dispatch(
-        loginAsync({ address: walletResult.address })
+      // For mock implementation, simulate new user checking
+      const existingUser = localStorage.getItem("healthmint_user_profile");
+      const mockIsNewUser = !existingUser || existingUser === "{}";
+
+      // Store new user status
+      localStorage.setItem("healthmint_is_new_user", mockIsNewUser.toString());
+
+      // 2. & 3. Auth with wallet and get token - MOCK IMPLEMENTATION
+      // In a real implementation, this would use the loginAsync action
+      const mockAuthResult = {
+        isNewUser: mockIsNewUser,
+        token: "mock-token-" + Date.now(),
+        user: {
+          address: walletResult.address,
+          role: "",
+          name: "",
+        },
+      };
+
+      // Store mock token
+      localStorage.setItem(authService.tokenKey, mockAuthResult.token);
+      localStorage.setItem(
+        authService.userKey,
+        JSON.stringify(mockAuthResult.user)
+      );
+      localStorage.setItem(
+        authService.tokenExpiryKey,
+        (Date.now() + 3600 * 1000).toString()
       );
 
-      if (!loginAsync.fulfilled.match(authResult)) {
-        throw new Error(authResult.payload || "Authentication failed");
-      }
-
-      // 4. Fetch user profile if authenticated
-      if (authResult.payload.isNewUser) {
+      // 4. Set auth state based on new user status
+      if (mockAuthResult.isNewUser) {
         setAuthState({
           status: "authenticated",
           isNewUser: true,
@@ -178,7 +220,7 @@ const useAuth = (options = {}) => {
 
       return false;
     }
-  }, [authState, connectWallet, dispatch, walletAddress]);
+  }, [authState, connectWallet, walletAddress]);
 
   /**
    * Complete logout flow:
@@ -192,7 +234,7 @@ const useAuth = (options = {}) => {
       await dispatch(logoutAsync());
 
       // 2. Disconnect wallet
-      disconnectWallet();
+      await disconnectWallet();
 
       // 3. Reset local state
       setAuthState({
@@ -200,6 +242,9 @@ const useAuth = (options = {}) => {
         user: null,
         isNewUser: false,
       });
+
+      // Clear localStorage
+      localStorage.removeItem("healthmint_is_new_user");
 
       return true;
     } catch (error) {
@@ -217,6 +262,9 @@ const useAuth = (options = {}) => {
         user: null,
         isNewUser: false,
       });
+
+      // Clear localStorage
+      localStorage.removeItem("healthmint_is_new_user");
 
       return true; // Return success anyway since we've cleared local state
     }
@@ -242,14 +290,21 @@ const useAuth = (options = {}) => {
           address: walletAddress,
         };
 
-        const result = await userService.registerUser(registerData);
+        // Mock registration - store in localStorage
+        localStorage.setItem(
+          "healthmint_user_profile",
+          JSON.stringify(registerData)
+        );
 
         // Update local state
         setAuthState({
           status: "authenticated",
           isNewUser: false,
-          user: result,
+          user: registerData,
         });
+
+        // Update new user flag in localStorage
+        localStorage.setItem("healthmint_is_new_user", "false");
 
         return true;
       } catch (error) {
@@ -276,40 +331,79 @@ const useAuth = (options = {}) => {
    */
   const verifyAuth = useCallback(async () => {
     // If not authenticated, no need to verify
-    if (!isAuthenticated) return false;
+    if (!isAuthenticated && !isWalletConnected) return false;
 
     try {
-      // Check if token needs refresh
-      if (authService.needsRefresh(SECURITY_CONFIG.REFRESH_WINDOW)) {
-        await dispatch(refreshTokenAsync());
+      // For mock implementation with localStorage
+      if (isWalletConnected) {
+        // Get saved user profile to check
+        const userProfileStr = localStorage.getItem("healthmint_user_profile");
+        const isNewUser =
+          localStorage.getItem("healthmint_is_new_user") === "true";
+
+        if (!userProfileStr || userProfileStr === "{}") {
+          // No profile exists, user is new
+          setAuthState((prev) => ({
+            ...prev,
+            isNewUser: true,
+          }));
+          localStorage.setItem("healthmint_is_new_user", "true");
+          return true;
+        }
+
+        try {
+          const userProfile = JSON.parse(userProfileStr);
+
+          // Check if profile has required fields
+          const profileIncomplete = !userProfile.name || !userProfile.role;
+          if (profileIncomplete) {
+            setAuthState((prev) => ({
+              ...prev,
+              isNewUser: true,
+            }));
+            localStorage.setItem("healthmint_is_new_user", "true");
+          } else if (isNewUser) {
+            // Profile exists but was marked as new - fix this inconsistency
+            setAuthState((prev) => ({
+              ...prev,
+              isNewUser: false,
+              user: userProfile,
+            }));
+            localStorage.setItem("healthmint_is_new_user", "false");
+          } else {
+            // Update user in state
+            setAuthState((prev) => ({
+              ...prev,
+              user: userProfile,
+            }));
+          }
+        } catch (error) {
+          console.error("Error parsing user profile:", error);
+          setAuthState((prev) => ({
+            ...prev,
+            isNewUser: true,
+          }));
+          localStorage.setItem("healthmint_is_new_user", "true");
+        }
+
+        return true;
       }
 
-      // If we still don't have user data, fetch it
-      if (isAuthenticated && !authState.user) {
-        const userProfile = await userService.getCurrentUser();
-
-        setAuthState({
-          status: "authenticated",
-          isNewUser: false,
-          user: userProfile,
-        });
-      }
-
-      return true;
+      return false;
     } catch (error) {
       errorHandlingService.handleError(error, {
         code: "AUTH_VERIFICATION_ERROR",
         context: "Auth Verification",
-        userVisible: false, // Don't bother user unless necessary
+        userVisible: false,
       });
       return false;
     }
-  }, [isAuthenticated, authState.user, dispatch]);
+  }, [isAuthenticated, isWalletConnected]);
 
   // Return hook API
   return {
     // State
-    isAuthenticated,
+    isAuthenticated: isAuthenticated || isWalletConnected, // For mock implementation
     isWalletConnected,
     authLoading: authLoading || walletLoading,
     error: authError || walletError,
@@ -324,6 +418,12 @@ const useAuth = (options = {}) => {
     logout,
     register,
     verifyAuth,
+
+    // For testing/development, allow forced new user state
+    setIsNewUser: (value) => {
+      setAuthState((prev) => ({ ...prev, isNewUser: value }));
+      localStorage.setItem("healthmint_is_new_user", value.toString());
+    },
 
     // Underlying services for advanced usage
     authService,

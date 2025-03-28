@@ -1,9 +1,8 @@
 // src/components/WalletConnect.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-// Updated all imports to use consistent relative paths
-import { WalletIcon, AlertCircle } from "../icons/index.js"; // Assuming icons are in an index file
-import { X, CheckCircle, AlertTriangle } from "lucide-react";
+import { WalletIcon, AlertCircle } from "../icons/index.js";
+import { X, CheckCircle, AlertTriangle, Loader } from "lucide-react";
 import useWalletConnection from "../hooks/useWalletConnect.js";
 
 // Constants
@@ -11,6 +10,7 @@ const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
 
 const WalletConnect = ({ onConnect }) => {
   const [errorDismissed, setErrorDismissed] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const {
     connectWallet,
@@ -19,19 +19,52 @@ const WalletConnect = ({ onConnect }) => {
     loading,
     address,
     isConnected,
-    isConnecting,
     network,
   } = useWalletConnection({
-    onConnect,
-    autoConnect: true,
+    autoConnect: true, // Try to auto-connect on page load
   });
+
+  // If auto-connect fails, we want to make it easy for the user to initiate the connection
+  const showNetworkWarning = isConnected && network && !network.isSupported;
+
+  // Handle auto-connect attempt on component mount
+  useEffect(() => {
+    const attemptAutoConnect = async () => {
+      try {
+        if (!isConnected && !loading) {
+          // Don't show the connecting indicator for auto-connect
+          const result = await connectWallet("metamask");
+
+          // If successful, trigger the onConnect callback
+          if (result.success && onConnect) {
+            onConnect();
+          }
+        }
+      } catch (error) {
+        console.error("Auto-connect failed:", error);
+        // We don't show an error for auto-connect failures
+      }
+    };
+
+    attemptAutoConnect();
+  }, [connectWallet, isConnected, loading, onConnect]);
 
   const handleConnect = async () => {
     setErrorDismissed(false);
-    await connectWallet("metamask");
-  };
+    setIsConnecting(true);
 
-  const showNetworkWarning = isConnected && network && !network.isSupported;
+    try {
+      const result = await connectWallet("metamask");
+
+      if (result.success && onConnect) {
+        await onConnect();
+      }
+    } catch (error) {
+      console.error("Connect failed:", error);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 p-4">
@@ -70,6 +103,17 @@ const WalletConnect = ({ onConnect }) => {
               ))}
             </ol>
           </div>
+
+          {/* Status Message - Loading */}
+          {loading && !error && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-2">
+              <Loader
+                size={20}
+                className="text-blue-500 animate-spin flex-shrink-0"
+              />
+              <span className="flex-1">Connecting to your wallet...</span>
+            </div>
+          )}
 
           {/* Network Warning */}
           {showNetworkWarning && (

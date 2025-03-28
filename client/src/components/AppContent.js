@@ -18,11 +18,10 @@ import UserRegistration from "./UserRegistration.js";
 
 // Hooks and Redux
 import useWalletConnect from "../hooks/useWalletConnect.js";
-import useAuth from "../hooks/useAuth.js"; // Import the auth hook
+import useAuth from "../hooks/useAuth.js";
 import {
   selectRole,
   selectIsRoleSelected,
-  setRole,
   clearRole,
 } from "../redux/slices/roleSlice.js";
 import {
@@ -39,9 +38,6 @@ import { clearWalletConnection } from "../redux/slices/walletSlice.js";
 function AppContent() {
   const dispatch = useDispatch();
   const location = useLocation();
-
-  // Debug pathname to track navigation
-  console.log("Current pathname:", location.pathname);
 
   // Get wallet connection state
   const {
@@ -65,23 +61,48 @@ function AppContent() {
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
-  const [forceLogout, setForceLogout] = useState(false);
-
-  // Track user registration status
   const [needsRegistration, setNeedsRegistration] = useState(false);
 
-  // First useEffect - Check if we need to force logout on startup (development mode)
-  useEffect(() => {
-    const isDevelopment = process.env.NODE_ENV === "development";
+  // Handle user registration completion
+  const handleRegistrationComplete = (userData) => {
+    // Update user profile with registration data
+    dispatch(updateUserProfile(userData));
 
-    // Always force logout in development mode when starting the app
-    if (isDevelopment) {
-      console.log("Development mode detected - clearing auth state on startup");
-      setForceLogout(true);
-    }
+    // Clear the registration flag
+    setNeedsRegistration(false);
+
+    // Notification of success
+    dispatch(
+      addNotification({
+        type: "success",
+        message: "Registration completed successfully!",
+      })
+    );
+  };
+
+  // First useEffect - Always initialize the app
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Check if we're in development mode and clear the state on initial load for testing
+        if (process.env.NODE_ENV === "development") {
+          // Uncomment the next line to force a clean state on every reload (for testing)
+          // await handleLogout();
+        }
+
+        // When running with mock data, we don't need to wait for actual connections
+        // Initialize immediately to prevent loading state delays
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Error during app initialization:", error);
+        setIsInitialized(true);
+      }
+    };
+
+    initializeApp();
   }, []);
 
-  // Check if user is authenticated but profile is incomplete - this would indicate a new user
+  // Second useEffect - Check if user needs registration when connected
   useEffect(() => {
     if (isConnected && address) {
       // Check if user needs to complete registration
@@ -94,7 +115,16 @@ function AppContent() {
           // or is explicitly marked as a new user, they need registration
           if (isAuthenticated) {
             const profileIncomplete = !userProfile?.name || !userProfile?.role;
-            setNeedsRegistration(isNewUser || profileIncomplete);
+            const requiresRegistration = isNewUser || profileIncomplete;
+
+            // Set registration flag more aggressively for new users
+            setNeedsRegistration(requiresRegistration);
+
+            // Make sure we redirect to registration immediately if needed
+            if (requiresRegistration && location.pathname !== "/register") {
+              // Use window.location to force a clean navigation
+              window.location.href = "/register";
+            }
           }
         } catch (error) {
           console.error("Error checking registration status:", error);
@@ -110,85 +140,23 @@ function AppContent() {
     isNewUser,
     userProfile,
     verifyAuth,
+    location.pathname,
   ]);
-
-  // Second useEffect - Handle initialization and potential forced logout
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        if (forceLogout) {
-          // Clear all auth data for development mode
-          console.log("Performing forced logout for clean development start");
-
-          // Clear wallet connection
-          await disconnectWallet();
-          dispatch(clearWalletConnection());
-
-          // Clear role and user profile
-          dispatch(clearRole());
-          dispatch(clearUserProfile());
-
-          // Clear localStorage items
-          localStorage.removeItem("healthmint_wallet_address");
-          localStorage.removeItem("healthmint_wallet_connection");
-          localStorage.removeItem("healthmint_user_role");
-          localStorage.removeItem("healthmint_user_profile");
-          localStorage.removeItem("healthmint_auth_token");
-          localStorage.removeItem("healthmint_wallet_state");
-          localStorage.removeItem("healthmint_refresh_token");
-          localStorage.removeItem("healthmint_token_expiry");
-
-          console.log("Auth state cleared for development");
-        } else {
-          // Normal initialization flow
-
-          // Load any stored wallet connection info
-          const storedAddress = localStorage.getItem(
-            "healthmint_wallet_address"
-          );
-          const storedConnection = localStorage.getItem(
-            "healthmint_wallet_connection"
-          );
-
-          // If we have stored connection info, update the state
-          if (storedAddress && storedConnection) {
-            // You may need to call connectWallet() here with the stored info
-            // or update the connection state directly
-          }
-
-          // Try to load stored role
-          const storedRole = localStorage.getItem("healthmint_user_role");
-          if (storedRole && !isRoleSelected) {
-            dispatch(setRole(storedRole));
-          }
-        }
-      } catch (err) {
-        console.error("Error during app initialization:", err);
-      } finally {
-        // Mark initialization as complete
-        setIsInitialized(true);
-        // Reset force logout flag
-        setForceLogout(false);
-      }
-    };
-
-    initializeApp();
-  }, [dispatch, disconnectWallet, forceLogout, isRoleSelected]);
 
   // Handle logout - Complete reset of all auth states
   const handleLogout = async () => {
     try {
       console.log("Logging out and clearing all auth state...");
 
-      // 1. Disconnect wallet first
+      // Disconnect wallet first
       await disconnectWallet();
 
-      // 2. Clear Redux states
+      // Clear Redux states
       dispatch(clearWalletConnection());
       dispatch(clearRole());
       dispatch(clearUserProfile());
 
-      // 3. Clear all related localStorage items directly
+      // Clear all related localStorage items directly
       localStorage.removeItem("healthmint_wallet_address");
       localStorage.removeItem("healthmint_wallet_connection");
       localStorage.removeItem("healthmint_user_role");
@@ -198,7 +166,7 @@ function AppContent() {
       localStorage.removeItem("healthmint_refresh_token");
       localStorage.removeItem("healthmint_token_expiry");
 
-      // 4. Notification of success
+      // Notification of success
       dispatch(
         addNotification({
           type: "info",
@@ -206,8 +174,7 @@ function AppContent() {
         })
       );
 
-      // 5. Hard redirect to login page
-      console.log("Redirecting to login page...");
+      // Hard redirect to login page
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
@@ -216,14 +183,6 @@ function AppContent() {
       dispatch(clearWalletConnection());
       dispatch(clearRole());
       dispatch(clearUserProfile());
-
-      localStorage.removeItem("healthmint_wallet_address");
-      localStorage.removeItem("healthmint_wallet_connection");
-      localStorage.removeItem("healthmint_user_role");
-      localStorage.removeItem("healthmint_user_profile");
-      localStorage.removeItem("healthmint_auth_token");
-      localStorage.removeItem("healthmint_wallet_state");
-
       window.location.href = "/login";
     }
   };
@@ -242,9 +201,14 @@ function AppContent() {
         );
 
         // After successful connection, check if this is a new user
-        setNeedsRegistration(
-          isNewUser || !userProfile?.name || !userProfile?.role
-        );
+        const profileIncomplete = !userProfile?.name || !userProfile?.role;
+        const requiresRegistration = isNewUser || profileIncomplete;
+        setNeedsRegistration(requiresRegistration);
+
+        if (requiresRegistration) {
+          // Redirect to registration immediately
+          window.location.href = "/register";
+        }
 
         return true;
       }
@@ -253,23 +217,6 @@ function AppContent() {
       console.error("Wallet connection error:", error);
       return false;
     }
-  };
-
-  // Handle user registration completion
-  const handleRegistrationComplete = (userData) => {
-    // Update user profile with registration data
-    dispatch(updateUserProfile(userData));
-
-    // Clear the registration flag
-    setNeedsRegistration(false);
-
-    // Notification of success
-    dispatch(
-      addNotification({
-        type: "success",
-        message: "Registration completed successfully!",
-      })
-    );
   };
 
   // Determine dashboard component based on role
@@ -291,20 +238,23 @@ function AppContent() {
 
   return (
     <>
-      {/* Only show navigation when authenticated */}
-      {isConnected && !needsRegistration && (
-        <Navigation
-          account={address}
-          onLogout={handleLogout}
-          role={userRole}
-          network={network}
-          onSwitchNetwork={switchNetwork}
-        />
-      )}
+      {/* Only show navigation when authenticated and not in registration */}
+      {isConnected &&
+        !needsRegistration &&
+        location.pathname !== "/login" &&
+        location.pathname !== "/register" && (
+          <Navigation
+            account={address}
+            onLogout={handleLogout}
+            role={userRole}
+            network={network}
+            onSwitchNetwork={switchNetwork}
+          />
+        )}
 
       <div className="flex-1">
         <Routes>
-          {/* Login Route */}
+          {/* Login Route - Always accessible, redirects appropriately */}
           <Route
             path="/login"
             element={
@@ -324,7 +274,7 @@ function AppContent() {
             }
           />
 
-          {/* Registration Route - NEW */}
+          {/* Registration Route */}
           <Route
             path="/register"
             element={
@@ -412,7 +362,7 @@ function AppContent() {
             }
           />
 
-          {/* Root path */}
+          {/* Root path - Immediate redirect to login */}
           <Route
             path="/"
             element={
@@ -433,7 +383,6 @@ function AppContent() {
             path="*"
             element={
               !isInitialized ? (
-                // Show loading while initializing
                 <div className="flex justify-center items-center min-h-screen">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>

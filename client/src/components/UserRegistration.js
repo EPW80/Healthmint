@@ -1,11 +1,18 @@
 // src/components/UserRegistration.js
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useDispatch } from "react-redux";
-import { Save, User, Briefcase, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Save,
+  User,
+  Briefcase,
+  AlertCircle,
+  CheckCircle,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react";
 import { setRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
-import userService from "../services/userService.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
 /**
@@ -33,6 +40,13 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
 
+  // Check for existing wallet address on mount and update form state
+  useEffect(() => {
+    if (walletAddress && formState.address !== walletAddress) {
+      setFormState((prev) => ({ ...prev, address: walletAddress }));
+    }
+  }, [walletAddress, formState.address]);
+
   // Handle input changes
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -53,13 +67,27 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
 
   // Move to next step
   const nextStep = useCallback(() => {
+    // Log the step transition for HIPAA compliance
+    hipaaComplianceService.createAuditLog("REGISTRATION_STEP_CHANGE", {
+      previousStep: step,
+      nextStep: step + 1,
+      timestamp: new Date().toISOString(),
+    });
+
     setStep((prevStep) => prevStep + 1);
-  }, []);
+  }, [step]);
 
   // Move to previous step
   const prevStep = useCallback(() => {
+    // Log the step transition for HIPAA compliance
+    hipaaComplianceService.createAuditLog("REGISTRATION_STEP_CHANGE", {
+      previousStep: step,
+      nextStep: step - 1,
+      timestamp: new Date().toISOString(),
+    });
+
     setStep((prevStep) => Math.max(1, prevStep - 1));
-  }, []);
+  }, [step]);
 
   // Create HIPAA consent
   const createHipaaConsent = useCallback(async () => {
@@ -122,7 +150,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           throw new Error("Failed to record HIPAA consent. Please try again.");
         }
 
-        // Register user with the service
+        // Register user with the service - Create a complete user object
         const userData = {
           ...formState,
           address: walletAddress,
@@ -134,8 +162,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           excludeFields: ["agreeToTerms", "agreeToHipaa"],
         });
 
-        // Register the user
-        await userService.registerUser(sanitizedData);
+        // For mock implementation, store in localStorage
+        localStorage.setItem(
+          "healthmint_user_profile",
+          JSON.stringify(sanitizedData)
+        );
+        localStorage.setItem("healthmint_is_new_user", "false");
 
         // Set the role in Redux
         dispatch(setRole(formState.role));
@@ -160,6 +192,9 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         if (onComplete) {
           onComplete(sanitizedData);
         }
+
+        // Navigate to dashboard after successful registration
+        window.location.href = "/dashboard";
       } catch (err) {
         console.error("Registration error:", err);
         setError(err.message || "Registration failed. Please try again.");
@@ -200,7 +235,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Patient Role Card */}
         <div
-          className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg ${
+          className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg transform hover:scale-[1.02] ${
             selectedRole === "patient" ? "ring-2 ring-blue-500" : ""
           }`}
           onClick={() => handleRoleSelect("patient")}
@@ -219,7 +254,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
 
         {/* Researcher Role Card */}
         <div
-          className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg ${
+          className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg transform hover:scale-[1.02] ${
             selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
           }`}
           onClick={() => handleRoleSelect("researcher")}
@@ -242,13 +277,14 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           type="button"
           onClick={nextStep}
           disabled={!selectedRole || loading}
-          className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center ${
+          className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center gap-2 ${
             !selectedRole || loading
               ? "bg-blue-300 cursor-not-allowed"
               : "hover:bg-blue-600"
           }`}
         >
-          Next Step
+          <span>Next Step</span>
+          <ArrowRight size={18} />
         </button>
       </div>
     </div>
@@ -342,22 +378,24 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         <button
           type="button"
           onClick={prevStep}
-          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
         >
-          Back
+          <ArrowLeft size={18} />
+          <span>Back</span>
         </button>
 
         <button
           type="button"
           onClick={nextStep}
           disabled={!formState.name || loading}
-          className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center ${
+          className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center gap-2 ${
             !formState.name || loading
               ? "bg-blue-300 cursor-not-allowed"
               : "hover:bg-blue-600"
           }`}
         >
-          Next Step
+          <span>Next Step</span>
+          <ArrowRight size={18} />
         </button>
       </div>
     </div>
@@ -456,9 +494,10 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         <button
           type="button"
           onClick={prevStep}
-          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
         >
-          Back
+          <ArrowLeft size={18} />
+          <span>Back</span>
         </button>
 
         <button
@@ -480,8 +519,8 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             </>
           ) : (
             <>
-              <Save size={18} />
               <span>Complete Registration</span>
+              <Save size={18} />
             </>
           )}
         </button>
@@ -495,9 +534,11 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       <div className="max-w-3xl w-full">
         <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30">
           <div className="mb-6 text-center">
-            <h1 className="text-3xl font-bold mb-2">Create Your Account</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              Complete Your Registration
+            </h1>
             <p className="text-gray-600">
-              Complete the registration to start using Healthmint
+              Set up your account to start using Healthmint
             </p>
           </div>
 
@@ -572,5 +613,3 @@ UserRegistration.propTypes = {
 };
 
 export default UserRegistration;
-
-// 09exe
