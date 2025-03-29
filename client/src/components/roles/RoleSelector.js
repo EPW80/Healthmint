@@ -1,9 +1,9 @@
 // client/src/components/roles/RoleSelector.js
 import React, { useState, useEffect, useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { User, Microscope, Loader, AlertCircle } from "lucide-react";
-import { setRole, selectIsRoleSelected } from "../../redux/slices/roleSlice.js";
+import { setRole } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../../redux/slices/userSlice.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
@@ -16,7 +16,6 @@ import authUtils from "../../utils/authUtils.js";
 const RoleSelector = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const isRoleSelected = useSelector(selectIsRoleSelected);
 
   // Local state
   const [loading, setLoading] = useState(false);
