@@ -1,16 +1,19 @@
-// src/hooks/useHealthData.js
+// client/src/hooks/useHealthData.js
 import { useState, useEffect, useCallback } from "react";
 import { useDispatch } from "react-redux";
-import apiService from "../services/apiService";
-import { addNotification } from "../redux/slices/notificationSlice";
+import healthDataService from "../services/healthDataService.js";
+import { addNotification } from "../redux/slices/notificationSlice.js";
+import { setLoading, setError } from "../redux/slices/uiSlice.js";
+import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
 /**
- * Custom hook to manage health data operations
+ * Enhanced useHealthData hook for managing health data
  *
- * @param {Object} options - Hook configuration
- * @param {Object} options.initialFilters - Initial filter values
- * @param {boolean} options.loadOnMount - Whether to load data when component mounts
- * @returns {Object} Health data state and operations
+ * Provides comprehensive functionality for fetching, managing, and interacting
+ * with health records in a HIPAA-compliant manner
+ *
+ * @param {Object} options - Hook configuration options
+ * @returns {Object} Health data state and functions
  */
 const useHealthData = (options = {}) => {
   const {
@@ -20,81 +23,116 @@ const useHealthData = (options = {}) => {
       verifiedOnly: false,
       category: "All",
       priceRange: "all",
+      searchTerm: "",
     },
     loadOnMount = true,
+    userRole = null, // "patient" or "researcher"
+    enablePolling = false,
+    pollingInterval = 30000, // 30 seconds
   } = options;
 
   const dispatch = useDispatch();
+
+  // State
   const [healthData, setHealthData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [userRecords, setUserRecords] = useState([]);
+  const [purchasedRecords, setPurchasedRecords] = useState([]);
+  const [loading, setLoadingState] = useState(false);
+  const [error, setErrorState] = useState(null);
   const [filters, setFilters] = useState(initialFilters);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [recordDetails, setRecordDetails] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   /**
-   * Fetch health data from API based on current filters
+   * Fetch health records with proper error handling
    */
   const fetchHealthData = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
+      setLoadingState(true);
+      setErrorState(null);
 
-      // Prepare query parameters, filtering out undefined values
-      const params = {
-        minAge: filters.minAge || undefined,
-        maxAge: filters.maxAge || undefined,
-        verified: filters.verifiedOnly || undefined,
-        category: filters.category === "All" ? undefined : filters.category,
-        priceRange:
-          filters.priceRange === "all" ? undefined : filters.priceRange,
-      };
+      // Different fetching based on user role
+      if (userRole === "patient") {
+        // Patient fetches their own records
+        const records = await healthDataService.fetchPatientRecords({
+          ...filters,
+          includeIdentifiers: true, // Patients can see their own identifiers
+        });
 
-      // Use API service for data fetching
-      const response = await apiService.get("/api/data/browse", params);
-
-      if (response?.data) {
-        setHealthData(response.data);
-        setTotalCount(response.total || response.data.length);
+        setUserRecords(records);
+        setTotalCount(records.length);
+        setHealthData(records);
       } else {
-        setHealthData([]);
-        setTotalCount(0);
+        // Researcher fetches anonymized data for research
+        const result = await healthDataService.fetchResearchData(filters);
+
+        setHealthData(result.datasets);
+        setTotalCount(result.total);
       }
+
+      setLastUpdated(new Date());
     } catch (err) {
-      const errorMessage =
-        err.message || "Failed to load health data. Please try again later.";
-      setError(errorMessage);
+      console.error("Error fetching health data:", err);
+      setErrorState(err.message || "Failed to load health data");
 
       dispatch(
         addNotification({
           type: "error",
-          message: errorMessage,
+          message:
+            err.message || "Failed to load health data. Please try again.",
         })
       );
     } finally {
-      setLoading(false);
+      setLoadingState(false);
     }
-  }, [filters, dispatch]);
+  }, [filters, userRole, dispatch]);
 
   /**
-   * Update filters and re-fetch data
-   * @param {string} name - Filter name
-   * @param {any} value - Filter value
+   * Fetch purchased records
+   */
+  const fetchPurchasedRecords = useCallback(async () => {
+    try {
+      if (userRole !== "researcher") return;
+
+      setLoadingState(true);
+
+      // Create HIPAA audit log
+      await hipaaComplianceService.createAuditLog("PURCHASED_RECORDS_ACCESS", {
+        action: "VIEW",
+        timestamp: new Date().toISOString(),
+      });
+
+      // Fetch purchased records from the API
+      const response = await healthDataService.fetchPatientRecords({
+        purchased: true,
+        includeIdentifiers: false, // Never include identifiers for purchased records
+      });
+
+      setPurchasedRecords(response);
+    } catch (err) {
+      console.error("Error fetching purchased records:", err);
+
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Failed to load purchased records. Please try again.",
+        })
+      );
+    } finally {
+      setLoadingState(false);
+    }
+  }, [userRole, dispatch]);
+
+  /**
+   * Update filters and refetch data
    */
   const updateFilter = useCallback((name, value) => {
     setFilters((prev) => ({
       ...prev,
       [name]: value,
-    }));
-  }, []);
-
-  /**
-   * Update multiple filters at once
-   * @param {Object} newFilters - New filter values
-   */
-  const updateFilters = useCallback((newFilters) => {
-    setFilters((prev) => ({
-      ...prev,
-      ...newFilters,
     }));
   }, []);
 
@@ -106,74 +144,195 @@ const useHealthData = (options = {}) => {
   }, [initialFilters]);
 
   /**
-   * Handle purchase of health data
-   * @param {string} id - Data ID to purchase
-   * @returns {Promise<boolean>} Success status
+   * Get detailed information for a specific record
    */
-  const purchaseData = useCallback(
-    async (id) => {
+  const getRecordDetails = useCallback(
+    async (recordId) => {
       try {
-        setLoading(true);
+        setLoadingState(true);
+        setErrorState(null);
 
-        // Call purchase API
-        await apiService.post("/api/data/purchase", {
-          dataId: id,
-          timestamp: new Date().toISOString(),
-        });
+        const details =
+          await healthDataService.fetchHealthRecordDetails(recordId);
 
-        // Show success notification
-        dispatch(
-          addNotification({
-            type: "success",
-            message: "Data purchased successfully!",
-          })
-        );
+        setSelectedRecord(recordId);
+        setRecordDetails(details);
 
-        // Refresh data to show updated state
-        await fetchHealthData();
-        return true;
-      } catch (error) {
-        console.error("Error purchasing data:", error);
-        const errorMessage =
-          error.message || "Failed to complete purchase. Please try again.";
-        setError(errorMessage);
+        return details;
+      } catch (err) {
+        console.error("Error fetching record details:", err);
+        setErrorState(err.message || "Failed to load record details");
 
         dispatch(
           addNotification({
             type: "error",
-            message: errorMessage,
+            message:
+              err.message || "Failed to load record details. Please try again.",
           })
         );
-        return false;
+
+        return null;
       } finally {
-        setLoading(false);
+        setLoadingState(false);
+      }
+    },
+    [dispatch]
+  );
+
+  /**
+   * Upload a new health record
+   */
+  const uploadHealthRecord = useCallback(
+    async (data, file) => {
+      try {
+        setLoadingState(true);
+        setErrorState(null);
+
+        // Reset upload progress
+        setUploadProgress(0);
+
+        // Track upload progress
+        const onProgress = (progress) => {
+          setUploadProgress(progress);
+        };
+
+        // Upload the health record
+        const result = await healthDataService.uploadHealthData(
+          data,
+          file,
+          onProgress
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || "Failed to upload health record");
+        }
+
+        // Success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Health record uploaded successfully!",
+          })
+        );
+
+        // Refresh data after upload
+        await fetchHealthData();
+
+        return result;
+      } catch (err) {
+        console.error("Error uploading health record:", err);
+        setErrorState(err.message || "Failed to upload health record");
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message:
+              err.message ||
+              "Failed to upload health record. Please try again.",
+          })
+        );
+
+        return { success: false, error: err.message };
+      } finally {
+        setLoadingState(false);
+        setUploadProgress(0);
       }
     },
     [dispatch, fetchHealthData]
   );
 
   /**
-   * Get details for a specific health data record
-   * @param {string} id - Data ID to fetch
-   * @returns {Promise<Object>} Health data details
+   * Purchase a health record
    */
-  const getHealthDataDetails = useCallback(
-    async (id) => {
+  const purchaseRecord = useCallback(
+    async (recordId) => {
       try {
-        setLoading(true);
-        const response = await apiService.get(`/api/data/${id}`);
-        return response.data;
-      } catch (error) {
-        const errorMessage = error.message || "Failed to fetch data details";
+        if (!recordId) {
+          throw new Error("Record ID is required");
+        }
+
+        setLoadingState(true);
+
+        const result = await healthDataService.purchaseHealthData(recordId);
+
+        if (result.success) {
+          // Refresh purchased records after successful purchase
+          await fetchPurchasedRecords();
+
+          dispatch(
+            addNotification({
+              type: "success",
+              message: "Health record purchased successfully!",
+            })
+          );
+        }
+
+        return result;
+      } catch (err) {
+        console.error("Error purchasing record:", err);
+
         dispatch(
           addNotification({
             type: "error",
-            message: errorMessage,
+            message:
+              err.message || "Failed to purchase record. Please try again.",
           })
         );
-        throw error;
+
+        return { success: false, error: err.message };
       } finally {
-        setLoading(false);
+        setLoadingState(false);
+      }
+    },
+    [dispatch, fetchPurchasedRecords]
+  );
+
+  /**
+   * Download a health record
+   */
+  const downloadRecord = useCallback(
+    async (recordId) => {
+      try {
+        setLoadingState(true);
+
+        const result = await healthDataService.downloadHealthRecord(recordId);
+
+        if (!result.success) {
+          throw new Error(result.error || "Failed to download record");
+        }
+
+        // Create download URL and trigger download
+        const url = URL.createObjectURL(result.data);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Record downloaded successfully",
+          })
+        );
+
+        return true;
+      } catch (err) {
+        console.error("Error downloading record:", err);
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message:
+              err.message || "Failed to download record. Please try again.",
+          })
+        );
+
+        return false;
+      } finally {
+        setLoadingState(false);
       }
     },
     [dispatch]
@@ -183,26 +342,66 @@ const useHealthData = (options = {}) => {
   useEffect(() => {
     if (loadOnMount) {
       fetchHealthData();
+      if (userRole === "researcher") {
+        fetchPurchasedRecords();
+      }
     }
-  }, [loadOnMount, fetchHealthData]);
+  }, [loadOnMount, fetchHealthData, fetchPurchasedRecords, userRole]);
 
-  // Return hook API
+  // Polling for data updates if enabled
+  useEffect(() => {
+    let intervalId;
+
+    if (enablePolling && !loading) {
+      intervalId = setInterval(() => {
+        fetchHealthData();
+        if (userRole === "researcher") {
+          fetchPurchasedRecords();
+        }
+      }, pollingInterval);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [
+    enablePolling,
+    pollingInterval,
+    loading,
+    fetchHealthData,
+    fetchPurchasedRecords,
+    userRole,
+  ]);
+
   return {
     // State
     healthData,
+    userRecords,
+    purchasedRecords,
     loading,
     error,
     filters,
     totalCount,
+    selectedRecord,
+    recordDetails,
+    uploadProgress,
+    lastUpdated,
 
     // Actions
     fetchHealthData,
+    fetchPurchasedRecords,
     updateFilter,
-    updateFilters,
     resetFilters,
-    purchaseData,
-    getHealthDataDetails,
-    clearError: () => setError(null),
+    getRecordDetails,
+    uploadHealthRecord,
+    purchaseRecord,
+    downloadRecord,
+
+    // Helpers
+    clearError: () => setErrorState(null),
+    setSelectedRecord,
   };
 };
 

@@ -1,4 +1,4 @@
-// src/components/dashboard/PatientDashboard.js
+// client/src/components/dashboard/PatientDashboard.js
 import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -15,15 +15,25 @@ import {
 import { setLoading, setError } from "../../redux/slices/uiSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import useNavigation from "../../hooks/useNavigation.js";
+import HealthDataSection from "../patientDashboard/HealthDataSection.js";
+import useHealthData from "../../hooks/useHealthData.js";
+import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 
 /**
- * PatientDashboard Component with improved null safety
+ * PatientDashboard Component with improved null safety and real health data integration
  */
 const PatientDashboard = ({ onNavigate }) => {
   const dispatch = useDispatch();
   const { navigateTo } = useNavigation();
   const { loading, error } = useSelector((state) => state.ui);
   const userProfile = useSelector((state) => state.user.profile || {});
+  const walletAddress = useSelector((state) => state.wallet.address);
+
+  // Use health data hook
+  const { userRecords, fetchHealthData, downloadRecord } = useHealthData({
+    userRole: "patient",
+    loadOnMount: true,
+  });
 
   // Local state with safe default values
   const [dashboardData, setDashboardData] = useState({
@@ -32,7 +42,6 @@ const PatientDashboard = ({ onNavigate }) => {
     pendingRequests: 0,
     securityScore: 85,
     recentActivity: [],
-    healthRecords: [],
   });
 
   // Function to fetch all dashboard data
@@ -43,19 +52,23 @@ const PatientDashboard = ({ onNavigate }) => {
 
       console.log("Fetching dashboard data...");
 
-      // Mock data for development - replace with actual API calls later
-      setTimeout(() => {
-        setDashboardData({
-          totalRecords: userProfile.totalUploads || 0,
-          sharedRecords: userProfile.totalShared || 0,
-          pendingRequests: userProfile.pendingRequests || 0,
-          securityScore: userProfile.securityScore || 85,
-          recentActivity: [],
-          healthRecords: [],
-        });
+      // Create HIPAA-compliant audit log
+      await hipaaComplianceService.createAuditLog("DASHBOARD_ACCESS", {
+        action: "VIEW",
+        timestamp: new Date().toISOString(),
+      });
 
-        dispatch(setLoading(false));
-      }, 500);
+      // Calculate dashboard statistics from actual health records
+      setDashboardData({
+        totalRecords: userRecords.length,
+        sharedRecords:
+          userRecords.filter((record) => record.shared).length || 0,
+        pendingRequests: userProfile.pendingRequests || 0,
+        securityScore: userProfile.securityScore || 85,
+        recentActivity: [],
+      });
+
+      dispatch(setLoading(false));
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
 
@@ -69,22 +82,21 @@ const PatientDashboard = ({ onNavigate }) => {
 
       // Set safe default values on error
       setDashboardData({
-        totalRecords: 0,
+        totalRecords: userRecords.length || 0,
         sharedRecords: 0,
         pendingRequests: 0,
         securityScore: 85,
         recentActivity: [],
-        healthRecords: [],
       });
 
       dispatch(setLoading(false));
     }
-  }, [dispatch, userProfile]);
+  }, [dispatch, userProfile, userRecords]);
 
-  // Fetch dashboard data on component mount
+  // Fetch dashboard data when user records change
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, userRecords]);
 
   // Navigation handlers
   const handleUploadRecord = useCallback(() => {
@@ -117,16 +129,14 @@ const PatientDashboard = ({ onNavigate }) => {
       try {
         dispatch(setLoading(true));
 
-        // Mock download functionality
-        setTimeout(() => {
-          dispatch(
-            addNotification({
-              type: "success",
-              message: "Record downloaded successfully",
-            })
-          );
-          dispatch(setLoading(false));
-        }, 1000);
+        await downloadRecord(recordId);
+
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Record downloaded successfully",
+          })
+        );
       } catch (err) {
         dispatch(
           addNotification({
@@ -134,10 +144,11 @@ const PatientDashboard = ({ onNavigate }) => {
             message: "Failed to download record. Please try again.",
           })
         );
+      } finally {
         dispatch(setLoading(false));
       }
     },
-    [dispatch]
+    [dispatch, downloadRecord]
   );
 
   // Activity status & icon helpers
@@ -170,7 +181,7 @@ const PatientDashboard = ({ onNavigate }) => {
   };
 
   // Loading state
-  if (loading) {
+  if (loading && userRecords.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -182,7 +193,7 @@ const PatientDashboard = ({ onNavigate }) => {
   if (error) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
           <AlertCircle className="text-red-500" />
           <p className="text-red-700">{error}</p>
         </div>
@@ -280,6 +291,9 @@ const PatientDashboard = ({ onNavigate }) => {
         </button>
       </div>
 
+      {/* Health Records Section */}
+      <HealthDataSection walletAddress={walletAddress} userRole="patient" />
+
       {/* Recent Activity */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">Recent Activity</h2>
@@ -318,59 +332,6 @@ const PatientDashboard = ({ onNavigate }) => {
         ) : (
           <div className="text-center py-8 text-gray-500">
             No recent activity to display
-          </div>
-        )}
-      </div>
-
-      {/* Health Records */}
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
-        {dashboardData.healthRecords &&
-        dashboardData.healthRecords.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dashboardData.healthRecords.map((record) => (
-              <div
-                key={record.id}
-                className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">{record.category}</h3>
-                  {record.verified && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center">
-                      <Check className="w-3 h-3 mr-1" />
-                      Verified
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {record.description}
-                </p>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">
-                    {record.dateUploaded}
-                  </span>
-                  <button
-                    onClick={() => handleDownloadRecord(record.id)}
-                    className="text-blue-500 hover:text-blue-700 text-sm flex items-center"
-                  >
-                    <Download className="w-4 h-4 mr-1" />
-                    Download
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-blue-50 rounded-lg">
-            <Database className="w-12 h-12 text-blue-300 mx-auto mb-3" />
-            <p className="text-blue-700 mb-2">No health records found</p>
-            <button
-              onClick={handleUploadRecord}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2 text-sm font-medium"
-            >
-              <Upload className="w-4 h-4" />
-              Upload Your First Record
-            </button>
           </div>
         )}
       </div>
