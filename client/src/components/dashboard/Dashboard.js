@@ -1,5 +1,5 @@
 // client/src/components/dashboard/Dashboard.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -28,6 +28,8 @@ import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { selectRole } from "../../redux/slices/roleSlice.js";
 import useHealthData from "../../hooks/useHealthData.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
+import useAsyncOperation from "../../hooks/useAsyncOperation.js";
+import ErrorDisplay from "../ui/ErrorDisplay.js";
 
 /**
  * Unified Dashboard Component
@@ -41,32 +43,66 @@ const Dashboard = ({ onNavigate }) => {
 
   // Get state from Redux
   const userRole = useSelector(selectRole);
-  const { loading, error } = useSelector((state) => state.ui);
+  const { loading: uiLoading, error: uiError } = useSelector(
+    (state) => state.ui
+  );
   const userProfile = useSelector((state) => state.user.profile || {});
+  const userId = useSelector((state) => state.wallet.address);
+
+  // Extract only needed properties from user profile to avoid unnecessary re-renders
+  const {
+    pendingRequests = 0,
+    securityScore = 85,
+    activeStudies = 0,
+    appliedFilters = 0,
+  } = useMemo(() => userProfile, [userProfile]);
 
   // Use health data hook for data management
-  const { userRecords, healthData, getRecordDetails, downloadRecord } =
-    useHealthData({
-      userRole,
-      loadOnMount: true,
-    });
+  const {
+    userRecords,
+    healthData,
+    getRecordDetails,
+    downloadRecord,
+    loading: healthDataLoading,
+  } = useHealthData({
+    userRole,
+    loadOnMount: true,
+  });
 
-  // Local state with safe default values
+  // Use our async operation hook for async operations
+  const {
+    loading: asyncLoading,
+    execute: executeAsync,
+    clearError: clearAsyncError,
+  } = useAsyncOperation({
+    componentId: "Dashboard",
+    userId,
+    onError: (error) => {
+      dispatch(
+        addNotification({
+          type: "error",
+          message: error.message || "Dashboard operation failed",
+        })
+      );
+    },
+  });
+
+  // Memoize records length to prevent unnecessary re-renders
+  const totalRecords = useMemo(() => userRecords.length, [userRecords]);
+
+  // Memoize shared records count
+  const sharedRecords = useMemo(
+    () => userRecords.filter((record) => record.shared).length || 0,
+    [userRecords]
+  );
+
+  // Local state with safe default values - separate by logical groups
   const [dashboardData, setDashboardData] = useState({
     // Common data
     recentActivity: [],
-
     // Patient specific
-    totalRecords: 0,
-    sharedRecords: 0,
-    pendingRequests: 0,
     securityScore: 85,
-
     // Researcher specific
-    datasets: 0,
-    activeStudies: 0,
-    dataRequests: 0,
-    appliedFilters: 0,
     availableDatasets: [],
   });
 
@@ -79,48 +115,36 @@ const Dashboard = ({ onNavigate }) => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [datasetDetails, setDatasetDetails] = useState(null);
 
+  // Combine loading states
+  const isLoading = uiLoading || healthDataLoading || asyncLoading;
+
   // Function to fetch all dashboard data
   const fetchDashboardData = useCallback(async () => {
     try {
       dispatch(setLoading(true));
       dispatch(setError(null));
 
-      console.log("Fetching dashboard data...");
-
       // Create HIPAA-compliant audit log
       await hipaaComplianceService.createAuditLog("DASHBOARD_ACCESS", {
         action: "VIEW",
         userRole,
+        userId,
         timestamp: new Date().toISOString(),
       });
 
-      if (userRole === "patient") {
-        // Patient dashboard data
-        setDashboardData({
-          totalRecords: userRecords.length,
-          sharedRecords:
-            userRecords.filter((record) => record.shared).length || 0,
-          pendingRequests: userProfile.pendingRequests || 0,
-          securityScore: userProfile.securityScore || 85,
-          recentActivity: [],
-        });
-      } else {
-        // Researcher dashboard data
-        setDashboardData({
-          datasets: healthData.length || 1234,
-          activeStudies: userProfile.activeStudies || 8,
-          dataRequests: userProfile.pendingRequests || 23,
-          appliedFilters: userProfile.appliedFilters || 5,
-          recentActivity: [],
-          availableDatasets: healthData || [],
-        });
-      }
+      // Set appropriate dashboard data based on role
+      setDashboardData((prevData) => ({
+        ...prevData,
+        securityScore: userProfile.securityScore || 85,
+        recentActivity: [],
+        availableDatasets: userRole === "researcher" ? healthData || [] : [],
+      }));
 
       dispatch(setLoading(false));
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
-
       dispatch(setError(err?.message || "Failed to load dashboard data"));
+
       dispatch(
         addNotification({
           type: "error",
@@ -128,36 +152,16 @@ const Dashboard = ({ onNavigate }) => {
         })
       );
 
-      // Set safe default values on error
-      if (userRole === "patient") {
-        setDashboardData({
-          totalRecords: userRecords.length || 0,
-          sharedRecords: 0,
-          pendingRequests: 0,
-          securityScore: 85,
-          recentActivity: [],
-        });
-      } else {
-        setDashboardData({
-          datasets: 0,
-          activeStudies: 0,
-          dataRequests: 0,
-          appliedFilters: 0,
-          recentActivity: [],
-          availableDatasets: [],
-        });
-      }
-
       dispatch(setLoading(false));
     }
-  }, [dispatch, userProfile, userRecords, healthData, userRole]);
+  }, [userRole, userId, dispatch, healthData]);
 
-  // Fetch dashboard data when user records change
+  // Fetch dashboard data when component mounts or when dependencies change
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData, userRecords, healthData]);
+  }, [fetchDashboardData]);
 
-  // Navigation handlers
+  // Navigation handlers - memoized to prevent unnecessary recreations
   const handleNavigateTo = useCallback(
     (path) => {
       if (onNavigate) {
@@ -170,61 +174,87 @@ const Dashboard = ({ onNavigate }) => {
   );
 
   // Handle record viewing (Patient dashboard)
-  const handleViewRecord = async (recordId) => {
-    try {
-      // Get record details
-      await getRecordDetails(recordId);
+  const handleViewRecord = useCallback(
+    async (recordId) => {
+      executeAsync(async () => {
+        // Log access for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("RECORD_VIEW", {
+          action: "VIEW",
+          recordId,
+          timestamp: new Date().toISOString(),
+          userId,
+        });
 
-      // Log access for HIPAA compliance
-      await hipaaComplianceService.createAuditLog("RECORD_VIEW", {
-        action: "VIEW",
-        recordId,
-        timestamp: new Date().toISOString(),
+        // Get record details
+        await getRecordDetails(recordId);
+
+        // Set the viewing record
+        setViewingRecord(recordId);
       });
-
-      // Set the viewing record
-      setViewingRecord(recordId);
-    } catch (err) {
-      console.error("Error viewing record:", err);
-    }
-  };
+    },
+    [executeAsync, getRecordDetails, userId]
+  );
 
   // Handle record download (Patient dashboard)
-  const handleDownloadRecord = async (recordId) => {
-    await downloadRecord(recordId);
-  };
+  const handleDownloadRecord = useCallback(
+    async (recordId) => {
+      executeAsync(async () => {
+        await downloadRecord(recordId);
+
+        // Log download for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("RECORD_DOWNLOAD", {
+          action: "DOWNLOAD",
+          recordId,
+          timestamp: new Date().toISOString(),
+          userId,
+        });
+      });
+    },
+    [executeAsync, downloadRecord, userId]
+  );
 
   // Handle share record (Patient dashboard)
-  const handleShareRecord = async (recordId) => {
-    // Log the share attempt for HIPAA compliance
-    await hipaaComplianceService.createAuditLog("RECORD_SHARE_ATTEMPT", {
-      action: "SHARE",
-      recordId,
-      timestamp: new Date().toISOString(),
-    });
+  const handleShareRecord = useCallback(
+    async (recordId) => {
+      executeAsync(async () => {
+        // Log the share attempt for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("RECORD_SHARE_ATTEMPT", {
+          action: "SHARE",
+          recordId,
+          timestamp: new Date().toISOString(),
+          userId,
+        });
 
-    // Verify consent before sharing
-    const hasConsent = await hipaaComplianceService.verifyConsent(
-      hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
-    );
+        // Verify consent before sharing
+        const hasConsent = await hipaaComplianceService.verifyConsent(
+          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
+        );
 
-    if (!hasConsent) {
-      return;
-    }
+        if (!hasConsent) {
+          throw new Error("User consent required for sharing");
+        }
 
-    // Implement sharing functionality here
-    // This would typically open a modal for sharing options
-  };
+        // Here would be the actual sharing logic
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Sharing functionality would be implemented here",
+          })
+        );
+      });
+    },
+    [executeAsync, dispatch, userId]
+  );
 
   // Close the record viewer (Patient dashboard)
-  const closeViewer = () => {
+  const closeViewer = useCallback(() => {
     setViewingRecord(null);
-  };
+  }, []);
 
   // View dataset details (Researcher dashboard)
   const handleViewDataset = useCallback(
     async (datasetId) => {
-      try {
+      executeAsync(async () => {
         setDetailsLoading(true);
         setSelectedDataset(datasetId);
         setPreviewOpen(true);
@@ -233,36 +263,35 @@ const Dashboard = ({ onNavigate }) => {
         await hipaaComplianceService.logDataAccess(
           datasetId,
           "Viewing dataset details for research evaluation",
-          "VIEW"
+          "VIEW",
+          {
+            userId,
+            userRole,
+          }
         );
 
         // Get dataset details
         const details = await getRecordDetails(datasetId);
         setDatasetDetails(details);
-      } catch (err) {
-        console.error("Error getting dataset details:", err);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to load dataset details",
-          })
-        );
-      } finally {
         setDetailsLoading(false);
-      }
+      });
     },
-    [getRecordDetails, dispatch]
+    [executeAsync, getRecordDetails, userId, userRole]
   );
 
   // Handle dataset purchase (Researcher dashboard)
   const handlePurchaseDataset = useCallback(
     async (id) => {
-      try {
+      executeAsync(async () => {
         // Log action for HIPAA compliance
         await hipaaComplianceService.logDataAccess(
           id,
           "Purchasing dataset for research",
-          "PURCHASE"
+          "PURCHASE",
+          {
+            userId,
+            userRole,
+          }
         );
 
         dispatch(
@@ -272,19 +301,10 @@ const Dashboard = ({ onNavigate }) => {
           })
         );
 
-        // Would normally call a purchase function here
-      } catch (err) {
-        console.error("Purchase error:", err);
-        dispatch(
-          addNotification({
-            type: "error",
-            message:
-              err.message || "Failed to purchase dataset. Please try again.",
-          })
-        );
-      }
+        // Here would be the actual purchase functionality
+      });
     },
-    [dispatch]
+    [executeAsync, dispatch, userId, userRole]
   );
 
   // Close the preview modal (Researcher dashboard)
@@ -330,7 +350,7 @@ const Dashboard = ({ onNavigate }) => {
   };
 
   // Loading state
-  if (loading && !error) {
+  if (isLoading && !uiError) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -338,14 +358,16 @@ const Dashboard = ({ onNavigate }) => {
     );
   }
 
-  // Error state
-  if (error) {
+  // Error state - using our standardized error component
+  if (uiError) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-          <AlertCircle className="text-red-500" />
-          <p className="text-red-700">{error}</p>
-        </div>
+      <div className="flex justify-center items-center min-h-[60vh] px-4">
+        <ErrorDisplay
+          error={uiError}
+          onRetry={fetchDashboardData}
+          size="large"
+          className="max-w-lg w-full"
+        />
       </div>
     );
   }
@@ -371,9 +393,7 @@ const Dashboard = ({ onNavigate }) => {
               <FileText className="text-blue-500 w-8 h-8" />
               <div>
                 <p className="text-gray-600 text-sm">Total Records</p>
-                <p className="text-2xl font-semibold">
-                  {dashboardData.totalRecords}
-                </p>
+                <p className="text-2xl font-semibold">{totalRecords}</p>
               </div>
             </div>
           </div>
@@ -383,9 +403,7 @@ const Dashboard = ({ onNavigate }) => {
               <Database className="text-green-500 w-8 h-8" />
               <div>
                 <p className="text-gray-600 text-sm">Shared Records</p>
-                <p className="text-2xl font-semibold">
-                  {dashboardData.sharedRecords}
-                </p>
+                <p className="text-2xl font-semibold">{sharedRecords}</p>
               </div>
             </div>
           </div>
@@ -395,9 +413,7 @@ const Dashboard = ({ onNavigate }) => {
               <Bell className="text-purple-500 w-8 h-8" />
               <div>
                 <p className="text-gray-600 text-sm">Pending Requests</p>
-                <p className="text-2xl font-semibold">
-                  {dashboardData.pendingRequests}
-                </p>
+                <p className="text-2xl font-semibold">{pendingRequests}</p>
               </div>
             </div>
           </div>
@@ -676,7 +692,7 @@ const Dashboard = ({ onNavigate }) => {
             <Database className="text-purple-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Available Datasets</p>
-              <p className="text-2xl font-semibold">{dashboardData.datasets}</p>
+              <p className="text-2xl font-semibold">{healthData.length || 0}</p>
             </div>
           </div>
         </div>
@@ -686,9 +702,7 @@ const Dashboard = ({ onNavigate }) => {
             <BarChart className="text-green-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Active Studies</p>
-              <p className="text-2xl font-semibold">
-                {dashboardData.activeStudies}
-              </p>
+              <p className="text-2xl font-semibold">{activeStudies}</p>
             </div>
           </div>
         </div>
@@ -698,9 +712,7 @@ const Dashboard = ({ onNavigate }) => {
             <Search className="text-blue-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Data Requests</p>
-              <p className="text-2xl font-semibold">
-                {dashboardData.dataRequests}
-              </p>
+              <p className="text-2xl font-semibold">{pendingRequests}</p>
             </div>
           </div>
         </div>
@@ -710,9 +722,7 @@ const Dashboard = ({ onNavigate }) => {
             <Filter className="text-indigo-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Applied Filters</p>
-              <p className="text-2xl font-semibold">
-                {dashboardData.appliedFilters}
-              </p>
+              <p className="text-2xl font-semibold">{appliedFilters}</p>
             </div>
           </div>
         </div>
@@ -1043,6 +1053,10 @@ const Dashboard = ({ onNavigate }) => {
       </div>
     </div>
   );
+};
+
+Dashboard.propTypes = {
+  onNavigate: PropTypes.func,
 };
 
 export default Dashboard;

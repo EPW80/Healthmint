@@ -1,5 +1,5 @@
 // src/components/ProfileManager.js
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -11,7 +11,6 @@ import {
   Database,
   Award,
   Briefcase,
-  AlertCircle,
   X,
   CheckCircle,
   Shield,
@@ -24,6 +23,9 @@ import ProfileImageUploader from "./ProfileImageUploader.js";
 import ProfileTabs from "./ProfileTabs.js";
 import userService from "../services/userService.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
+import useHipaaFormState from "../hooks/useHipaaFormState.js";
+import useAsyncOperation from "../hooks/useAsyncOperation.js";
+import ErrorDisplay from "./ui/ErrorDisplay.js";
 
 /**
  * ProfileManager Component
@@ -37,10 +39,7 @@ const ProfileManager = () => {
   const userProfile = useSelector((state) => state.user.profile || {});
   const walletAddress = useSelector((state) => state.wallet.address);
 
-  // State
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
+  // Image Upload State
   const [previewUrl, setPreviewUrl] = useState(
     userProfile?.profileImage || null
   );
@@ -48,70 +47,104 @@ const ProfileManager = () => {
     userProfile?.profileImageHash || null
   );
   const [tabValue, setTabValue] = useState(0);
-  const [initialFormState, setInitialFormState] = useState({});
-  const [formState, setFormState] = useState({
-    name: userProfile?.name || "",
-    email: userProfile?.email || "",
-    age: userProfile?.age || "",
-    bio: userProfile?.bio || "",
-    sharingPreferences: userProfile?.sharingPreferences || {
-      anonymousSharing: true,
-      notifyOnAccess: true,
-      allowDirectContact: false,
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Set up the formState with our custom hook
+  const {
+    formState,
+    handleChange,
+    setFieldValue,
+    handleArrayFieldChange,
+    resetForm,
+    errors,
+    isDirty,
+    validateForm,
+    getChangedFields,
+    initialFormState,
+    setInitialFormState,
+  } = useHipaaFormState(
+    {
+      name: userProfile?.name || "",
+      email: userProfile?.email || "",
+      age: userProfile?.age || "",
+      bio: userProfile?.bio || "",
+      sharingPreferences: userProfile?.sharingPreferences || {
+        anonymousSharing: true,
+        notifyOnAccess: true,
+        allowDirectContact: false,
+      },
+      emailNotifications: userProfile?.emailNotifications || {
+        dataAccess: true,
+        transactions: true,
+        updates: false,
+      },
+      inAppNotifications: userProfile?.inAppNotifications || {
+        messages: true,
+        dataUpdates: true,
+        announcements: false,
+      },
+      notificationPreferences: userProfile?.notificationPreferences || {
+        accessAlerts: true,
+        transactionAlerts: true,
+        researchUpdates: false,
+        newDatasets: true,
+      },
+      privacyPreferences: userProfile?.privacyPreferences || {
+        publicProfile: false,
+        showInstitution: true,
+      },
+      ethicsStatement: userProfile?.ethicsStatement || "",
+      ethicsAgreement: userProfile?.ethicsAgreement || false,
+      institution: userProfile?.institution || "",
+      credentials: userProfile?.credentials || "",
+      researchFocus: userProfile?.researchFocus || "",
+      publications: userProfile?.publications || [],
     },
-    emailNotifications: userProfile?.emailNotifications || {
-      dataAccess: true,
-      transactions: true,
-      updates: false,
+    {
+      sanitizeField: (value, fieldName) =>
+        hipaaComplianceService.sanitizeInputValue(value, fieldName),
+      logFieldChange: (fieldName, value, metadata) => {
+        // This is a placeholder for actual field change logging
+        // We don't log the actual values for HIPAA compliance
+        console.log(`Field ${fieldName} changed`, metadata);
+      },
+      hipaaService: hipaaComplianceService,
+      userIdentifier: walletAddress,
+      formType: "profile",
+      validate: (values) => {
+        const errors = {};
+        if (!values.name) {
+          errors.name = "Name is required";
+        }
+        if (values.email && !/\S+@\S+\.\S+/.test(values.email)) {
+          errors.email = "Please enter a valid email address";
+        }
+        return errors;
+      },
+    }
+  );
+
+  // Use our async operation hook for profile operations
+  const { loading, execute: executeAsync } = useAsyncOperation({
+    componentId: "ProfileManager",
+    userId: walletAddress,
+    onSuccess: () => {
+      setSuccess(true);
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess(false);
+      }, 3000);
     },
-    inAppNotifications: userProfile?.inAppNotifications || {
-      messages: true,
-      dataUpdates: true,
-      announcements: false,
+    onError: (err) => {
+      setError(err.message || "Failed to update profile. Please try again.");
     },
-    notificationPreferences: userProfile?.notificationPreferences || {
-      accessAlerts: true,
-      transactionAlerts: true,
-      researchUpdates: false,
-      newDatasets: true,
-    },
-    privacyPreferences: userProfile?.privacyPreferences || {
-      publicProfile: false,
-      showInstitution: true,
-    },
-    ethicsStatement: userProfile?.ethicsStatement || "",
-    ethicsAgreement: userProfile?.ethicsAgreement || false,
-    institution: userProfile?.institution || "",
-    credentials: userProfile?.credentials || "",
-    researchFocus: userProfile?.researchFocus || "",
-    publications: userProfile?.publications || [],
   });
-
-  // Sanitize data consistently for any operation
-  const sanitizeProfileData = useCallback((data, options = {}) => {
-    // Default sanitization options
-    const defaultOptions = {
-      excludeFields: ["password", "walletType"],
-      accessPurpose: "Profile Management",
-      requireConsent: false,
-      ...options,
-    };
-
-    // Apply HIPAA-compliant sanitization
-    return hipaaComplianceService.sanitizeData(data, defaultOptions);
-  }, []);
-
-  // Create a sanitized version of form state for any data operations
-  const sanitizedFormState = useMemo(() => {
-    return sanitizeProfileData(formState);
-  }, [formState, sanitizeProfileData]);
 
   // Load user profile data on mount with proper sanitization
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        setLoading(true);
-
         // Create HIPAA-compliant audit log for profile access with enhanced metadata
         await hipaaComplianceService.createAuditLog("PROFILE_ACCESS", {
           action: "VIEW",
@@ -127,49 +160,16 @@ const ProfileManager = () => {
 
         if (profile) {
           // Sanitize the profile data before setting in state
-          const sanitizedProfile = sanitizeProfileData(profile, {
-            accessPurpose: "Initial Profile Load",
-            dataSource: "API",
-          });
+          const sanitizedProfile = hipaaComplianceService.sanitizeData(
+            profile,
+            {
+              accessPurpose: "Initial Profile Load",
+              dataSource: "API",
+            }
+          );
 
-          // Update form state with sanitized profile data
-          const updatedFormState = {
-            ...formState,
-            ...sanitizedProfile,
-            // Ensure nested objects are properly merged
-            sharingPreferences: {
-              ...formState.sharingPreferences,
-              ...(sanitizedProfile.sharingPreferences || {}),
-            },
-            emailNotifications: {
-              ...formState.emailNotifications,
-              ...(sanitizedProfile.emailNotifications || {}),
-            },
-            inAppNotifications: {
-              ...formState.inAppNotifications,
-              ...(sanitizedProfile.inAppNotifications || {}),
-            },
-            notificationPreferences: {
-              ...formState.notificationPreferences,
-              ...(sanitizedProfile.notificationPreferences || {}),
-            },
-            privacyPreferences: {
-              ...formState.privacyPreferences,
-              ...(sanitizedProfile.privacyPreferences || {}),
-            },
-          };
-
-          setFormState(updatedFormState);
-          setInitialFormState(updatedFormState);
-
-          // Set profile image with proper sanitization
-          if (sanitizedProfile.profileImage) {
-            setPreviewUrl(sanitizedProfile.profileImage);
-          }
-
-          if (sanitizedProfile.profileImageHash) {
-            setStorageReference(sanitizedProfile.profileImageHash);
-          }
+          // Update initial form state with sanitized data
+          setInitialFormState(sanitizedProfile);
         }
       } catch (err) {
         console.error("Failed to load user profile:", err);
@@ -189,20 +189,33 @@ const ProfileManager = () => {
             message: "Failed to load your profile. Please try again.",
           })
         );
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [
-    dispatch,
-    walletAddress,
-    userProfile.profileImage,
-    userProfile.profileImageHash,
-    sanitizeProfileData,
-    userRole,
-  ]);
+  }, [dispatch, walletAddress, userRole, setInitialFormState]);
+
+  // Handle publication changes
+  const handlePublicationChange = useCallback(
+    (newPublications) => {
+      // Use our new handler from the form hook
+      handleArrayFieldChange("publications", newPublications);
+
+      // Log publication changes for researchers
+      if (userRole === "researcher") {
+        hipaaComplianceService.createAuditLog(
+          "RESEARCHER_PUBLICATIONS_UPDATED",
+          {
+            publicationCount: newPublications.length,
+            timestamp: new Date().toISOString(),
+            userId: walletAddress,
+            action: "UPDATE",
+          }
+        );
+      }
+    },
+    [handleArrayFieldChange, userRole, walletAddress]
+  );
 
   // Event handlers
   const handleTabChange = (newValue) => {
@@ -223,87 +236,6 @@ const ProfileManager = () => {
     });
 
     setTabValue(newValue);
-  };
-
-  const handleFormChange = (event) => {
-    const { name, value, checked, type } = event.target;
-
-    // Sanitize input value before setting in state
-    const sanitizedValue =
-      type === "checkbox"
-        ? checked
-        : hipaaComplianceService.sanitizeInputValue(value, name);
-
-    if (name.includes(".")) {
-      const [parent, child] = name.split(".");
-      setFormState((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: type === "checkbox" ? checked : sanitizedValue,
-        },
-      }));
-
-      // Log sensitive field changes for HIPAA compliance
-      const sensitiveFields = ["sharingPreferences", "privacyPreferences"];
-      if (sensitiveFields.includes(parent)) {
-        hipaaComplianceService.createAuditLog("SENSITIVE_FIELD_CHANGE", {
-          fieldName: `${parent}.${child}`,
-          timestamp: new Date().toISOString(),
-          userId: walletAddress,
-          userRole: userRole,
-          // Don't log the actual value for privacy reasons
-          valueChanged: true,
-        });
-      }
-    } else {
-      setFormState((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : sanitizedValue,
-      }));
-
-      // Log demographic or contact info changes
-      const demographicFields = ["name", "email", "age", "bio"];
-      if (demographicFields.includes(name)) {
-        hipaaComplianceService.createAuditLog("DEMOGRAPHIC_FIELD_CHANGE", {
-          fieldName: name,
-          timestamp: new Date().toISOString(),
-          userId: walletAddress,
-          // Don't log the actual value for privacy reasons
-          valueChanged: true,
-        });
-      }
-    }
-  };
-
-  const handlePublicationChange = (newPublications) => {
-    // Sanitize each publication before setting in state
-    const sanitizedPublications = newPublications.map((pub) => ({
-      ...pub,
-      title: hipaaComplianceService.sanitizeInputValue(
-        pub.title,
-        "publication.title"
-      ),
-      url: hipaaComplianceService.sanitizeInputValue(
-        pub.url,
-        "publication.url"
-      ),
-    }));
-
-    setFormState((prev) => ({
-      ...prev,
-      publications: sanitizedPublications,
-    }));
-
-    // Log publication changes for researchers
-    if (userRole === "researcher") {
-      hipaaComplianceService.createAuditLog("RESEARCHER_PUBLICATIONS_UPDATED", {
-        publicationCount: sanitizedPublications.length,
-        timestamp: new Date().toISOString(),
-        userId: walletAddress,
-        action: "UPDATE",
-      });
-    }
   };
 
   const handleImageUpload = useCallback(
@@ -393,19 +325,14 @@ const ProfileManager = () => {
   }, [formState, initialFormState, walletAddress]);
 
   const handleSaveProfile = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(false);
+    // Use our validateForm method from the form hook
+    const isValid = validateForm();
+    if (!isValid) {
+      return;
+    }
 
-      if (!formState.name) {
-        throw new Error("Name is required");
-      }
-
-      if (formState.email && !/\S+@\S+\.\S+/.test(formState.email)) {
-        throw new Error("Please enter a valid email address");
-      }
-
+    // Execute the profile save operation with our async operation hook
+    await executeAsync(async () => {
       // Verify consent for privacy-related changes
       const consentVerified = await verifyAndLogConsent();
       if (!consentVerified) {
@@ -418,11 +345,7 @@ const ProfileManager = () => {
         userId: walletAddress,
         timestamp: new Date().toISOString(),
         // Track which fields were changed for audit purposes
-        changedFields: Object.keys(formState).filter(
-          (key) =>
-            JSON.stringify(formState[key]) !==
-            JSON.stringify(initialFormState[key])
-        ),
+        changedFields: getChangedFields(),
         userRole: userRole,
         ipAddress: "client", // Server will log actual IP
         updateReason: "User initiated profile update",
@@ -430,7 +353,7 @@ const ProfileManager = () => {
       });
 
       // Apply consistent sanitization before any data transmission
-      const sanitizedData = sanitizeProfileData(formState, {
+      const sanitizedData = hipaaComplianceService.sanitizeData(formState, {
         excludeFields: ["password", "walletType", "securityQuestions"],
         accessPurpose: "Profile Update Submission",
         includeAuditMetadata: true,
@@ -444,31 +367,13 @@ const ProfileManager = () => {
         lastUpdated: new Date().toISOString(),
       };
 
-      // Apply HIPAA-compliant sanitization for any sensitive fields being transmitted
-      const transmittedProfile = sanitizeProfileData(updatedProfile, {
-        masking: {
-          email:
-            userRole === "patient" &&
-            !formState.sharingPreferences?.allowDirectContact,
-          age:
-            userRole === "patient" &&
-            !formState.sharingPreferences?.anonymousSharing,
-          bio:
-            userRole === "patient" &&
-            formState.privacyPreferences?.restrictBioVisibility,
-        },
-      });
-
       // Update profile with user service
-      await userService.updateProfile(transmittedProfile);
+      await userService.updateProfile(updatedProfile);
 
       // Update profile in Redux store using sanitized data
       dispatch(updateUserProfile(sanitizedData));
 
-      // Save initial state for future change detection
-      setInitialFormState({ ...formState });
-
-      setSuccess(true);
+      // Success notification
       dispatch(
         addNotification({
           type: "success",
@@ -476,33 +381,8 @@ const ProfileManager = () => {
         })
       );
 
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
-    } catch (err) {
-      console.error("Profile update error:", err);
-
-      // Log the error for HIPAA compliance without sensitive details
-      hipaaComplianceService.createAuditLog("PROFILE_UPDATE_ERROR", {
-        action: "UPDATE_ERROR",
-        userId: walletAddress,
-        timestamp: new Date().toISOString(),
-        errorType: err.name || "Unknown",
-        errorMessage: err.message || "Unknown error during profile update",
-      });
-
-      setError(err.message || "Failed to update profile. Please try again.");
-
-      dispatch(
-        addNotification({
-          type: "error",
-          message: err.message || "Failed to update profile. Please try again.",
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
+      return updatedProfile;
+    });
   };
 
   return (
@@ -541,23 +421,13 @@ const ProfileManager = () => {
         </div>
       </div>
 
-      {/* Error Alert */}
+      {/* Error Display - Using our new standardized component */}
       {error && (
-        <div
-          className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2"
-          role="alert"
-          aria-live="assertive"
-        >
-          <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button
-            className="text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 rounded-full"
-            onClick={() => setError(null)}
-            aria-label="Dismiss error"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <ErrorDisplay
+          error={error}
+          onDismiss={() => setError(null)}
+          className="mb-6"
+        />
       )}
 
       {/* Success Alert */}
@@ -591,7 +461,7 @@ const ProfileManager = () => {
               error={error}
               setError={setError}
               loading={loading}
-              setLoading={setLoading}
+              setLoading={() => {}} // We're managing loading state with our hooks now
               defaultImage="/default-avatar.png"
               userIdentifier={formState.name || walletAddress}
               onImageUpload={handleImageUpload}
@@ -614,11 +484,16 @@ const ProfileManager = () => {
                   name="name"
                   type="text"
                   value={formState.name}
-                  onChange={handleFormChange}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  onChange={handleChange}
+                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.name ? "border-red-300" : ""
+                  }`}
                   required
                   aria-required="true"
                 />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                )}
               </div>
               <div>
                 <label
@@ -632,10 +507,15 @@ const ProfileManager = () => {
                   name="email"
                   type="email"
                   value={formState.email}
-                  onChange={handleFormChange}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  onChange={handleChange}
+                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.email ? "border-red-300" : ""
+                  }`}
                   aria-label="Email address"
                 />
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                )}
                 {userRole === "patient" && (
                   <p className="mt-1 text-xs text-gray-500">
                     Your email will be masked unless you enable direct contact
@@ -656,7 +536,7 @@ const ProfileManager = () => {
                     name="age"
                     type="number"
                     value={formState.age}
-                    onChange={handleFormChange}
+                    onChange={handleChange}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     min="0"
                     aria-label="Age"
@@ -785,7 +665,7 @@ const ProfileManager = () => {
           tabValue={tabValue}
           userRole={userRole}
           formState={formState}
-          handleFormChange={handleFormChange}
+          handleFormChange={handleChange}
           handlePublicationChange={handlePublicationChange}
           walletAddress={walletAddress}
           userProfile={userProfile}
@@ -826,11 +706,13 @@ const ProfileManager = () => {
         <button
           type="button"
           onClick={handleSaveProfile}
-          disabled={loading}
+          disabled={loading || !isDirty}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
             loading
               ? "bg-blue-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
+              : !isDirty
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
           } text-white font-medium shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
           aria-label="Save profile changes"
         >
