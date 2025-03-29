@@ -1,5 +1,5 @@
 // client/src/components/AppContent.js
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -14,6 +14,7 @@ import ProfileManager from "./ProfileManager.js";
 import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
 import UserRegistration from "./UserRegistration.js";
+import { AlertCircle, LogOut, X, Check } from "lucide-react";
 
 // Hooks and Redux
 import useWalletConnect from "../hooks/useWalletConnect.js";
@@ -31,6 +32,93 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import { clearWalletConnection } from "../redux/slices/walletSlice.js";
 
 /**
+ * Logout confirmation dialog component
+ */
+const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
+  // Close on ESC key
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
+    };
+  }, [onCancel]);
+
+  // Prevent background scrolling when dialog is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 m-4">
+        <div className="flex items-start mb-4">
+          <div className="bg-red-100 p-2 rounded-full mr-3">
+            <LogOut className="text-red-600 w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Confirm Logout
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to log out? This will disconnect your wallet
+              and you'll need to reconnect to access your data again.
+            </p>
+            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-md">
+              <div className="flex">
+                <AlertCircle className="text-yellow-600 w-5 h-5 flex-shrink-0 mr-2" />
+                <p className="text-sm text-yellow-700">
+                  Any pending transactions or unsaved changes may be lost.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            onClick={onCancel}
+          >
+            <span className="flex items-center">
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </span>
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 bg-red-600 border border-transparent rounded-md font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            onClick={onConfirm}
+          >
+            <span className="flex items-center">
+              <Check className="w-4 h-4 mr-2" />
+              Confirm Logout
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
  * Main content component with routing
  */
 function AppContent() {
@@ -38,8 +126,14 @@ function AppContent() {
   const location = useLocation();
 
   // Get wallet connection state
-  const { isConnected, address, network, disconnectWallet, switchNetwork } =
-    useWalletConnect();
+  const {
+    isConnected,
+    address,
+    network,
+    disconnectWallet,
+    switchNetwork,
+    getPendingTransactions,
+  } = useWalletConnect();
 
   // Get user information from Redux
   const userRole = useSelector(selectRole);
@@ -53,6 +147,10 @@ function AppContent() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [routeChecksBypassEnabled, setRouteChecksBypassEnabled] =
     useState(false);
+
+  // Logout confirmation dialog state
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
+  const pendingLogoutRef = useRef(false);
 
   // Handle user registration completion
   const handleRegistrationComplete = useCallback(
@@ -135,10 +233,59 @@ function AppContent() {
     return () => clearTimeout(timerId);
   }, [verifyAuth, routeChecksBypassEnabled]);
 
-  // Handle logout - Complete reset of all auth states
-  const handleLogout = useCallback(async () => {
+  // Check for pending transactions
+  const checkPendingTransactions = useCallback(async () => {
     try {
+      if (typeof getPendingTransactions === "function") {
+        const pendingTxs = await getPendingTransactions();
+        return pendingTxs && pendingTxs.length > 0;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking pending transactions:", error);
+      return false;
+    }
+  }, [getPendingTransactions]);
+
+  // Initiate logout process - shows confirmation dialog
+  const initiateLogout = useCallback(() => {
+    if (pendingLogoutRef.current) return;
+    setShowLogoutConfirmation(true);
+  }, []);
+
+  // Handle logout confirmation
+  const handleLogoutConfirm = useCallback(async () => {
+    // Prevent multiple logout attempts
+    if (pendingLogoutRef.current) return;
+    pendingLogoutRef.current = true;
+
+    try {
+      // Check for pending transactions first
+      const hasPendingTxs = await checkPendingTransactions();
+
+      if (hasPendingTxs) {
+        // Show warning about pending transactions
+        dispatch(
+          addNotification({
+            type: "warning",
+            message:
+              "You have pending transactions. Logging out may affect these transactions.",
+            duration: 7000,
+          })
+        );
+      }
+
       console.log("Logging out and clearing all auth state...");
+      setShowLogoutConfirmation(false);
+
+      // Show logging out notification
+      dispatch(
+        addNotification({
+          type: "info",
+          message: "Logging out...",
+          duration: 2000,
+        })
+      );
 
       // Logout and disconnect
       await logout();
@@ -168,8 +315,9 @@ function AppContent() {
       // Notification of success
       dispatch(
         addNotification({
-          type: "info",
+          type: "success",
           message: "Logged out successfully",
+          duration: 3000,
         })
       );
 
@@ -177,14 +325,32 @@ function AppContent() {
       window.location.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
+      pendingLogoutRef.current = false;
 
-      // Even on error, clear everything and redirect
-      dispatch(clearWalletConnection());
-      dispatch(clearRole());
-      dispatch(clearUserProfile());
-      window.location.replace("/login");
+      // Show error notification
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Logout failed. Please try again.",
+          duration: 5000,
+        })
+      );
+
+      // Even on error, clear everything and redirect after a short delay
+      setTimeout(() => {
+        dispatch(clearWalletConnection());
+        dispatch(clearRole());
+        dispatch(clearUserProfile());
+        window.location.replace("/login");
+      }, 1000);
     }
-  }, [disconnectWallet, dispatch, logout]);
+  }, [disconnectWallet, dispatch, logout, checkPendingTransactions]);
+
+  // Cancel logout
+  const handleLogoutCancel = useCallback(() => {
+    setShowLogoutConfirmation(false);
+    pendingLogoutRef.current = false;
+  }, []);
 
   // Show loading state on initial render
   if (!isInitialized || isVerifying) {
@@ -212,7 +378,7 @@ function AppContent() {
       {shouldShowNavigation() && (
         <Navigation
           account={address}
-          onLogout={handleLogout}
+          onLogout={initiateLogout}
           role={userRole}
           network={network}
           onSwitchNetwork={switchNetwork}
@@ -376,6 +542,13 @@ function AppContent() {
           />
         </Routes>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmationDialog
+        isOpen={showLogoutConfirmation}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
 
       <Footer />
     </>
