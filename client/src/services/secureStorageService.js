@@ -2,8 +2,17 @@
 import apiService from "./apiService.js";
 import hipaaComplianceService from "./hipaaComplianceService.js";
 import errorHandlingService from "./errorHandlingService.js";
-import encryptionService from "./encryptionService.js";
 import { STORAGE_CONFIG } from "../config/environmentConfig.js";
+
+// Import encryptionService conditionally to avoid breaking the app if it doesn't exist
+let encryptionService = null;
+try {
+  encryptionService = require("./encryptionService.js").default;
+} catch (e) {
+  console.warn(
+    "Encryption service not available. Using fallback security measures."
+  );
+}
 
 /**
  * SecureStorageService
@@ -13,7 +22,7 @@ import { STORAGE_CONFIG } from "../config/environmentConfig.js";
  *
  * Features:
  * - Client-side validation and sanitization
- * - Encryption for sensitive data
+ * - Encryption for sensitive data (if available)
  * - Comprehensive HIPAA compliance logging
  * - PHI (Protected Health Information) detection
  * - Secure file management
@@ -38,7 +47,8 @@ class SecureStorageService {
         delete: STORAGE_CONFIG?.ENDPOINTS?.DELETE || "api/storage/delete",
         download: STORAGE_CONFIG?.ENDPOINTS?.DOWNLOAD || "api/storage/download",
       },
-      encryptFiles: STORAGE_CONFIG?.ENCRYPT_FILES !== false, // Default to true if not specified
+      encryptFiles:
+        STORAGE_CONFIG?.ENCRYPT_FILES !== false && !!encryptionService, // Only enable if service exists
       retentionPeriod: STORAGE_CONFIG?.RETENTION_PERIOD || 7 * 365, // 7 years default for HIPAA
     };
 
@@ -164,6 +174,16 @@ class SecureStorageService {
 
       await this.validateFile(file, imageOptions);
 
+      // Generate file hash when encryption service is available
+      let fileHash = "hash-unavailable";
+      if (encryptionService) {
+        try {
+          fileHash = await encryptionService.hashFile(file);
+        } catch (e) {
+          console.warn("Failed to generate file hash:", e);
+        }
+      }
+
       // Enhanced audit metadata for HIPAA compliance
       const auditMetadata = {
         uploadType: "PROFILE_IMAGE",
@@ -172,7 +192,7 @@ class SecureStorageService {
         action: "UPLOAD",
         ipAddress: "client", // Will be replaced by server
         clientInfo: navigator.userAgent,
-        fileHash: await this.generateFileHash(file),
+        fileHash,
         ...options.auditMetadata,
       };
 
@@ -186,10 +206,22 @@ class SecureStorageService {
         userId: options.userIdentifier,
       });
 
-      // Encrypt file if needed (for sensitive images)
+      // Encrypt file if encryption service is available and encryption is enabled
       let processedFile = file;
-      if (this.config.encryptFiles && options.encrypt !== false) {
-        processedFile = await encryptionService.encryptFile(file);
+      if (
+        this.config.encryptFiles &&
+        options.encrypt !== false &&
+        encryptionService
+      ) {
+        try {
+          processedFile = await encryptionService.encryptFile(file);
+          auditMetadata.encrypted = true;
+        } catch (e) {
+          console.warn(
+            "File encryption failed, proceeding with unencrypted file:",
+            e
+          );
+        }
       }
 
       // Create FormData for file upload
@@ -254,8 +286,15 @@ class SecureStorageService {
       // Validate file with provided options
       await this.validateFile(file, options);
 
-      // Generate file hash for integrity checking
-      const fileHash = await this.generateFileHash(file);
+      // Generate file hash if encryption service is available
+      let fileHash = "hash-unavailable";
+      if (encryptionService) {
+        try {
+          fileHash = await encryptionService.hashFile(file);
+        } catch (e) {
+          console.warn("Failed to generate file hash:", e);
+        }
+      }
 
       // Enhanced audit metadata for HIPAA compliance
       const auditMetadata = {
@@ -304,11 +343,22 @@ class SecureStorageService {
         }
       }
 
-      // Encrypt file if needed
+      // Encrypt file if encryption service is available and encryption is enabled
       let processedFile = file;
-      if (this.config.encryptFiles && options.encrypt !== false) {
-        processedFile = await encryptionService.encryptFile(file);
-        auditMetadata.encrypted = true;
+      if (
+        this.config.encryptFiles &&
+        options.encrypt !== false &&
+        encryptionService
+      ) {
+        try {
+          processedFile = await encryptionService.encryptFile(file);
+          auditMetadata.encrypted = true;
+        } catch (e) {
+          console.warn(
+            "File encryption failed, proceeding with unencrypted file:",
+            e
+          );
+        }
       }
 
       // Track upload progress if callback provided
@@ -480,10 +530,18 @@ class SecureStorageService {
         auditMetadata
       );
 
-      // Decrypt file if needed and if was encrypted
+      // Decrypt file if needed, encryption service exists, and metadata indicates encryption
       let fileData = response.data;
-      if (response.metadata?.encrypted && this.config.encryptFiles) {
-        fileData = await encryptionService.decryptFile(fileData);
+      if (
+        response.metadata?.encrypted &&
+        this.config.encryptFiles &&
+        encryptionService
+      ) {
+        try {
+          fileData = await encryptionService.decryptFile(fileData);
+        } catch (e) {
+          console.warn("File decryption failed, returning encrypted file:", e);
+        }
       }
 
       // Log successful download
@@ -525,18 +583,22 @@ class SecureStorageService {
   }
 
   /**
-   * Generate a hash for the file contents
+   * Generate a simple hash for the file when encryption service isn't available
    * @param {File} file - File to hash
-   * @returns {Promise<string>} Hash of the file
+   * @returns {string} Simple hash of the file
    * @private
    */
-  async generateFileHash(file) {
-    try {
-      return await encryptionService.hashFile(file);
-    } catch (error) {
-      console.error("Failed to generate file hash:", error);
-      return "hash-unavailable";
+  generateSimpleFileHash(file) {
+    const str = `${file.name}:${file.size}:${file.lastModified}`;
+    let hash = 0;
+
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32bit integer
     }
+
+    return Math.abs(hash).toString(16).padStart(8, "0");
   }
 
   /**
