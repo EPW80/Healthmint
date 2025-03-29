@@ -1,4 +1,4 @@
-// client/src/components/AppContent.js
+// client/src/components/AppContent.js (Updated)
 import React, { useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -9,8 +9,7 @@ import Navigation from "./Navigation.js";
 import Footer from "./Footer.js";
 import RoleSelector from "./roles/RoleSelector.js";
 import ProtectedRoute from "./ProtectedRoute.js";
-import PatientDashboard from "./dashboard/PatientDashboard.js";
-import ResearcherDashboard from "./dashboard/ResearcherDashboard.js";
+import Dashboard from "./dashboard/Dashboard.js"; // Updated import
 import ProfileManager from "./ProfileManager.js";
 import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
@@ -133,14 +132,6 @@ function AppContent() {
     }
   }, [disconnectWallet, dispatch, logout]);
 
-  // Determine dashboard component based on role
-  const getDashboardComponent = useCallback(() => {
-    if (userRole === "researcher") {
-      return <ResearcherDashboard />;
-    }
-    return <PatientDashboard />;
-  }, [userRole]);
-
   // Show loading state on initial render
   if (!isInitialized || isVerifying) {
     return (
@@ -224,7 +215,7 @@ function AppContent() {
             }
           />
 
-          {/* Dashboard Route - Specifically handle based on role */}
+          {/* Dashboard Route - Now using unified Dashboard component */}
           <Route
             path="/dashboard"
             element={
@@ -234,7 +225,7 @@ function AppContent() {
                 ) : !isRoleSelected ? (
                   <Navigate to="/select-role" replace />
                 ) : (
-                  getDashboardComponent()
+                  <Dashboard />
                 )}
               </ProtectedRoute>
             }
