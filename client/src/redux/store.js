@@ -48,7 +48,7 @@ const IGNORED_PATHS = [
 const rootReducer = combineReducers({
   auth: authReducer,
   data: dataReducer,
-  profile: profileReducer,
+  profile: roleReducer,
   ui: uiReducer,
   user: userReducer,
   wallet: walletReducer,

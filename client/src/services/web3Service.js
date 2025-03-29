@@ -1,6 +1,6 @@
 // src/services/web3Service.js
 import { ethers } from "ethers";
-import  networkConfig  from "../config/networks.js";
+import  networkConfig  from "../config/networkConfig.js";
 import HealthDataMarketplace from "../contracts/HealthDataMarketplace.json";
 
 /**
