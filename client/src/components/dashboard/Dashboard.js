@@ -17,7 +17,6 @@ import {
   Filter,
   Microscope,
   BookOpen,
-  Link,
   Info,
   CheckCircle,
   Share2,
@@ -27,7 +26,6 @@ import {
 import { setLoading, setError } from "../../redux/slices/uiSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { selectRole } from "../../redux/slices/roleSlice.js";
-import HealthDataSection from "../patientDashboard/HealthDataSection.js";
 import useHealthData from "../../hooks/useHealthData.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 
@@ -45,7 +43,6 @@ const Dashboard = ({ onNavigate }) => {
   const userRole = useSelector(selectRole);
   const { loading, error } = useSelector((state) => state.ui);
   const userProfile = useSelector((state) => state.user.profile || {});
-  const walletAddress = useSelector((state) => state.wallet.address);
 
   // Use health data hook for data management
   const { userRecords, healthData, getRecordDetails, downloadRecord } =
