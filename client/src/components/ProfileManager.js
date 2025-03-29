@@ -1,5 +1,5 @@
 // src/components/ProfileManager.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -26,6 +26,8 @@ import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import useHipaaFormState from "../hooks/useHipaaFormState.js";
 import useAsyncOperation from "../hooks/useAsyncOperation.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
+import LoadingSpinner from "./ui/LoadingSpinner.js";
+import FocusTrap from "./ui/FocusTrap.js";
 
 /**
  * ProfileManager Component
@@ -39,7 +41,10 @@ const ProfileManager = () => {
   const userProfile = useSelector((state) => state.user.profile || {});
   const walletAddress = useSelector((state) => state.wallet.address);
 
-  // Image Upload State
+  // Refs for accessibility
+  const saveButtonRef = useRef(null);
+
+  // Image Upload and UI State
   const [previewUrl, setPreviewUrl] = useState(
     userProfile?.profileImage || null
   );
@@ -49,6 +54,7 @@ const ProfileManager = () => {
   const [tabValue, setTabValue] = useState(0);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Set up the formState with our custom hook
   const {
@@ -131,13 +137,37 @@ const ProfileManager = () => {
     userId: walletAddress,
     onSuccess: () => {
       setSuccess(true);
+
+      // Announce success for screen readers
+      const announcement = document.createElement("div");
+      announcement.setAttribute("aria-live", "assertive");
+      announcement.className = "sr-only";
+      announcement.textContent = "Profile updated successfully";
+      document.body.appendChild(announcement);
+
+      // Focus the save button after successful save
+      if (saveButtonRef.current) {
+        saveButtonRef.current.focus();
+      }
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccess(false);
+        document.body.removeChild(announcement);
       }, 3000);
     },
     onError: (err) => {
       setError(err.message || "Failed to update profile. Please try again.");
+
+      // Announce error for screen readers
+      const announcement = document.createElement("div");
+      announcement.setAttribute("aria-live", "assertive");
+      announcement.className = "sr-only";
+      announcement.textContent = `Error: ${err.message || "Failed to update profile"}`;
+      document.body.appendChild(announcement);
+
+      // Remove announcement after 5 seconds
+      setTimeout(() => document.body.removeChild(announcement), 5000);
     },
   });
 
@@ -145,6 +175,8 @@ const ProfileManager = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
+        setInitialLoading(true);
+
         // Create HIPAA-compliant audit log for profile access with enhanced metadata
         await hipaaComplianceService.createAuditLog("PROFILE_ACCESS", {
           action: "VIEW",
@@ -189,6 +221,8 @@ const ProfileManager = () => {
             message: "Failed to load your profile. Please try again.",
           })
         );
+      } finally {
+        setInitialLoading(false);
       }
     };
 
@@ -328,6 +362,22 @@ const ProfileManager = () => {
     // Use our validateForm method from the form hook
     const isValid = validateForm();
     if (!isValid) {
+      // Announce validation errors for screen readers
+      const announcement = document.createElement("div");
+      announcement.setAttribute("aria-live", "assertive");
+      announcement.className = "sr-only";
+      announcement.textContent =
+        "Form validation failed. Please check the form for errors.";
+      document.body.appendChild(announcement);
+
+      // Find the first error field and focus it
+      const firstErrorField = document.querySelector('[aria-invalid="true"]');
+      if (firstErrorField) {
+        firstErrorField.focus();
+      }
+
+      // Clean up announcement
+      setTimeout(() => document.body.removeChild(announcement), 3000);
       return;
     }
 
@@ -385,6 +435,27 @@ const ProfileManager = () => {
     });
   };
 
+  // Show initial loading state
+  if (initialLoading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+          Profile Settings
+        </h1>
+        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-8 border border-white/30 shadow-lg flex flex-col items-center justify-center min-h-[400px]">
+          <LoadingSpinner
+            size="large"
+            label="Loading your profile..."
+            showLabel={true}
+          />
+          <p className="text-gray-500 mt-4">
+            Please wait while we retrieve your information
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
@@ -392,8 +463,16 @@ const ProfileManager = () => {
       </h1>
 
       {/* HIPAA Compliance Banner */}
-      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-start gap-3">
-        <Shield className="text-blue-500 flex-shrink-0 mt-1" size={20} />
+      <div
+        className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-start gap-3"
+        role="region"
+        aria-label="HIPAA compliance information"
+      >
+        <Shield
+          className="text-blue-500 flex-shrink-0 mt-1"
+          size={20}
+          aria-hidden="true"
+        />
         <div>
           <h3 className="font-medium text-blue-700">HIPAA Compliance Notice</h3>
           <p className="text-sm text-blue-600">
@@ -405,8 +484,16 @@ const ProfileManager = () => {
       </div>
 
       {/* Data Processing Notice */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-        <Info className="text-gray-500 flex-shrink-0 mt-1" size={20} />
+      <div
+        className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 flex items-start gap-3"
+        role="region"
+        aria-label="Data processing information"
+      >
+        <Info
+          className="text-gray-500 flex-shrink-0 mt-1"
+          size={20}
+          aria-hidden="true"
+        />
         <div>
           <h3 className="font-medium text-gray-700">
             Data Processing Information
@@ -421,7 +508,7 @@ const ProfileManager = () => {
         </div>
       </div>
 
-      {/* Error Display - Using our new standardized component */}
+      {/* Error Display - Using our standardized component */}
       {error && (
         <ErrorDisplay
           error={error}
@@ -437,14 +524,18 @@ const ProfileManager = () => {
           role="alert"
           aria-live="polite"
         >
-          <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
+          <CheckCircle
+            size={20}
+            className="text-green-500 flex-shrink-0"
+            aria-hidden="true"
+          />
           <span className="flex-1">Profile updated successfully!</span>
           <button
             className="text-green-500 hover:text-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 rounded-full"
             onClick={() => setSuccess(false)}
             aria-label="Dismiss success message"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -490,9 +581,13 @@ const ProfileManager = () => {
                   }`}
                   required
                   aria-required="true"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? "name-error" : undefined}
                 />
                 {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                  <p id="name-error" className="mt-1 text-sm text-red-600">
+                    {errors.name}
+                  </p>
                 )}
               </div>
               <div>
@@ -512,12 +607,16 @@ const ProfileManager = () => {
                     errors.email ? "border-red-300" : ""
                   }`}
                   aria-label="Email address"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? "email-error" : undefined}
                 />
                 {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  <p id="email-error" className="mt-1 text-sm text-red-600">
+                    {errors.email}
+                  </p>
                 )}
                 {userRole === "patient" && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p id="email-hint" className="mt-1 text-xs text-gray-500">
                     Your email will be masked unless you enable direct contact
                     in Privacy settings
                   </p>
@@ -540,9 +639,12 @@ const ProfileManager = () => {
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     min="0"
                     aria-label="Age"
+                    aria-describedby={
+                      userRole === "patient" ? "age-hint" : undefined
+                    }
                   />
                   {userRole === "patient" && (
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p id="age-hint" className="mt-1 text-xs text-gray-500">
                       Only shared if anonymous sharing is enabled
                     </p>
                   )}
@@ -554,11 +656,20 @@ const ProfileManager = () => {
                         ? "bg-blue-100 text-blue-800"
                         : "bg-purple-100 text-purple-800"
                     }`}
+                    role="status"
                   >
                     {userRole === "patient" ? (
-                      <UserCheck className="mr-1" size={16} />
+                      <UserCheck
+                        className="mr-1"
+                        size={16}
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Briefcase className="mr-1" size={16} />
+                      <Briefcase
+                        className="mr-1"
+                        size={16}
+                        aria-hidden="true"
+                      />
                     )}
                     {userRole === "patient" ? "Patient" : "Researcher"}
                   </span>
@@ -569,12 +680,13 @@ const ProfileManager = () => {
         </div>
       </div>
 
-      {/* Tabbed section */}
+      {/* Tabbed section with enhanced accessibility */}
       <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg border border-white/30">
         <div className="border-b border-gray-200">
           <nav
             className="flex overflow-x-auto"
             aria-label="Profile settings tabs"
+            role="tablist"
           >
             <button
               onClick={() => handleTabChange(0)}
@@ -589,7 +701,7 @@ const ProfileManager = () => {
               role="tab"
               type="button"
             >
-              <FileText size={18} className="mr-2" />
+              <FileText size={18} className="mr-2" aria-hidden="true" />
               Profile
             </button>
             <button
@@ -605,7 +717,7 @@ const ProfileManager = () => {
               role="tab"
               type="button"
             >
-              <Database size={18} className="mr-2" />
+              <Database size={18} className="mr-2" aria-hidden="true" />
               Data
             </button>
             <button
@@ -621,7 +733,7 @@ const ProfileManager = () => {
               role="tab"
               type="button"
             >
-              <Lock size={18} className="mr-2" />
+              <Lock size={18} className="mr-2" aria-hidden="true" />
               Privacy
             </button>
             <button
@@ -637,7 +749,7 @@ const ProfileManager = () => {
               role="tab"
               type="button"
             >
-              <Bell size={18} className="mr-2" />
+              <Bell size={18} className="mr-2" aria-hidden="true" />
               Notifications
             </button>
             {userRole === "researcher" && (
@@ -654,7 +766,7 @@ const ProfileManager = () => {
                 role="tab"
                 type="button"
               >
-                <Award size={18} className="mr-2" />
+                <Award size={18} className="mr-2" aria-hidden="true" />
                 Credentials
               </button>
             )}
@@ -678,7 +790,7 @@ const ProfileManager = () => {
               {...props}
             >
               {props.value === props.index && (
-                <div className="py-6">{props.children}</div>
+                <div className="p-6">{props.children}</div>
               )}
             </div>
           )}
@@ -687,9 +799,17 @@ const ProfileManager = () => {
 
       {/* HIPAA processing notification */}
       {userRole === "patient" && (
-        <div className="mt-6 p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-sm text-yellow-700">
+        <div
+          className="mt-6 p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-sm text-yellow-700"
+          role="region"
+          aria-label="HIPAA data processing notice"
+        >
           <div className="flex items-center mb-1">
-            <Info size={16} className="mr-2 text-yellow-600" />
+            <Info
+              size={16}
+              className="mr-2 text-yellow-600"
+              aria-hidden="true"
+            />
             <span className="font-medium">HIPAA Data Processing Notice</span>
           </div>
           <p>
@@ -701,7 +821,7 @@ const ProfileManager = () => {
         </div>
       )}
 
-      {/* Save button */}
+      {/* Save button with improved accessibility */}
       <div className="flex justify-end mt-6 mb-8">
         <button
           type="button"
@@ -715,15 +835,18 @@ const ProfileManager = () => {
                 : "bg-blue-600 hover:bg-blue-700"
           } text-white font-medium shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
           aria-label="Save profile changes"
+          aria-busy={loading}
+          aria-disabled={!isDirty}
+          ref={saveButtonRef}
         >
           {loading ? (
             <>
-              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <LoadingSpinner size="small" color="white" />
               <span>Saving...</span>
             </>
           ) : (
             <>
-              <Save size={18} />
+              <Save size={18} aria-hidden="true" />
               <span>Save Profile</span>
             </>
           )}

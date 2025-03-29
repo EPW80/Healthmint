@@ -1,5 +1,5 @@
-// src/components/DataBrowserView.js
-import React from "react";
+// src/components/DataBrowserView.js with improved accessibility and standardized loading
+import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
   CheckCircle,
@@ -15,11 +15,13 @@ import {
   Info,
   X,
 } from "lucide-react";
+import LoadingSpinner from "./ui/LoadingSpinner.js";
 
 /**
  * DataBrowserView Component
  *
  * Presentation component for displaying health data browsing interface
+ * with improved accessibility features
  */
 const DataBrowserView = ({
   userRole,
@@ -52,7 +54,45 @@ const DataBrowserView = ({
   categories,
   studyTypes,
   dataFormats,
+  consentVerified,
 }) => {
+  // Refs for managing focus and modal accessibility
+  const modalRef = useRef(null);
+  const triggerRef = useRef(null);
+  const closeButtonRef = useRef(null);
+
+  // Keep track of the element that opened the modal
+  useEffect(() => {
+    if (previewOpen && closeButtonRef.current) {
+      // Store current active element as trigger before opening modal
+      triggerRef.current = document.activeElement;
+      // Focus the close button when modal opens
+      closeButtonRef.current.focus();
+    }
+  }, [previewOpen]);
+
+  // Handle focus restoration when modal closes
+  useEffect(() => {
+    if (!previewOpen && triggerRef.current) {
+      // Restore focus to trigger when modal closes
+      triggerRef.current.focus();
+    }
+  }, [previewOpen]);
+
+  // Handle keyboard events (ESC key) for the modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (previewOpen && e.key === "Escape") {
+        handleClosePreview();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [previewOpen, handleClosePreview]);
+
   // Render search and basic filters
   const renderSearchAndFilters = () => (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/30 shadow-md">
@@ -65,13 +105,15 @@ const DataBrowserView = ({
             value={searchInput}
             onChange={handleSearchInputChange}
             onKeyDown={handleSearchKeyDown}
+            aria-label="Search datasets"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-gray-400" />
+            <Search size={18} className="text-gray-400" aria-hidden="true" />
           </div>
           <button
             className="absolute inset-y-0 right-0 pr-3 flex items-center bg-blue-500 text-white px-4 rounded-r-lg hover:bg-blue-600 transition-colors"
             onClick={handleSearch}
+            aria-label="Search"
           >
             Search
           </button>
@@ -91,6 +133,7 @@ const DataBrowserView = ({
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             value={filters.category}
             onChange={(e) => updateFilter("category", e.target.value)}
+            aria-label="Filter by category"
           >
             {categories.map((category) => (
               <option key={category} value={category}>
@@ -112,6 +155,7 @@ const DataBrowserView = ({
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             value={filters.priceRange}
             onChange={(e) => updateFilter("priceRange", e.target.value)}
+            aria-label="Filter by price range"
           >
             <option value="all">All Prices</option>
             <option value="low">Low (≤ 0.1 ETH)</option>
@@ -132,6 +176,7 @@ const DataBrowserView = ({
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             value={filters.sortBy}
             onChange={(e) => updateFilter("sortBy", e.target.value)}
+            aria-label="Sort results"
           >
             <option value="relevance">Relevance</option>
             <option value="price_asc">Price: Low to High</option>
@@ -152,6 +197,7 @@ const DataBrowserView = ({
               className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               checked={filters.verifiedOnly}
               onChange={(e) => updateFilter("verifiedOnly", e.target.checked)}
+              aria-label="Show verified data only"
             />
             <span className="text-gray-700">Verified data only</span>
           </label>
@@ -163,6 +209,7 @@ const DataBrowserView = ({
                 className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 checked={showOnlyFavorites}
                 onChange={(e) => handleToggleFavorites(e.target.checked)}
+                aria-label="Show favorites only"
               />
               <span className="text-gray-700">Show favorites only</span>
             </label>
@@ -173,18 +220,22 @@ const DataBrowserView = ({
           <button
             onClick={toggleAdvancedFilters}
             className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-expanded={advancedFiltersOpen}
+            aria-controls="advanced-filters-section"
           >
-            <Filter size={16} className="mr-2" />
+            <Filter size={16} className="mr-2" aria-hidden="true" />
             Advanced Filters
             <ChevronDown
               size={16}
               className={`ml-1 transform transition-transform ${advancedFiltersOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
             />
           </button>
 
           <button
             onClick={handleResetFilters}
             className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-label="Reset all filters"
           >
             Reset Filters
           </button>
@@ -193,7 +244,11 @@ const DataBrowserView = ({
 
       {/* Advanced filters */}
       {advancedFiltersOpen && (
-        <div className="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+        <div
+          className="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50"
+          id="advanced-filters-section"
+          aria-label="Advanced filter options"
+        >
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Advanced Filters
           </h3>
@@ -214,6 +269,7 @@ const DataBrowserView = ({
                 onChange={(e) => updateFilter("minAge", e.target.value)}
                 min="0"
                 max="120"
+                aria-label="Minimum age"
               />
             </div>
 
@@ -232,6 +288,7 @@ const DataBrowserView = ({
                 onChange={(e) => updateFilter("maxAge", e.target.value)}
                 min="0"
                 max="120"
+                aria-label="Maximum age"
               />
             </div>
 
@@ -247,6 +304,7 @@ const DataBrowserView = ({
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={filters.studyType}
                 onChange={(e) => updateFilter("studyType", e.target.value)}
+                aria-label="Filter by study type"
               >
                 {studyTypes.map((type) => (
                   <option key={type} value={type}>
@@ -268,6 +326,7 @@ const DataBrowserView = ({
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={filters.dataFormat}
                 onChange={(e) => updateFilter("dataFormat", e.target.value)}
+                aria-label="Filter by data format"
               >
                 {dataFormats.map((format) => (
                   <option key={format} value={format}>
@@ -289,6 +348,7 @@ const DataBrowserView = ({
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={filters.recordSize}
                 onChange={(e) => updateFilter("recordSize", e.target.value)}
+                aria-label="Filter by record size"
               >
                 <option value="all">All Sizes</option>
                 <option value="small">Small (&lt; 1,000 records)</option>
@@ -309,6 +369,7 @@ const DataBrowserView = ({
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 value={filters.dataAge}
                 onChange={(e) => updateFilter("dataAge", e.target.value)}
+                aria-label="Filter by data age"
               >
                 <option value="all">All Ages</option>
                 <option value="recent">Recent (&lt; 6 months)</option>
@@ -324,15 +385,20 @@ const DataBrowserView = ({
   // Render view toggle and count
   const renderViewOptions = () => (
     <div className="flex justify-between items-center mb-6">
-      <p className="text-gray-600 font-medium">
+      <p className="text-gray-600 font-medium" aria-live="polite">
         Showing {filteredData.length} of {totalCount} datasets
       </p>
 
-      <div className="flex items-center gap-2">
+      <div
+        className="flex items-center gap-2"
+        role="radiogroup"
+        aria-label="View mode"
+      >
         <button
           onClick={() => handleViewModeChange("grid")}
           className={`p-2 rounded-md ${viewMode === "grid" ? "bg-blue-100 text-blue-600" : "text-gray-500"}`}
           aria-label="Grid View"
+          aria-pressed={viewMode === "grid"}
         >
           <div className="grid grid-cols-2 gap-1">
             <div className="w-3 h-3 bg-current rounded-sm"></div>
@@ -346,6 +412,7 @@ const DataBrowserView = ({
           onClick={() => handleViewModeChange("table")}
           className={`p-2 rounded-md ${viewMode === "table" ? "bg-blue-100 text-blue-600" : "text-gray-500"}`}
           aria-label="Table View"
+          aria-pressed={viewMode === "table"}
         >
           <div className="flex flex-col gap-1">
             <div className="w-6 h-2 bg-current rounded-sm"></div>
@@ -376,14 +443,14 @@ const DataBrowserView = ({
                 className={`p-1 rounded-full ${favoriteDatasets.includes(data.id) ? "text-yellow-500" : "text-gray-400"}`}
                 aria-label={
                   favoriteDatasets.includes(data.id)
-                    ? "Remove from favorites"
-                    : "Add to favorites"
+                    ? `Remove ${data.title || data.category} from favorites`
+                    : `Add ${data.title || data.category} to favorites`
                 }
               >
                 {favoriteDatasets.includes(data.id) ? (
-                  <Star size={18} />
+                  <Star size={18} aria-hidden="true" />
                 ) : (
-                  <StarOff size={18} />
+                  <StarOff size={18} aria-hidden="true" />
                 )}
               </button>
             </div>
@@ -394,7 +461,7 @@ const DataBrowserView = ({
               </span>
               {data.verified && (
                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center">
-                  <CheckCircle size={12} className="mr-1" />
+                  <CheckCircle size={12} className="mr-1" aria-hidden="true" />
                   Verified
                 </span>
               )}
@@ -412,11 +479,11 @@ const DataBrowserView = ({
 
             <div className="mt-3 text-gray-600 text-sm">
               <div className="flex items-center gap-1 mb-1">
-                <FileText size={14} />
+                <FileText size={14} aria-hidden="true" />
                 <span>{data.recordCount || "Unknown"} records</span>
               </div>
               <div className="flex items-center gap-1">
-                <BarChart size={14} />
+                <BarChart size={14} aria-hidden="true" />
                 <span>{data.anonymized ? "Anonymized" : "Identifiable"}</span>
               </div>
             </div>
@@ -435,12 +502,14 @@ const DataBrowserView = ({
               <button
                 onClick={() => handleViewDataset(data.id)}
                 className="flex-1 py-2 px-3 bg-white border border-blue-500 text-blue-500 font-medium rounded-lg hover:bg-blue-50 transition-colors"
+                aria-label={`Preview details for ${data.title || data.category}`}
               >
                 Preview
               </button>
               <button
                 onClick={() => handlePurchase(data.id)}
                 className="flex-1 py-2 px-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors"
+                aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
               >
                 Purchase
               </button>
@@ -454,7 +523,10 @@ const DataBrowserView = ({
   // Render table view
   const renderTableView = () => (
     <div className="overflow-x-auto bg-white rounded-xl shadow-md">
-      <table className="min-w-full divide-y divide-gray-200">
+      <table
+        className="min-w-full divide-y divide-gray-200"
+        aria-label="Available health datasets"
+      >
         <thead className="bg-gray-50">
           <tr>
             <th
@@ -506,16 +578,25 @@ const DataBrowserView = ({
                         {data.title || data.category}
                       </div>
                       {data.verified && (
-                        <CheckCircle size={16} className="text-green-500" />
+                        <CheckCircle
+                          size={16}
+                          className="text-green-500"
+                          aria-label="Verified data"
+                        />
                       )}
                       <button
                         onClick={() => toggleFavorite(data.id)}
                         className={`ml-2 ${favoriteDatasets.includes(data.id) ? "text-yellow-500" : "text-gray-400"}`}
+                        aria-label={
+                          favoriteDatasets.includes(data.id)
+                            ? `Remove ${data.title || data.category} from favorites`
+                            : `Add ${data.title || data.category} to favorites`
+                        }
                       >
                         {favoriteDatasets.includes(data.id) ? (
-                          <Star size={16} />
+                          <Star size={16} aria-hidden="true" />
                         ) : (
-                          <StarOff size={16} />
+                          <StarOff size={16} aria-hidden="true" />
                         )}
                       </button>
                     </div>
@@ -546,12 +627,14 @@ const DataBrowserView = ({
                   <button
                     onClick={() => handleViewDataset(data.id)}
                     className="text-blue-600 hover:text-blue-800"
+                    aria-label={`Preview ${data.title || data.category}`}
                   >
                     Preview
                   </button>
                   <button
                     onClick={() => handlePurchase(data.id)}
                     className="text-green-600 hover:text-green-800"
+                    aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
                   >
                     Purchase
                   </button>
@@ -564,21 +647,37 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render dataset preview modal
+  // Render dataset preview modal with enhanced accessibility
   const renderDatasetPreview = () => {
     if (!previewOpen || !selectedDataset) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="preview-title"
+        ref={modalRef}
+        onClick={(e) => {
+          // Close the modal when clicking outside of it
+          if (modalRef.current === e.target) {
+            handleClosePreview();
+          }
+        }}
+      >
         <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
-              <h3 className="text-2xl font-bold">Dataset Preview</h3>
+              <h3 className="text-2xl font-bold" id="preview-title">
+                Dataset Preview
+              </h3>
               <button
+                ref={closeButtonRef}
                 onClick={handleClosePreview}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 rounded-full p-1"
+                aria-label="Close preview"
               >
-                <X size={24} />
+                <X size={24} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -586,7 +685,11 @@ const DataBrowserView = ({
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
             {detailsLoading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                <LoadingSpinner
+                  size="large"
+                  label="Loading dataset details..."
+                  showLabel={true}
+                />
               </div>
             ) : datasetDetails ? (
               <div className="space-y-6">
@@ -601,7 +704,11 @@ const DataBrowserView = ({
                       </span>
                       {datasetDetails.verified && (
                         <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center">
-                          <CheckCircle size={12} className="mr-1" />
+                          <CheckCircle
+                            size={12}
+                            className="mr-1"
+                            aria-hidden="true"
+                          />
                           Verified
                         </span>
                       )}
@@ -627,6 +734,7 @@ const DataBrowserView = ({
                     <Info
                       size={20}
                       className="text-blue-500 flex-shrink-0 mt-0.5"
+                      aria-hidden="true"
                     />
                     <div className="flex-1">
                       <h5 className="font-medium text-blue-700">
@@ -706,7 +814,11 @@ const DataBrowserView = ({
               </div>
             ) : (
               <div className="text-center py-12">
-                <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
+                <AlertCircle
+                  size={48}
+                  className="mx-auto text-gray-400 mb-4"
+                  aria-hidden="true"
+                />
                 <p className="text-gray-500">Dataset details not available</p>
               </div>
             )}
@@ -716,7 +828,7 @@ const DataBrowserView = ({
             <div className="flex justify-end gap-3">
               <button
                 onClick={handleClosePreview}
-                className="px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
               >
                 Close
               </button>
@@ -726,7 +838,7 @@ const DataBrowserView = ({
                   handlePurchase(selectedDataset);
                   handleClosePreview();
                 }}
-                className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 Purchase Dataset
               </button>
@@ -736,9 +848,9 @@ const DataBrowserView = ({
                   onClick={() =>
                     window.open(datasetDetails.sampleUrl, "_blank")
                   }
-                  className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center"
+                  className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center focus:outline-none focus:ring-2 focus:ring-green-400"
                 >
-                  <Download size={16} className="mr-2" />
+                  <Download size={16} className="mr-2" aria-hidden="true" />
                   Download Sample
                 </button>
               )}
@@ -757,18 +869,28 @@ const DataBrowserView = ({
         </h1>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
-            <AlertCircle size={20} className="text-red-500" />
+          <div
+            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2"
+            role="alert"
+            aria-live="assertive"
+          >
+            <AlertCircle
+              size={20}
+              className="text-red-500"
+              aria-hidden="true"
+            />
             <span>{error}</span>
             <button
-              className="ml-auto text-red-500 hover:text-red-700"
+              className="ml-auto text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 rounded-full"
               onClick={() => window.location.reload()}
+              aria-label="Reload page"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5"
                 viewBox="0 0 20 20"
                 fill="currentColor"
+                aria-hidden="true"
               >
                 <path
                   fillRule="evenodd"
@@ -786,7 +908,11 @@ const DataBrowserView = ({
         {/* Loading State */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <LoadingSpinner
+              size="large"
+              label="Loading health datasets..."
+              showLabel={true}
+            />
           </div>
         ) : (
           <>
@@ -798,8 +924,16 @@ const DataBrowserView = ({
 
             {/* No Results Message */}
             {filteredData.length === 0 && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mt-4 flex items-center gap-2">
-                <AlertCircle size={20} className="text-blue-500" />
+              <div
+                className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mt-4 flex items-center gap-2"
+                role="alert"
+                aria-live="polite"
+              >
+                <AlertCircle
+                  size={20}
+                  className="text-blue-500"
+                  aria-hidden="true"
+                />
                 <span>
                   No records match your current filters. Try adjusting your
                   search criteria.
@@ -847,6 +981,7 @@ DataBrowserView.propTypes = {
   categories: PropTypes.array.isRequired,
   studyTypes: PropTypes.array.isRequired,
   dataFormats: PropTypes.array.isRequired,
+  consentVerified: PropTypes.bool,
 };
 
 export default DataBrowserView;

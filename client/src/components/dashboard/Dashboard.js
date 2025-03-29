@@ -30,6 +30,7 @@ import useHealthData from "../../hooks/useHealthData.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import useAsyncOperation from "../../hooks/useAsyncOperation.js";
 import ErrorDisplay from "../ui/ErrorDisplay.js";
+import LoadingSpinner from "../ui/LoadingSpinner.js";
 
 /**
  * Unified Dashboard Component
@@ -352,8 +353,18 @@ const Dashboard = ({ onNavigate }) => {
   // Loading state
   if (isLoading && !uiError) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">Dashboard</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 flex flex-col items-center justify-center min-h-[400px]">
+          <LoadingSpinner
+            size="large"
+            label={`Loading ${userRole === "patient" ? "patient" : "researcher"} dashboard...`}
+            showLabel={true}
+          />
+          <p className="text-gray-500 mt-4">
+            Please wait while we retrieve your information
+          </p>
+        </div>
       </div>
     );
   }
@@ -604,10 +615,20 @@ const Dashboard = ({ onNavigate }) => {
                     </button>
 
                     <button
-                      onClick={() => handleDownloadRecord(record.id)}
-                      className="flex-1 flex items-center justify-center gap-1 text-xs text-green-600 hover:text-green-800"
+                      onClick={() => handleDownloadRecord(record)}
+                      disabled={downloadLoading}
+                      className={`flex items-center justify-center gap-2 px-4 py-2 ${
+                        downloadLoading
+                          ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                          : "bg-blue-500 hover:bg-blue-600 text-white"
+                      } rounded-lg`}
+                      aria-busy={downloadLoading}
                     >
-                      <Download size={14} />
+                      {downloadLoading ? (
+                        <LoadingSpinner size="small" color="gray" />
+                      ) : (
+                        <Download size={18} />
+                      )}
                       <span>Download</span>
                     </button>
 
