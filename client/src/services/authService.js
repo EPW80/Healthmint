@@ -204,4 +204,58 @@ class AuthenticationService {
 
 // Create singleton instance
 const authService = new AuthenticationService();
+// Add this debugging helper function to your authService.js file
+
+/**
+ * Debug helper to print the current auth state
+ * This can be called from the browser console to diagnose issues
+ */
+const debugAuthState = () => {
+  try {
+    const walletConnected =
+      localStorage.getItem("healthmint_wallet_connection") === "true";
+    const walletAddress = localStorage.getItem("healthmint_wallet_address");
+    const userRole = localStorage.getItem("healthmint_user_role");
+    const isNewUser = localStorage.getItem("healthmint_is_new_user");
+    const authToken = localStorage.getItem("healthmint_auth_token");
+
+    const sessionBypass = {
+      routeProtection: sessionStorage.getItem("bypass_route_protection"),
+      roleCheck: sessionStorage.getItem("bypass_role_check"),
+      authVerification: sessionStorage.getItem("auth_verification_override"),
+    };
+
+    // Get user from storage
+    let userString = localStorage.getItem("healthmint_user_profile");
+    let user = null;
+    try {
+      user = userString ? JSON.parse(userString) : null;
+    } catch (e) {
+      user = { error: "Invalid JSON" };
+    }
+
+    console.log("🔍 Auth State Debug:");
+    console.log({
+      walletConnected,
+      walletAddress,
+      userRole,
+      isNewUser,
+      hasAuthToken: !!authToken,
+      user,
+      sessionBypass,
+    });
+
+    return true;
+  } catch (e) {
+    console.error("Error in debugAuthState:", e);
+    return false;
+  }
+};
+
+// Export the debug function so it can be accessed
+window.debugHealthmintAuth = debugAuthState;
+
+// Add this to your authService exports
+export { debugAuthState };
+
 export default authService;

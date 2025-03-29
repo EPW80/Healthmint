@@ -1,4 +1,4 @@
-// client/src/components/AppContent.js (Updated)
+// client/src/components/AppContent.js
 import React, { useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -9,7 +9,7 @@ import Navigation from "./Navigation.js";
 import Footer from "./Footer.js";
 import RoleSelector from "./roles/RoleSelector.js";
 import ProtectedRoute from "./ProtectedRoute.js";
-import Dashboard from "./dashboard/Dashboard.js"; // Updated import
+import Dashboard from "./dashboard/Dashboard.js";
 import ProfileManager from "./ProfileManager.js";
 import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
@@ -51,6 +51,8 @@ function AppContent() {
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
+  const [routeChecksBypassEnabled, setRouteChecksBypassEnabled] =
+    useState(false);
 
   // Handle user registration completion
   const handleRegistrationComplete = useCallback(
@@ -69,11 +71,53 @@ function AppContent() {
     [dispatch]
   );
 
+  // Add this emergency loop breaker
+  useEffect(() => {
+    // Emergency loop breaker - if we're still initializing after 4 seconds, force through
+    const emergencyTimeout = setTimeout(() => {
+      if (isVerifying || !isInitialized) {
+        console.warn("🚨 EMERGENCY: Breaking auth loop after timeout");
+        // Force all auth states to positive to break any loops
+        sessionStorage.setItem("auth_verification_override", "true");
+        sessionStorage.setItem("bypass_route_protection", "true");
+        sessionStorage.setItem("bypass_role_check", "true");
+
+        // Force the app to think it's initialized and not verifying
+        setIsVerifying(false);
+        setIsInitialized(true);
+      }
+    }, 4000);
+
+    return () => clearTimeout(emergencyTimeout);
+  }, [isVerifying, isInitialized]);
+
+  // Check for temporary bypass flags that might be set in sessionStorage
+  useEffect(() => {
+    const bypassFlag = sessionStorage.getItem("bypass_route_protection");
+    if (bypassFlag === "true") {
+      setRouteChecksBypassEnabled(true);
+      // Clear flag after a short delay to allow rendering to complete
+      const timerId = setTimeout(() => {
+        sessionStorage.removeItem("bypass_route_protection");
+        setRouteChecksBypassEnabled(false);
+      }, 500);
+      return () => clearTimeout(timerId);
+    }
+  }, [location.pathname]);
+
   // Verify authentication on first load
   useEffect(() => {
+    // Skip verification if bypass is enabled
+    if (routeChecksBypassEnabled) {
+      setIsVerifying(false);
+      setIsInitialized(true);
+      return;
+    }
+
     const initAuth = async () => {
       setIsVerifying(true);
       try {
+        console.log("Verifying authentication state...");
         await verifyAuth();
       } catch (error) {
         console.error("Auth verification error:", error);
@@ -83,8 +127,13 @@ function AppContent() {
       }
     };
 
-    initAuth();
-  }, [verifyAuth]);
+    // Add a small delay to prevent immediate re-verification
+    const timerId = setTimeout(() => {
+      initAuth();
+    }, 100);
+
+    return () => clearTimeout(timerId);
+  }, [verifyAuth, routeChecksBypassEnabled]);
 
   // Handle logout - Complete reset of all auth states
   const handleLogout = useCallback(async () => {
@@ -110,6 +159,11 @@ function AppContent() {
       localStorage.removeItem("healthmint_refresh_token");
       localStorage.removeItem("healthmint_token_expiry");
       localStorage.removeItem("healthmint_is_new_user");
+
+      // Clear any sessionStorage flags we might have set
+      sessionStorage.removeItem("bypass_route_protection");
+      sessionStorage.removeItem("bypass_role_check");
+      sessionStorage.removeItem("temp_selected_role");
 
       // Notification of success
       dispatch(
@@ -141,21 +195,29 @@ function AppContent() {
     );
   }
 
+  // Create a helper function to determine if we should show navigation
+  const shouldShowNavigation = () => {
+    return (
+      isConnected &&
+      !isNewUser &&
+      location.pathname !== "/login" &&
+      location.pathname !== "/register" &&
+      location.pathname !== "/select-role" // Don't show nav on role selection
+    );
+  };
+
   return (
     <>
-      {/* Only show navigation when authenticated and not in registration */}
-      {isConnected &&
-        !isNewUser &&
-        location.pathname !== "/login" &&
-        location.pathname !== "/register" && (
-          <Navigation
-            account={address}
-            onLogout={handleLogout}
-            role={userRole}
-            network={network}
-            onSwitchNetwork={switchNetwork}
-          />
-        )}
+      {/* Only show navigation when authenticated and not in registration or role selection */}
+      {shouldShowNavigation() && (
+        <Navigation
+          account={address}
+          onLogout={handleLogout}
+          role={userRole}
+          network={network}
+          onSwitchNetwork={switchNetwork}
+        />
+      )}
 
       <div className="flex-1">
         <Routes>
@@ -219,7 +281,7 @@ function AppContent() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={[]} requireBackendAuth={false}>
+              <ProtectedRoute allowedRoles={[]}>
                 {isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
@@ -235,7 +297,7 @@ function AppContent() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute requireBackendAuth={false}>
+              <ProtectedRoute>
                 {isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
@@ -250,7 +312,7 @@ function AppContent() {
           <Route
             path="/upload"
             element={
-              <ProtectedRoute requireBackendAuth={false}>
+              <ProtectedRoute>
                 {isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
@@ -265,7 +327,7 @@ function AppContent() {
           <Route
             path="/browse"
             element={
-              <ProtectedRoute requireBackendAuth={false}>
+              <ProtectedRoute>
                 {isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (

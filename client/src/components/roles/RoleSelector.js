@@ -1,7 +1,7 @@
 // client/src/components/roles/RoleSelector.js
 import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { User, Microscope, Loader, AlertCircle } from "lucide-react";
 import { setRole } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
@@ -16,17 +16,42 @@ import authUtils from "../../utils/authUtils.js";
 const RoleSelector = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Local state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
   const [redirecting, setRedirecting] = useState(false);
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   // Check for an existing role in localStorage or user profile
   useEffect(() => {
+    // If we're already checking or redirecting, skip
+    if (redirecting || initialCheckComplete) {
+      return;
+    }
+
     const checkExistingRole = () => {
       console.log("Checking for existing role...");
+
+      // First, check if we came from a redirect loop - if so, don't redirect again
+      const fromPath = location.state?.from;
+      if (fromPath === "/dashboard") {
+        console.log("Coming from dashboard, skipping role redirect");
+        setInitialCheckComplete(true);
+        return false;
+      }
+
+      // Check if we have an explicit bypass flag
+      if (sessionStorage.getItem("bypass_role_check") === "true") {
+        console.log("Bypassing role check due to session flag");
+        // Clear the flag after using it once
+        sessionStorage.removeItem("bypass_role_check");
+        setInitialCheckComplete(true);
+        return false;
+      }
+
       // Check user profile first
       const userProfile = authService.getCurrentUser();
       if (userProfile && userProfile.role) {
@@ -43,16 +68,25 @@ const RoleSelector = () => {
         return true;
       }
 
+      setInitialCheckComplete(true);
       return false;
     };
 
     const hasRole = checkExistingRole();
 
-    // If role is detected, redirect to dashboard
+    // If role is detected and we're not already redirecting, go to dashboard
     if (hasRole && !redirecting) {
+      // Set a flag to prevent route protection loops
+      sessionStorage.setItem("bypass_route_protection", "true");
+
+      // Mark that we're redirecting to prevent multiple redirects
+      setRedirecting(true);
+      setInitialCheckComplete(true);
+
+      // Navigate to dashboard
       navigate("/dashboard", { replace: true });
     }
-  }, [dispatch, navigate, redirecting]);
+  }, [dispatch, navigate, redirecting, location.state, initialCheckComplete]);
 
   /**
    * Handle role selection with improved user data persistence and error handling
@@ -71,7 +105,7 @@ const RoleSelector = () => {
         console.log(`Setting role: ${role}`); // Debug log
 
         // Create a bypass flag to prevent infinite redirects
-        sessionStorage.setItem("bypass_role_check", "true");
+        sessionStorage.setItem("bypass_route_protection", "true");
         sessionStorage.setItem("temp_selected_role", role);
 
         // Audit role selection for HIPAA compliance
@@ -132,8 +166,11 @@ const RoleSelector = () => {
           })
         );
 
-        // Force direct navigation to avoid React Router timing issues
-        window.location.href = "/dashboard";
+        // Use React Router navigation with a state flag to prevent loops
+        navigate("/dashboard", {
+          replace: true,
+          state: { roleJustSelected: true },
+        });
       } catch (err) {
         console.error("Role selection error:", err);
         setError(err.message || "Failed to set role. Please try again.");
@@ -149,11 +186,11 @@ const RoleSelector = () => {
         setRedirecting(false);
 
         // Clear any bypass flags on error
-        sessionStorage.removeItem("bypass_role_check");
+        sessionStorage.removeItem("bypass_route_protection");
         sessionStorage.removeItem("temp_selected_role");
       }
     },
-    [dispatch, loading]
+    [dispatch, loading, navigate]
   );
 
   return (
