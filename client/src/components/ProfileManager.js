@@ -32,7 +32,6 @@ import hipaaComplianceService from "../services/hipaaComplianceService.js";
  */
 const ProfileManager = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const userRole = useSelector(selectRole);
   const userProfile = useSelector((state) => state.user.profile || {});
   const walletAddress = useSelector((state) => state.wallet.address);
@@ -619,6 +618,14 @@ const ProfileManager = () => {
       </div>
     </div>
   );
+};
+
+ProfileManager.propTypes = {
+  onImageUpload: PropTypes.func,
+  onImageRemove: PropTypes.func,
+  defaultImage: PropTypes.string,
+  userName: PropTypes.string,
+  onSave: PropTypes.func,
 };
 
 export default ProfileManager;

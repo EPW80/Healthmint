@@ -11,7 +11,7 @@ import RoleSelector from "./roles/RoleSelector.js";
 import ProtectedRoute from "./ProtectedRoute.js";
 import PatientDashboard from "./dashboard/PatientDashboard.js";
 import ResearcherDashboard from "./dashboard/ResearcherDashboard.js";
-import ProfileSettings from "./ProfileSettings.js";
+import ProfileManager from "./ProfileManager.js";
 import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
 import UserRegistration from "./UserRegistration.js";
@@ -47,11 +47,7 @@ function AppContent() {
   const isRoleSelected = useSelector(selectIsRoleSelected);
 
   // Get auth state
-  const {
-    isNewUser,
-    verifyAuth,
-    logout,
-  } = useAuth();
+  const { isNewUser, verifyAuth, logout } = useAuth();
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
@@ -254,7 +250,7 @@ function AppContent() {
                 ) : !isRoleSelected ? (
                   <Navigate to="/select-role" replace />
                 ) : (
-                  <ProfileSettings />
+                  <ProfileManager />
                 )}
               </ProtectedRoute>
             }
