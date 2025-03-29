@@ -15,7 +15,7 @@ import {
   X,
   CheckCircle,
   Shield,
-  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
 import { selectRole } from "../redux/slices/roleSlice.js";
@@ -26,80 +26,10 @@ import userService from "../services/userService.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
 /**
- * Enhanced sanitization function for HIPAA compliance
- * Consistently handles PHI and sensitive data
- */
-const sanitizeUserData = (data, options = {}) => {
-  // Default options
-  const config = {
-    excludeFields: ["password", "walletType"],
-    sensitiveFields: [
-      "email",
-      "age",
-      "dob",
-      "address",
-      "phone",
-      "medicalHistory",
-    ],
-    maskSensitiveData: false,
-    retainAuditFields: true,
-    ...options,
-  };
-
-  // Clone data to avoid modifying the original
-  const sanitizedData = { ...data };
-
-  // Track all fields processed for audit purposes
-  const processedFields = [];
-
-  // Remove excluded fields
-  if (config.excludeFields && config.excludeFields.length > 0) {
-    config.excludeFields.forEach((field) => {
-      if (sanitizedData.hasOwnProperty(field)) {
-        delete sanitizedData[field];
-        processedFields.push({ field, action: "excluded" });
-      }
-    });
-  }
-
-  // Handle sensitive fields
-  if (config.sensitiveFields && config.sensitiveFields.length > 0) {
-    config.sensitiveFields.forEach((field) => {
-      if (sanitizedData.hasOwnProperty(field)) {
-        if (config.maskSensitiveData) {
-          // Mask the data
-          const value = sanitizedData[field];
-          if (typeof value === "string") {
-            sanitizedData[field] = value.replace(/./g, "*");
-          } else if (typeof value === "number") {
-            sanitizedData[field] = 0;
-          }
-          processedFields.push({ field, action: "masked" });
-        } else {
-          processedFields.push({ field, action: "included" });
-        }
-      }
-    });
-  }
-
-  // Add sanitization metadata for audit purposes
-  if (config.retainAuditFields) {
-    sanitizedData._sanitizationMetadata = {
-      timestamp: new Date().toISOString(),
-      processedFields,
-      maskingApplied: config.maskSensitiveData,
-      fieldCount: Object.keys(sanitizedData).length,
-    };
-  }
-
-  return sanitizedData;
-};
-
-/**
  * ProfileManager Component
  *
  * A unified profile management interface for both patients and researchers
- * that maintains HIPAA compliance throughout with enhanced data sanitization
+ * that maintains HIPAA compliance throughout
  */
 const ProfileManager = () => {
   const dispatch = useDispatch();
@@ -107,14 +37,7 @@ const ProfileManager = () => {
   const userProfile = useSelector((state) => state.user.profile || {});
   const walletAddress = useSelector((state) => state.wallet.address);
 
-  // User session identifier for audit logging
-  const sessionId = useMemo(
-    () =>
-      `profile-session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-    []
-  );
-
-  // Enhanced state tracking
+  // State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -164,74 +87,52 @@ const ProfileManager = () => {
     publications: userProfile?.publications || [],
   });
 
-  // Track data access for audit purposes
-  const [fieldsAccessed, setFieldsAccessed] = useState(new Set());
-  const [dataRequests, setDataRequests] = useState([]);
-  const [hasSensitiveChanges, setHasSensitiveChanges] = useState(false);
+  // Sanitize data consistently for any operation
+  const sanitizeProfileData = useCallback((data, options = {}) => {
+    // Default sanitization options
+    const defaultOptions = {
+      excludeFields: ["password", "walletType"],
+      accessPurpose: "Profile Management",
+      requireConsent: false,
+      ...options,
+    };
 
-  // Track form validation state
-  const [formErrors, setFormErrors] = useState({});
-  const [formTouched, setFormTouched] = useState({});
+    // Apply HIPAA-compliant sanitization
+    return hipaaComplianceService.sanitizeData(data, defaultOptions);
+  }, []);
 
-  // Load user profile data on mount with enhanced HIPAA compliance
+  // Create a sanitized version of form state for any data operations
+  const sanitizedFormState = useMemo(() => {
+    return sanitizeProfileData(formState);
+  }, [formState, sanitizeProfileData]);
+
+  // Load user profile data on mount with proper sanitization
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         setLoading(true);
 
-        // Create HIPAA-compliant audit log for profile access with detailed context
+        // Create HIPAA-compliant audit log for profile access with enhanced metadata
         await hipaaComplianceService.createAuditLog("PROFILE_ACCESS", {
           action: "VIEW",
           userId: walletAddress,
-          userRole,
           timestamp: new Date().toISOString(),
-          sessionId,
-          component: "ProfileManager",
-          browser: navigator.userAgent,
-          ipAddress: "client-captured", // Actual IP will be captured server-side
-          accessType: "full_profile",
-          accessReason: "User initiated profile view",
+          accessMethod: "PROFILE_COMPONENT",
+          userRole: userRole,
+          ipAddress: "client", // Server will log actual IP
         });
 
-        // Track this request
-        setDataRequests((prev) => [
-          ...prev,
-          {
-            type: "profile_fetch",
-            timestamp: new Date().toISOString(),
-            status: "pending",
-          },
-        ]);
-
+        // Get profile data with proper access tracking
         const profile = await userService.getCurrentUser();
 
-        // Update data request status
-        setDataRequests((prev) =>
-          prev.map((req) =>
-            req.type === "profile_fetch" && req.status === "pending"
-              ? { ...req, status: "success" }
-              : req
-          )
-        );
-
         if (profile) {
-          // Sanitize and log received data
-          const sanitizedProfile = hipaaComplianceService.sanitizeData(
-            profile,
-            {
-              logAccess: true,
-              userId: walletAddress,
-              reason: "Initial profile load",
-              sessionId,
-            }
-          );
-
-          // Add all field names to accessed set for audit
-          Object.keys(sanitizedProfile).forEach((field) => {
-            setFieldsAccessed((prev) => new Set([...prev, field]));
+          // Sanitize the profile data before setting in state
+          const sanitizedProfile = sanitizeProfileData(profile, {
+            accessPurpose: "Initial Profile Load",
+            dataSource: "API",
           });
 
-          // Update form state with profile data
+          // Update form state with sanitized profile data
           const updatedFormState = {
             ...formState,
             ...sanitizedProfile,
@@ -261,7 +162,7 @@ const ProfileManager = () => {
           setFormState(updatedFormState);
           setInitialFormState(updatedFormState);
 
-          // Set profile image
+          // Set profile image with proper sanitization
           if (sanitizedProfile.profileImage) {
             setPreviewUrl(sanitizedProfile.profileImage);
           }
@@ -269,37 +170,17 @@ const ProfileManager = () => {
           if (sanitizedProfile.profileImageHash) {
             setStorageReference(sanitizedProfile.profileImageHash);
           }
-
-          // Log successful profile load
-          await hipaaComplianceService.createAuditLog("PROFILE_DATA_LOADED", {
-            userId: walletAddress,
-            timestamp: new Date().toISOString(),
-            sessionId,
-            fieldsLoaded: Object.keys(sanitizedProfile).join(","),
-            hasSensitiveData: Object.keys(sanitizedProfile).some((field) =>
-              ["email", "age", "address", "phone"].includes(field)
-            ),
-          });
         }
       } catch (err) {
         console.error("Failed to load user profile:", err);
         setError("Failed to load your profile. Please try again.");
 
-        // Update data request status
-        setDataRequests((prev) =>
-          prev.map((req) =>
-            req.type === "profile_fetch" && req.status === "pending"
-              ? { ...req, status: "error", error: err.message }
-              : req
-          )
-        );
-
-        // Log error for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("PROFILE_LOAD_ERROR", {
+        // Log the error for HIPAA compliance
+        hipaaComplianceService.createAuditLog("PROFILE_ACCESS_ERROR", {
+          action: "VIEW_ERROR",
           userId: walletAddress,
           timestamp: new Date().toISOString(),
-          sessionId,
-          error: err.message,
+          errorMessage: err.message || "Unknown error during profile load",
         });
 
         dispatch(
@@ -314,224 +195,132 @@ const ProfileManager = () => {
     };
 
     fetchUserProfile();
-
-    // Cleanup function to log session end
-    return async () => {
-      try {
-        await hipaaComplianceService.createAuditLog("PROFILE_SESSION_END", {
-          userId: walletAddress,
-          timestamp: new Date().toISOString(),
-          sessionId,
-          fieldsAccessed: Array.from(fieldsAccessed).join(","),
-          sessionDuration: Date.now() - Number(sessionId.split("-")[2]),
-          dataRequests: dataRequests.length,
-        });
-      } catch (error) {
-        console.error("Failed to log profile session end:", error);
-      }
-    };
   }, [
     dispatch,
     walletAddress,
     userProfile.profileImage,
     userProfile.profileImageHash,
-    sessionId,
+    sanitizeProfileData,
     userRole,
-    fieldsAccessed,
-    dataRequests,
   ]);
 
-  // Validate form field
-  const validateField = useCallback((name, value) => {
-    let error = null;
-
-    switch (name) {
-      case "email":
-        if (value && !/\S+@\S+\.\S+/.test(value)) {
-          error = "Please enter a valid email address";
-        }
-        break;
-      case "age":
-        if (
-          value &&
-          (isNaN(Number(value)) || Number(value) < 0 || Number(value) > 120)
-        ) {
-          error = "Age must be between 0 and 120";
-        }
-        break;
-      case "name":
-        if (!value.trim()) {
-          error = "Name is required";
-        }
-        break;
-      default:
-        // No validation for other fields
-        break;
-    }
-
-    return error;
-  }, []);
-
   // Event handlers
-  const handleTabChange = useCallback(
-    (newValue) => {
-      // Log tab change for HIPAA compliance
-      hipaaComplianceService.createAuditLog("PROFILE_TAB_CHANGE", {
-        previousTab: tabValue,
-        newTab: newValue,
-        timestamp: new Date().toISOString(),
-        sessionId,
-        userId: walletAddress,
-      });
+  const handleTabChange = (newValue) => {
+    // Log tab change for HIPAA compliance with enhanced data
+    hipaaComplianceService.createAuditLog("PROFILE_TAB_CHANGE", {
+      previousTab: tabValue,
+      newTab: newValue,
+      timestamp: new Date().toISOString(),
+      userId: walletAddress,
+      userRole: userRole,
+      tabLabels: {
+        0: "Profile",
+        1: "Data",
+        2: "Privacy",
+        3: "Notifications",
+        4: "Credentials",
+      },
+    });
 
-      setTabValue(newValue);
-    },
-    [tabValue, sessionId, walletAddress]
-  );
+    setTabValue(newValue);
+  };
 
-  const handleFormChange = useCallback(
-    (event) => {
-      const { name, value, checked, type } = event.target;
+  const handleFormChange = (event) => {
+    const { name, value, checked, type } = event.target;
 
-      // Track form field access for HIPAA compliance
-      setFieldsAccessed((prev) => new Set([...prev, name]));
+    // Sanitize input value before setting in state
+    const sanitizedValue =
+      type === "checkbox"
+        ? checked
+        : hipaaComplianceService.sanitizeInputValue(value, name);
 
-      // Mark field as touched for validation
-      setFormTouched((prev) => ({
-        ...prev,
-        [name]: true,
-      }));
-
-      // Check if this is a sensitive field change
-      const sensitiveFields = ["email", "age", "phone", "address"];
-      const isSensitiveField = name.includes(".")
-        ? sensitiveFields.some((field) => name.includes(field))
-        : sensitiveFields.includes(name);
-
-      if (isSensitiveField) {
-        setHasSensitiveChanges(true);
-
-        // Log sensitive field edit for HIPAA compliance
-        hipaaComplianceService
-          .createAuditLog("SENSITIVE_FIELD_EDIT", {
-            field: name,
-            timestamp: new Date().toISOString(),
-            sessionId,
-            userId: walletAddress,
-            hasChanged: true,
-          })
-          .catch((err) =>
-            console.error("Failed to log sensitive field edit:", err)
-          );
-      }
-
-      // Update form state based on field type
-      if (name.includes(".")) {
-        const [parent, child] = name.split(".");
-        setFormState((prev) => {
-          const updatedState = {
-            ...prev,
-            [parent]: {
-              ...prev[parent],
-              [child]: type === "checkbox" ? checked : value,
-            },
-          };
-
-          // Validate the field
-          const fieldError = validateField(
-            name,
-            type === "checkbox" ? checked : value
-          );
-
-          if (fieldError) {
-            setFormErrors((prevErrors) => ({
-              ...prevErrors,
-              [name]: fieldError,
-            }));
-          } else {
-            setFormErrors((prevErrors) => {
-              const newErrors = { ...prevErrors };
-              delete newErrors[name];
-              return newErrors;
-            });
-          }
-
-          return updatedState;
-        });
-      } else {
-        setFormState((prev) => {
-          const updatedState = {
-            ...prev,
-            [name]: type === "checkbox" ? checked : value,
-          };
-
-          // Validate the field
-          const fieldError = validateField(
-            name,
-            type === "checkbox" ? checked : value
-          );
-
-          if (fieldError) {
-            setFormErrors((prevErrors) => ({
-              ...prevErrors,
-              [name]: fieldError,
-            }));
-          } else {
-            setFormErrors((prevErrors) => {
-              const newErrors = { ...prevErrors };
-              delete newErrors[name];
-              return newErrors;
-            });
-          }
-
-          return updatedState;
-        });
-      }
-    },
-    [validateField, walletAddress, sessionId]
-  );
-
-  const handlePublicationChange = useCallback(
-    (newPublications) => {
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
       setFormState((prev) => ({
         ...prev,
-        publications: newPublications,
+        [parent]: {
+          ...prev[parent],
+          [child]: type === "checkbox" ? checked : sanitizedValue,
+        },
       }));
 
-      // Log publication change for HIPAA compliance
-      hipaaComplianceService
-        .createAuditLog("PUBLICATIONS_UPDATED", {
+      // Log sensitive field changes for HIPAA compliance
+      const sensitiveFields = ["sharingPreferences", "privacyPreferences"];
+      if (sensitiveFields.includes(parent)) {
+        hipaaComplianceService.createAuditLog("SENSITIVE_FIELD_CHANGE", {
+          fieldName: `${parent}.${child}`,
           timestamp: new Date().toISOString(),
-          sessionId,
           userId: walletAddress,
-          publicationCount: newPublications.length,
-        })
-        .catch((err) =>
-          console.error("Failed to log publication update:", err)
-        );
+          userRole: userRole,
+          // Don't log the actual value for privacy reasons
+          valueChanged: true,
+        });
+      }
+    } else {
+      setFormState((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : sanitizedValue,
+      }));
 
-      setFieldsAccessed((prev) => new Set([...prev, "publications"]));
-    },
-    [sessionId, walletAddress]
-  );
+      // Log demographic or contact info changes
+      const demographicFields = ["name", "email", "age", "bio"];
+      if (demographicFields.includes(name)) {
+        hipaaComplianceService.createAuditLog("DEMOGRAPHIC_FIELD_CHANGE", {
+          fieldName: name,
+          timestamp: new Date().toISOString(),
+          userId: walletAddress,
+          // Don't log the actual value for privacy reasons
+          valueChanged: true,
+        });
+      }
+    }
+  };
+
+  const handlePublicationChange = (newPublications) => {
+    // Sanitize each publication before setting in state
+    const sanitizedPublications = newPublications.map((pub) => ({
+      ...pub,
+      title: hipaaComplianceService.sanitizeInputValue(
+        pub.title,
+        "publication.title"
+      ),
+      url: hipaaComplianceService.sanitizeInputValue(
+        pub.url,
+        "publication.url"
+      ),
+    }));
+
+    setFormState((prev) => ({
+      ...prev,
+      publications: sanitizedPublications,
+    }));
+
+    // Log publication changes for researchers
+    if (userRole === "researcher") {
+      hipaaComplianceService.createAuditLog("RESEARCHER_PUBLICATIONS_UPDATED", {
+        publicationCount: sanitizedPublications.length,
+        timestamp: new Date().toISOString(),
+        userId: walletAddress,
+        action: "UPDATE",
+      });
+    }
+  };
 
   const handleImageUpload = useCallback(
     (reference) => {
-      // Log image upload for HIPAA compliance
+      // Log image upload for HIPAA compliance with enhanced metadata
       hipaaComplianceService.createAuditLog("PROFILE_IMAGE_UPLOAD", {
         action: "UPLOAD",
         timestamp: new Date().toISOString(),
-        sessionId,
         userId: walletAddress,
-        referenceId: reference,
+        userRole: userRole,
+        referenceHash: reference.substring(0, 10), // Only log part of the hash for security
+        ipAddress: "client", // Server will log actual IP
       });
 
       setStorageReference(reference);
-      setFieldsAccessed(
-        (prev) => new Set([...prev, "profileImage", "profileImageHash"])
-      );
     },
-    [sessionId, walletAddress]
+    [walletAddress, userRole]
   );
 
   const handleImageRemove = useCallback(() => {
@@ -539,49 +328,88 @@ const ProfileManager = () => {
     hipaaComplianceService.createAuditLog("PROFILE_IMAGE_REMOVE", {
       action: "REMOVE",
       timestamp: new Date().toISOString(),
-      sessionId,
       userId: walletAddress,
-      previousReference: storageReference,
+      referenceHash: storageReference
+        ? storageReference.substring(0, 10)
+        : null,
     });
 
     setPreviewUrl(null);
     setStorageReference(null);
-    setFieldsAccessed(
-      (prev) => new Set([...prev, "profileImage", "profileImageHash"])
-    );
-  }, [sessionId, walletAddress, storageReference]);
+  }, [walletAddress, storageReference]);
 
-  // Check for Privacy/Sharing preferences changes
-  const havePrivacyPreferencesChanged = useMemo(() => {
-    return (
-      JSON.stringify(formState.privacyPreferences) !==
-        JSON.stringify(initialFormState.privacyPreferences) ||
-      JSON.stringify(formState.sharingPreferences) !==
-        JSON.stringify(initialFormState.sharingPreferences)
-    );
-  }, [formState, initialFormState]);
+  // Verify user consent and log it
+  const verifyAndLogConsent = useCallback(async () => {
+    try {
+      // Check if we need to verify consent for privacy changes
+      const privacyChanged =
+        JSON.stringify(formState.privacyPreferences) !==
+        JSON.stringify(initialFormState.privacyPreferences);
 
-  // Enhanced profile save with consistent sanitization
+      const sharingChanged =
+        JSON.stringify(formState.sharingPreferences) !==
+        JSON.stringify(initialFormState.sharingPreferences);
+
+      if (privacyChanged || sharingChanged) {
+        // Verify or request consent with enhanced metadata
+        const consentResult = await hipaaComplianceService.verifyConsent(
+          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          {
+            userId: walletAddress,
+            timestamp: new Date().toISOString(),
+            consentPurpose: "Updating privacy and sharing preferences",
+            requestMethod: "PROFILE_UPDATE",
+            changedPreferences: {
+              privacyChanged,
+              sharingChanged,
+            },
+          }
+        );
+
+        if (!consentResult) {
+          throw new Error("Consent required for updating privacy settings");
+        }
+
+        // Record explicit consent
+        await hipaaComplianceService.recordConsent(
+          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          true,
+          {
+            userId: walletAddress,
+            timestamp: new Date().toISOString(),
+            details: "Explicit consent provided during profile update",
+            ipAddress: "client", // Server will log actual IP
+            consentMethod: "PROFILE_FORM_SUBMISSION",
+            consentVersion: "1.2", // Include consent policy version for tracking
+          }
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Consent verification error:", error);
+      return false;
+    }
+  }, [formState, initialFormState, walletAddress]);
+
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
       setError(null);
       setSuccess(false);
 
-      // Validate complete form
-      const errors = {};
-
       if (!formState.name) {
-        errors.name = "Name is required";
+        throw new Error("Name is required");
       }
 
       if (formState.email && !/\S+@\S+\.\S+/.test(formState.email)) {
-        errors.email = "Please enter a valid email address";
+        throw new Error("Please enter a valid email address");
       }
 
-      if (Object.keys(errors).length > 0) {
-        setFormErrors(errors);
-        throw new Error("Please correct the errors in the form");
+      // Verify consent for privacy-related changes
+      const consentVerified = await verifyAndLogConsent();
+      if (!consentVerified) {
+        throw new Error("Consent is required to update privacy settings");
       }
 
       // Create HIPAA-compliant audit log for profile update with detailed tracking
@@ -589,81 +417,24 @@ const ProfileManager = () => {
         action: "UPDATE",
         userId: walletAddress,
         timestamp: new Date().toISOString(),
-        sessionId,
         // Track which fields were changed for audit purposes
         changedFields: Object.keys(formState).filter(
           (key) =>
             JSON.stringify(formState[key]) !==
             JSON.stringify(initialFormState[key])
         ),
-        hasSensitiveChanges,
-        fieldCount: Object.keys(formState).length,
-        accessedFields: Array.from(fieldsAccessed).join(","),
+        userRole: userRole,
+        ipAddress: "client", // Server will log actual IP
+        updateReason: "User initiated profile update",
+        clientInfo: navigator.userAgent, // Log client info for security
       });
 
-      // Track this request
-      setDataRequests((prev) => [
-        ...prev,
-        {
-          type: "profile_update",
-          timestamp: new Date().toISOString(),
-          status: "pending",
-        },
-      ]);
-
-      // Sanitize data for HIPAA compliance - ensures consistent sanitization
-      const sanitizedData = sanitizeUserData(formState, {
-        excludeFields: ["password", "walletType"],
-        sensitiveFields: ["email", "age", "phone", "address"],
-        maskSensitiveData: false,
-        retainAuditFields: true,
+      // Apply consistent sanitization before any data transmission
+      const sanitizedData = sanitizeProfileData(formState, {
+        excludeFields: ["password", "walletType", "securityQuestions"],
+        accessPurpose: "Profile Update Submission",
+        includeAuditMetadata: true,
       });
-
-      // Log the sanitization process
-      await hipaaComplianceService.createAuditLog("DATA_SANITIZATION", {
-        userId: walletAddress,
-        timestamp: new Date().toISOString(),
-        sessionId,
-        sanitizedFields: sanitizedData._sanitizationMetadata.processedFields
-          .map((pf) => `${pf.field}:${pf.action}`)
-          .join(","),
-      });
-
-      // If changing privacy settings, record HIPAA consent
-      if (havePrivacyPreferencesChanged) {
-        // Create explicit consent record with detailed metadata
-        await hipaaComplianceService.recordConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-          true,
-          {
-            userId: walletAddress,
-            timestamp: new Date().toISOString(),
-            details: "Updated privacy preferences via profile settings",
-            consentMethod: "explicit_ui_interaction",
-            ipAddress: "client-captured", // Actual IP captured server-side
-            browserInfo: navigator.userAgent,
-            previousSettings: JSON.stringify({
-              privacy: initialFormState.privacyPreferences,
-              sharing: initialFormState.sharingPreferences,
-            }),
-            newSettings: JSON.stringify({
-              privacy: formState.privacyPreferences,
-              sharing: formState.sharingPreferences,
-            }),
-            sessionId,
-          }
-        );
-
-        // Log consent action separately
-        await hipaaComplianceService.createAuditLog("PRIVACY_CONSENT_UPDATED", {
-          userId: walletAddress,
-          timestamp: new Date().toISOString(),
-          sessionId,
-          consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-          consentAction: "grant",
-          consentReason: "profile_privacy_update",
-        });
-      }
 
       const updatedProfile = {
         ...userProfile,
@@ -673,40 +444,29 @@ const ProfileManager = () => {
         lastUpdated: new Date().toISOString(),
       };
 
+      // Apply HIPAA-compliant sanitization for any sensitive fields being transmitted
+      const transmittedProfile = sanitizeProfileData(updatedProfile, {
+        masking: {
+          email:
+            userRole === "patient" &&
+            !formState.sharingPreferences?.allowDirectContact,
+          age:
+            userRole === "patient" &&
+            !formState.sharingPreferences?.anonymousSharing,
+          bio:
+            userRole === "patient" &&
+            formState.privacyPreferences?.restrictBioVisibility,
+        },
+      });
+
       // Update profile with user service
-      await userService.updateProfile(updatedProfile);
+      await userService.updateProfile(transmittedProfile);
 
-      // Update data request status
-      setDataRequests((prev) =>
-        prev.map((req) =>
-          req.type === "profile_update" && req.status === "pending"
-            ? { ...req, status: "success" }
-            : req
-        )
-      );
-
-      // Update profile in Redux store
-      dispatch(updateUserProfile(updatedProfile));
+      // Update profile in Redux store using sanitized data
+      dispatch(updateUserProfile(sanitizedData));
 
       // Save initial state for future change detection
       setInitialFormState({ ...formState });
-
-      // Reset sensitive changes flag
-      setHasSensitiveChanges(false);
-
-      // Log successful update
-      await hipaaComplianceService.createAuditLog("PROFILE_UPDATE_SUCCESS", {
-        userId: walletAddress,
-        timestamp: new Date().toISOString(),
-        sessionId,
-        fieldsUpdated: Object.keys(formState)
-          .filter(
-            (key) =>
-              JSON.stringify(formState[key]) !==
-              JSON.stringify(initialFormState[key])
-          )
-          .join(","),
-      });
 
       setSuccess(true);
       dispatch(
@@ -722,31 +482,17 @@ const ProfileManager = () => {
       }, 3000);
     } catch (err) {
       console.error("Profile update error:", err);
-      setError(err.message || "Failed to update profile. Please try again.");
 
-      // Update data request status
-      setDataRequests((prev) =>
-        prev.map((req) =>
-          req.type === "profile_update" && req.status === "pending"
-            ? { ...req, status: "error", error: err.message }
-            : req
-        )
-      );
-
-      // Log error for HIPAA compliance
-      await hipaaComplianceService.createAuditLog("PROFILE_UPDATE_ERROR", {
+      // Log the error for HIPAA compliance without sensitive details
+      hipaaComplianceService.createAuditLog("PROFILE_UPDATE_ERROR", {
+        action: "UPDATE_ERROR",
         userId: walletAddress,
         timestamp: new Date().toISOString(),
-        sessionId,
-        error: err.message,
-        attemptedFields: Object.keys(formState)
-          .filter(
-            (key) =>
-              JSON.stringify(formState[key]) !==
-              JSON.stringify(initialFormState[key])
-          )
-          .join(","),
+        errorType: err.name || "Unknown",
+        errorMessage: err.message || "Unknown error during profile update",
       });
+
+      setError(err.message || "Failed to update profile. Please try again.");
 
       dispatch(
         addNotification({
@@ -765,7 +511,7 @@ const ProfileManager = () => {
         Profile Settings
       </h1>
 
-      {/* Enhanced HIPAA Compliance Banner */}
+      {/* HIPAA Compliance Banner */}
       <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-start gap-3">
         <Shield className="text-blue-500 flex-shrink-0 mt-1" size={20} />
         <div>
@@ -775,33 +521,25 @@ const ProfileManager = () => {
             regulations. All changes to your profile settings are logged and
             protected with industry-standard security measures.
           </p>
-          <div className="mt-2 text-xs text-blue-500 flex items-center">
-            <Lock className="h-3.5 w-3.5 mr-1" />
-            <span>Session ID: {sessionId.slice(0, 12)}...</span>
-          </div>
         </div>
       </div>
 
-      {/* Sensitive Field Warning - Only show if sensitive fields are modified */}
-      {hasSensitiveChanges && (
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle
-            className="text-yellow-500 flex-shrink-0 mt-1"
-            size={20}
-          />
-          <div>
-            <h3 className="font-medium text-yellow-700">
-              Sensitive Information Notice
-            </h3>
-            <p className="text-sm text-yellow-600">
-              You have modified sensitive personal information. These changes
-              will be encrypted and protected in accordance with HIPAA
-              regulations, but please ensure the information you provide is
-              accurate and that you're comfortable sharing it.
-            </p>
-          </div>
+      {/* Data Processing Notice */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+        <Info className="text-gray-500 flex-shrink-0 mt-1" size={20} />
+        <div>
+          <h3 className="font-medium text-gray-700">
+            Data Processing Information
+          </h3>
+          <p className="text-sm text-gray-600">
+            All profile data is sanitized before transmission in accordance with
+            HIPAA guidelines.
+            {userRole === "patient" &&
+              " Patient identifiable information is specially protected."}
+            Your profile changes are securely logged for compliance purposes.
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Error Alert */}
       {error && (
@@ -858,7 +596,6 @@ const ProfileManager = () => {
               userIdentifier={formState.name || walletAddress}
               onImageUpload={handleImageUpload}
               onImageRemove={handleImageRemove}
-              sessionId={sessionId}
             />
           </div>
 
@@ -878,19 +615,10 @@ const ProfileManager = () => {
                   type="text"
                   value={formState.name}
                   onChange={handleFormChange}
-                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    formErrors.name ? "border-red-300" : ""
-                  }`}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                   aria-required="true"
-                  aria-invalid={!!formErrors.name}
-                  aria-describedby={formErrors.name ? "name-error" : undefined}
                 />
-                {formErrors.name && (
-                  <p id="name-error" className="mt-1 text-xs text-red-600">
-                    {formErrors.name}
-                  </p>
-                )}
               </div>
               <div>
                 <label
@@ -905,26 +633,13 @@ const ProfileManager = () => {
                   type="email"
                   value={formState.email}
                   onChange={handleFormChange}
-                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    formErrors.email ? "border-red-300" : ""
-                  }`}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   aria-label="Email address"
-                  aria-invalid={!!formErrors.email}
-                  aria-describedby={
-                    formErrors.email ? "email-error" : "email-description"
-                  }
                 />
-                {formErrors.email ? (
-                  <p id="email-error" className="mt-1 text-xs text-red-600">
-                    {formErrors.email}
-                  </p>
-                ) : (
-                  <p
-                    id="email-description"
-                    className="mt-1 text-xs text-gray-500"
-                  >
-                    Your email is secure and will only be used for account
-                    notifications
+                {userRole === "patient" && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Your email will be masked unless you enable direct contact
+                    in Privacy settings
                   </p>
                 )}
               </div>
@@ -942,17 +657,13 @@ const ProfileManager = () => {
                     type="number"
                     value={formState.age}
                     onChange={handleFormChange}
-                    className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                      formErrors.age ? "border-red-300" : ""
-                    }`}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     min="0"
                     aria-label="Age"
-                    aria-invalid={!!formErrors.age}
-                    aria-describedby={formErrors.age ? "age-error" : undefined}
                   />
-                  {formErrors.age && (
-                    <p id="age-error" className="mt-1 text-xs text-red-600">
-                      {formErrors.age}
+                  {userRole === "patient" && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Only shared if anonymous sharing is enabled
                     </p>
                   )}
                 </div>
@@ -1078,8 +789,6 @@ const ProfileManager = () => {
           handlePublicationChange={handlePublicationChange}
           walletAddress={walletAddress}
           userProfile={userProfile}
-          formErrors={formErrors}
-          sessionId={sessionId}
           TabPanel={(props) => (
             <div
               role="tabpanel"
@@ -1089,86 +798,54 @@ const ProfileManager = () => {
               {...props}
             >
               {props.value === props.index && (
-                <div className="py-6 px-6">{props.children}</div>
+                <div className="py-6">{props.children}</div>
               )}
             </div>
           )}
         />
       </div>
 
-      {/* Save button with HIPAA notice */}
-      <div className="mt-6 mb-8">
-        {/* HIPAA privacy notice for data changes */}
-        {havePrivacyPreferencesChanged && (
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-100 rounded-md">
-            <div className="flex items-start">
-              <Info className="text-blue-500 flex-shrink-0 mt-1" size={20} />
-              <div className="ml-3">
-                <h4 className="font-medium text-blue-700">
-                  Privacy Settings Notice
-                </h4>
-                <p className="text-sm text-blue-600 mt-1">
-                  You've made changes to your privacy settings. By saving, you
-                  consent to these new data sharing preferences. This consent
-                  will be recorded and maintained in accordance with HIPAA
-                  regulations.
-                </p>
-              </div>
-            </div>
+      {/* HIPAA processing notification */}
+      {userRole === "patient" && (
+        <div className="mt-6 p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-sm text-yellow-700">
+          <div className="flex items-center mb-1">
+            <Info size={16} className="mr-2 text-yellow-600" />
+            <span className="font-medium">HIPAA Data Processing Notice</span>
           </div>
-        )}
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleSaveProfile}
-            disabled={loading || Object.keys(formErrors).length > 0}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
-              loading || Object.keys(formErrors).length > 0
-                ? "bg-blue-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            } text-white font-medium shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
-            aria-label="Save profile changes"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save size={18} />
-                <span>Save Profile</span>
-              </>
-            )}
-          </button>
+          <p>
+            As a patient, your profile information is subject to additional
+            HIPAA protections. Any changes to your privacy settings will require
+            explicit consent. All profile access and changes are logged for
+            HIPAA compliance.
+          </p>
         </div>
+      )}
 
-        {/* Form validation summary */}
-        {Object.keys(formErrors).length > 0 && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-md">
-            <p className="text-sm text-red-600 font-medium">
-              Please correct the following errors:
-            </p>
-            <ul className="mt-1 text-xs text-red-600 list-disc pl-5">
-              {Object.entries(formErrors).map(([field, error]) => (
-                <li key={field}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* HIPAA Compliance Footer */}
-      <div className="text-xs text-gray-500 border-t border-gray-200 pt-4 mt-6">
-        <p>
-          All interactions with this form are logged for HIPAA compliance.
-          Session ID: {sessionId.slice(0, 12)}...
-        </p>
-        <p className="mt-1">
-          Fields accessed: {fieldsAccessed.size} | Data requests:{" "}
-          {dataRequests.length} | Last updated: {new Date().toLocaleString()}
-        </p>
+      {/* Save button */}
+      <div className="flex justify-end mt-6 mb-8">
+        <button
+          type="button"
+          onClick={handleSaveProfile}
+          disabled={loading}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
+            loading
+              ? "bg-blue-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          } text-white font-medium shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+          aria-label="Save profile changes"
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save size={18} />
+              <span>Save Profile</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

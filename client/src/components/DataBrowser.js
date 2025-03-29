@@ -1,11 +1,5 @@
 // src/components/DataBrowser.js
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import useHealthData from "../hooks/useHealthData.js";
@@ -65,25 +59,15 @@ const DATA_FORMATS = [
 ];
 
 /**
- * Enhanced DataBrowser Container Component with improved HIPAA compliance
+ * DataBrowser Container Component
  *
- * Manages state and data operations for browsing health datasets with:
- * - Detailed audit logging
- * - Explicit consent verification
- * - Enhanced data access controls
+ * Manages state and data operations for browsing health datasets
+ * with enhanced HIPAA compliance and consent verification
  */
 const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const dispatch = useDispatch();
   const userRole = useSelector((state) => state.role.role);
-  const userId = useSelector(
-    (state) => state.user.profile?.id || state.wallet.address
-  );
-
-  // Session identifier for audit logging
-  const sessionId = useMemo(
-    () => `browse-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-    []
-  );
+  const userId = useSelector((state) => state.wallet.address);
 
   // Get health data state and functionality from hook
   const {
@@ -123,315 +107,104 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [datasetDetails, setDatasetDetails] = useState(null);
   const [searchInput, setSearchInput] = useState("");
-
-  // Enhanced consent tracking
-  const [consentStatus, setConsentStatus] = useState({
-    dataSharing: false,
-    dataDownload: false,
-    sensitiveData: false,
-    lastVerified: null,
-  });
-
-  // Track viewed datasets for audit
-  const [viewedDatasets, setViewedDatasets] = useState(new Set());
-  const [downloadedDatasets, setDownloadedDatasets] = useState(new Set());
-
-  // Consent modal state
+  const [consentVerified, setConsentVerified] = useState(false);
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [consentsHistory, setConsentsHistory] = useState([]);
 
-  // Timer for consent expiration
-  const consentTimerRef = useRef(null);
-
-  // Initialize session start time for audit
-  const sessionStartTime = useRef(Date.now());
-  const mountedRef = useRef(true);
-
-  // Track user activity for audit logging
-  const trackUserActivity = useCallback(
-    async (action, details = {}) => {
-      if (!mountedRef.current) return;
-
-      try {
-        await hipaaComplianceService.createAuditLog("DATA_BROWSE_ACTIVITY", {
-          action,
-          timestamp: new Date().toISOString(),
-          sessionId,
-          userId,
-          userRole,
-          ...details,
-        });
-      } catch (error) {
-        console.error(`Failed to log user activity (${action}):`, error);
-      }
-    },
-    [sessionId, userId, userRole]
-  );
-
-  // Check consent status on component mount and periodically
+  // HIPAA compliance checking on mount
   useEffect(() => {
-    // Load and verify initial consent status
-    const verifyConsentStatus = async () => {
+    // Check if the user has provided general consent for data browsing
+    const checkInitialConsent = async () => {
       try {
-        // Get status for different consent types
-        const dataSharingConsent = await hipaaComplianceService.verifyConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-          { validateExpiration: true }
+        // Check for existing consent records
+        const consentHistory = await hipaaComplianceService.getConsentHistory(
+          hipaaComplianceService.CONSENT_TYPES.DATA_BROWSING
         );
 
-        const dataDownloadConsent = await hipaaComplianceService.verifyConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_DOWNLOAD,
-          { validateExpiration: true }
-        );
+        setConsentsHistory(consentHistory);
 
-        const sensitiveDataConsent = await hipaaComplianceService.verifyConsent(
-          hipaaComplianceService.CONSENT_TYPES.SENSITIVE_DATA,
-          { validateExpiration: true }
-        );
-
-        setConsentStatus({
-          dataSharing: dataSharingConsent,
-          dataDownload: dataDownloadConsent,
-          sensitiveData: sensitiveDataConsent,
-          lastVerified: new Date().toISOString(),
+        // If we have a valid consent record that hasn't expired, use it
+        const hasValidConsent = consentHistory.some((consent) => {
+          const consentDate = new Date(consent.timestamp);
+          const now = new Date();
+          // Consider consent valid for 30 days
+          const consentValid = now - consentDate < 30 * 24 * 60 * 60 * 1000;
+          return consent.consentGiven && consentValid;
         });
 
-        // Log initial consent status
-        await trackUserActivity("CONSENT_STATUS_CHECK", {
-          dataSharingConsent,
-          dataDownloadConsent,
-          sensitiveDataConsent,
-        });
-      } catch (error) {
-        console.error("Error verifying consent status:", error);
-      }
-    };
+        setConsentVerified(hasValidConsent);
 
-    // Setup re-verification on a timer (every 15 minutes)
-    verifyConsentStatus();
-
-    // Set up periodic consent verification
-    const consentVerificationInterval = setInterval(
-      () => {
-        verifyConsentStatus();
-      },
-      15 * 60 * 1000
-    ); // Check every 15 minutes
-
-    return () => {
-      clearInterval(consentVerificationInterval);
-      mountedRef.current = false;
-    };
-  }, [trackUserActivity]);
-
-  // Log browse activity on mount
-  useEffect(() => {
-    // Create HIPAA-compliant audit log for browse activity
-    const initBrowseSession = async () => {
-      try {
-        // Initial session start log
-        await hipaaComplianceService.createAuditLog(
-          "DATA_BROWSE_SESSION_START",
-          {
-            userRole,
-            userId,
-            timestamp: new Date().toISOString(),
-            sessionId,
-            userAgent: navigator.userAgent,
-            screenResolution: `${window.screen.width}x${window.screen.height}`,
-            initialFilters: JSON.stringify(filters),
-          }
-        );
-      } catch (err) {
-        console.error("Failed to log browse session start:", err);
-      }
-    };
-
-    initBrowseSession();
-
-    // Log browse session end on component unmount
-    return async () => {
-      try {
-        const sessionDuration = Date.now() - sessionStartTime.current;
-        await hipaaComplianceService.createAuditLog("DATA_BROWSE_SESSION_END", {
+        // Log browse activity for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("DATA_BROWSE_INIT", {
           userRole,
           userId,
           timestamp: new Date().toISOString(),
-          sessionId,
-          sessionDuration, // in milliseconds
-          datasetsViewed: Array.from(viewedDatasets).length,
-          datasetsDownloaded: Array.from(downloadedDatasets).length,
-          filtersApplied: Object.entries(filters).filter(
-            ([_, value]) => value !== ""
-          ).length,
+          action: "VIEW",
+          hasProvidedConsent: hasValidConsent,
+          filters: JSON.stringify(filters),
+          sessionInfo: {
+            browser: navigator.userAgent,
+            viewMode,
+            accessType: "WEB_INTERFACE",
+          },
         });
       } catch (err) {
-        console.error("Failed to log browse session end:", err);
+        console.error("Failed to check initial consent:", err);
+        // Default to false to be safe
+        setConsentVerified(false);
       }
     };
-  }, [
-    filters,
-    userRole,
-    userId,
-    sessionId,
-    viewedDatasets,
-    downloadedDatasets,
-  ]);
 
-  // Load favorites from localStorage with error handling
+    checkInitialConsent();
+  }, [userRole, filters, viewMode, userId]);
+
+  // Log filter changes for HIPAA compliance
+  useEffect(() => {
+    const logFilterChange = async () => {
+      try {
+        await hipaaComplianceService.createAuditLog("DATA_FILTER_CHANGE", {
+          filters: JSON.stringify(filters),
+          timestamp: new Date().toISOString(),
+          action: "FILTER",
+          userRole,
+          userId,
+        });
+      } catch (err) {
+        console.error("Failed to log filter change:", err);
+      }
+    };
+
+    logFilterChange();
+  }, [filters, userRole, userId]);
+
+  // Load favorites from localStorage
   useEffect(() => {
     try {
       const storedFavorites = localStorage.getItem(
         "healthmint_favorite_datasets"
       );
       if (storedFavorites) {
-        const parsed = JSON.parse(storedFavorites);
-        setFavoriteDatasets(Array.isArray(parsed) ? parsed : []);
-
-        // Log favorites loaded
-        trackUserActivity("FAVORITES_LOADED", {
-          count: Array.isArray(parsed) ? parsed.length : 0,
-        });
+        setFavoriteDatasets(JSON.parse(storedFavorites));
       }
     } catch (err) {
       console.error("Failed to load favorites:", err);
-      // Use empty array as fallback
-      setFavoriteDatasets([]);
     }
-  }, [trackUserActivity]);
+  }, []);
 
-  // Process consent request for a specific action
-  const processConsentRequest = async (consentType, purpose) => {
+  // Save favorites to localStorage
+  const saveFavorites = useCallback((newFavorites) => {
     try {
-      const consentResult = await hipaaComplianceService.requestConsent(
-        consentType,
-        {
-          purpose,
-          sessionId,
-          userId,
-          userRole,
-          explicitAction: true,
-          timestamp: new Date().toISOString(),
-          metadata: {
-            browser: navigator.userAgent,
-            component: "DataBrowser",
-          },
-        }
+      localStorage.setItem(
+        "healthmint_favorite_datasets",
+        JSON.stringify(newFavorites)
       );
-
-      // Update consent status if granted
-      if (consentResult) {
-        setConsentStatus((prev) => {
-          const updated = { ...prev, lastVerified: new Date().toISOString() };
-
-          switch (consentType) {
-            case hipaaComplianceService.CONSENT_TYPES.DATA_SHARING:
-              updated.dataSharing = true;
-              break;
-            case hipaaComplianceService.CONSENT_TYPES.DATA_DOWNLOAD:
-              updated.dataDownload = true;
-              break;
-            case hipaaComplianceService.CONSENT_TYPES.SENSITIVE_DATA:
-              updated.sensitiveData = true;
-              break;
-            default:
-              break;
-          }
-
-          return updated;
-        });
-
-        // Log successful consent
-        await trackUserActivity("CONSENT_GRANTED", {
-          consentType,
-          purpose,
-        });
-
-        // If there's a pending action, execute it
-        if (pendingAction) {
-          const { action, id, data } = pendingAction;
-          setPendingAction(null);
-
-          // Execute the appropriate action
-          if (action === "download") {
-            await handleDatasetDownload(id, data);
-          } else if (action === "view") {
-            await handleViewDataset(id);
-          } else if (action === "purchase") {
-            await handlePurchase(id);
-          }
-        }
-      } else {
-        // Log consent rejection
-        await trackUserActivity("CONSENT_REJECTED", {
-          consentType,
-          purpose,
-        });
-
-        // Clear pending action
-        setPendingAction(null);
-
-        dispatch(
-          addNotification({
-            type: "warning",
-            message: "Consent is required to perform this action.",
-            duration: 5000,
-          })
-        );
-      }
-
-      // Close the consent modal
-      setConsentModalOpen(false);
-    } catch (error) {
-      console.error("Error processing consent:", error);
-      setConsentModalOpen(false);
-      setPendingAction(null);
-
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Failed to process consent. Please try again.",
-          duration: 5000,
-        })
-      );
+    } catch (err) {
+      console.error("Failed to save favorites:", err);
     }
-  };
+  }, []);
 
-  // Save favorites to localStorage with additional checks
-  const saveFavorites = useCallback(
-    (newFavorites) => {
-      try {
-        // Validate that newFavorites is an array
-        if (!Array.isArray(newFavorites)) {
-          throw new Error("Favorites must be an array");
-        }
-
-        localStorage.setItem(
-          "healthmint_favorite_datasets",
-          JSON.stringify(newFavorites)
-        );
-
-        // Log favorite save with count
-        trackUserActivity("FAVORITES_SAVED", {
-          count: newFavorites.length,
-        });
-      } catch (err) {
-        console.error("Failed to save favorites:", err);
-
-        dispatch(
-          addNotification({
-            type: "warning",
-            message:
-              "Failed to save favorites. Your selections may not persist.",
-            duration: 5000,
-          })
-        );
-      }
-    },
-    [dispatch, trackUserActivity]
-  );
-
-  // Toggle favorite dataset with audit logging
+  // Toggle favorite dataset
   const toggleFavorite = useCallback(
     (datasetId) => {
       setFavoriteDatasets((prev) => {
@@ -441,28 +214,34 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
 
         saveFavorites(newFavorites);
 
-        // Log favorite toggle action
-        trackUserActivity(
-          prev.includes(datasetId) ? "FAVORITE_REMOVED" : "FAVORITE_ADDED",
-          { datasetId }
-        );
+        // Log favorite toggle for HIPAA compliance
+        hipaaComplianceService.createAuditLog("DATASET_FAVORITE_TOGGLE", {
+          datasetId,
+          action: prev.includes(datasetId) ? "REMOVE_FAVORITE" : "ADD_FAVORITE",
+          timestamp: new Date().toISOString(),
+          userRole,
+          userId,
+        });
 
         return newFavorites;
       });
     },
-    [saveFavorites, trackUserActivity]
+    [saveFavorites, userRole, userId]
   );
 
-  // Handle search with better tracking
+  // Handle search
   const handleSearch = useCallback(() => {
-    // Log search action before executing
-    trackUserActivity("SEARCH_EXECUTED", {
+    // Log search for HIPAA compliance
+    hipaaComplianceService.createAuditLog("DATASET_SEARCH", {
       searchTerm: searchInput,
-      previousTerm: filters.searchTerm,
+      timestamp: new Date().toISOString(),
+      action: "SEARCH",
+      userRole,
+      userId,
     });
 
     updateFilter("searchTerm", searchInput);
-  }, [searchInput, updateFilter, trackUserActivity]);
+  }, [searchInput, updateFilter, userRole, userId]);
 
   const handleSearchInputChange = useCallback((e) => {
     setSearchInput(e.target.value);
@@ -477,170 +256,267 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [handleSearch]
   );
 
-  // Toggle advanced filters with tracking
+  // Toggle advanced filters
   const toggleAdvancedFilters = useCallback(() => {
     const newState = !advancedFiltersOpen;
     setAdvancedFiltersOpen(newState);
 
-    // Log filter toggle
-    trackUserActivity("ADVANCED_FILTERS_TOGGLED", {
-      newState: newState ? "open" : "closed",
+    // Log toggle for HIPAA compliance
+    hipaaComplianceService.createAuditLog("ADVANCED_FILTERS_TOGGLE", {
+      state: newState ? "OPEN" : "CLOSED",
+      timestamp: new Date().toISOString(),
+      action: "TOGGLE_FILTERS",
+      userRole,
+      userId,
     });
-  }, [advancedFiltersOpen, trackUserActivity]);
+  }, [advancedFiltersOpen, userRole, userId]);
 
-  // Reset all filters with tracking
+  // Reset all filters
   const handleResetFilters = useCallback(() => {
-    // Log filter reset with previous filter state
-    trackUserActivity("FILTERS_RESET", {
+    // Log filter reset for HIPAA compliance
+    hipaaComplianceService.createAuditLog("FILTERS_RESET", {
       previousFilters: JSON.stringify(filters),
+      timestamp: new Date().toISOString(),
+      action: "RESET_FILTERS",
+      userRole,
+      userId,
     });
 
     resetFilters();
     setSearchInput("");
-  }, [resetFilters, filters, trackUserActivity]);
+  }, [resetFilters, filters, userRole, userId]);
 
-  // Handle dataset download with enhanced consent verification
-  const handleDatasetDownload = async (datasetId, datasetDetails) => {
-    try {
-      // Always verify consent before download with detailed request
-      const hasDownloadConsent = await hipaaComplianceService.verifyConsent(
-        hipaaComplianceService.CONSENT_TYPES.DATA_DOWNLOAD,
-        {
-          requireExplicit: true,
-          validateExpiration: true,
-          purpose: "dataset_download",
-          enforceLatestVersion: true,
-        }
-      );
-
-      if (!hasDownloadConsent) {
-        // Store pending action and request consent
-        setPendingAction({
-          action: "download",
-          id: datasetId,
-          data: datasetDetails,
-        });
-
-        setConsentModalOpen(true);
-        return;
-      }
-
-      // Log download action with comprehensive metadata
-      await hipaaComplianceService.logDataAccess(
-        datasetId,
-        "Downloading dataset for research purposes",
-        "DOWNLOAD",
-        {
-          timestamp: new Date().toISOString(),
-          sessionId,
-          userId,
-          userRole,
-          dataType: datasetDetails?.dataType || "unknown",
-          dataFormat: datasetDetails?.format || "unknown",
-          recordCount: datasetDetails?.recordCount || "unknown",
-          category: datasetDetails?.category || "unknown",
-          userAgent: navigator.userAgent,
-          downloadMethod: "direct",
-          consentVerified: true,
-        }
-      );
-
-      // Track download in state for audit
-      setDownloadedDatasets((prev) => new Set([...prev, datasetId]));
-
-      // Simulate download for demo (would be actual download in production)
-      dispatch(
-        addNotification({
-          type: "success",
-          message: "Dataset download initiated",
-          duration: 5000,
-        })
-      );
-
-      // Log successful download
-      trackUserActivity("DATASET_DOWNLOADED", {
-        datasetId,
-        datasetTitle: datasetDetails?.title || "Unknown dataset",
-      });
-
-      // Actual download logic would go here
-      // ...
-    } catch (err) {
-      console.error("Download error:", err);
-
-      dispatch(
-        addNotification({
-          type: "error",
-          message: "Failed to download dataset. Please try again.",
-          duration: 5000,
-        })
-      );
-
-      // Log error for audit
-      trackUserActivity("DOWNLOAD_ERROR", {
-        datasetId,
-        error: err.message,
-      });
-    }
-  };
-
-  // Handle dataset selection/preview with enhanced consent and logging
-  const handleViewDataset = useCallback(
-    async (datasetId) => {
+  // Request and verify consent for data access
+  const requestAndVerifyConsent = useCallback(
+    async (purpose, datasetId = null, actionType = "VIEW") => {
       try {
-        // First, verify data sharing consent
-        const hasSharingConsent = await hipaaComplianceService.verifyConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-          {
-            validateExpiration: true,
-            requireExplicit: userRole === "researcher",
-          }
+        // First check if we need a new consent or already have a valid one
+        if (consentVerified) {
+          // Log reusing existing consent
+          await hipaaComplianceService.createAuditLog("CONSENT_REUSED", {
+            purpose,
+            datasetId,
+            actionType,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+          });
+
+          return true;
+        }
+
+        // Determine which consent type to verify based on action
+        const consentType =
+          actionType === "DOWNLOAD" || actionType === "PURCHASE"
+            ? hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
+            : hipaaComplianceService.CONSENT_TYPES.DATA_BROWSING;
+
+        // Prepare detailed consent request metadata
+        const consentRequestMetadata = {
+          datasetId,
+          requestReason: purpose,
+          requestDateTime: new Date().toISOString(),
+          actionType,
+          userRole,
+          requesterInfo: {
+            userId,
+            role: userRole,
+          },
+        };
+
+        // Verify consent with enhanced tracking
+        const hasConsent = await hipaaComplianceService.verifyConsent(
+          consentType,
+          consentRequestMetadata
         );
 
-        if (!hasSharingConsent) {
-          // Store pending action and request consent
+        if (!hasConsent) {
+          // Store pending action info and show consent modal
           setPendingAction({
-            action: "view",
-            id: datasetId,
+            purpose,
+            datasetId,
+            actionType,
+            consentType,
+            metadata: consentRequestMetadata,
           });
 
           setConsentModalOpen(true);
-          return;
+          return false;
+        }
+
+        // Log successful verification
+        await hipaaComplianceService.createAuditLog("CONSENT_VERIFIED", {
+          purpose,
+          datasetId,
+          actionType,
+          consentType,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+          result: "GRANTED",
+        });
+
+        // Update state to reflect verified consent
+        setConsentVerified(true);
+        return true;
+      } catch (err) {
+        console.error("Consent verification error:", err);
+
+        // Log verification failure
+        await hipaaComplianceService.createAuditLog(
+          "CONSENT_VERIFICATION_ERROR",
+          {
+            purpose,
+            datasetId,
+            actionType,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+            errorMessage: err.message || "Unknown consent verification error",
+          }
+        );
+
+        return false;
+      }
+    },
+    [consentVerified, userId, userRole]
+  );
+
+  // Handle consent approval from modal
+  const handleConsentApproval = useCallback(
+    async (approved) => {
+      try {
+        if (!pendingAction) return;
+
+        const { purpose, datasetId, actionType, consentType, metadata } =
+          pendingAction;
+
+        // Record the consent decision with detailed metadata
+        await hipaaComplianceService.recordConsent(consentType, approved, {
+          ...metadata,
+          consentDecision: approved ? "APPROVED" : "DECLINED",
+          consentMethodType: "EXPLICIT_MODAL",
+          consentVersion: "1.2", // Track consent version for legal compliance
+          consentText: approved
+            ? "User explicitly approved data access via consent modal"
+            : "User declined data access via consent modal",
+          ipAddress: "client", // Actual IP will be logged server-side
+        });
+
+        // Log consent decision in audit trail
+        await hipaaComplianceService.createAuditLog(
+          approved ? "CONSENT_GRANTED" : "CONSENT_DECLINED",
+          {
+            purpose,
+            datasetId,
+            actionType,
+            consentType,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+            consentMethod: "EXPLICIT_MODAL",
+          }
+        );
+
+        // Update state based on decision
+        setConsentVerified(approved);
+        setConsentModalOpen(false);
+
+        // Update consents history
+        const updatedHistory = [
+          ...consentsHistory,
+          {
+            consentType,
+            timestamp: new Date().toISOString(),
+            consentGiven: approved,
+            purpose,
+            datasetId,
+          },
+        ];
+        setConsentsHistory(updatedHistory);
+
+        // If approved, proceed with the pending action
+        if (approved) {
+          if (actionType === "VIEW" && datasetId) {
+            await handleViewDataset(datasetId);
+          } else if (actionType === "PURCHASE" && datasetId) {
+            await handlePurchase(datasetId);
+          } else if (actionType === "DOWNLOAD" && datasetId) {
+            // Handle download logic here if applicable
+          }
+        } else {
+          // Notify the user their action was canceled due to consent denial
+          dispatch(
+            addNotification({
+              type: "info",
+              message: "Action canceled due to consent denial",
+            })
+          );
+        }
+
+        // Clear the pending action
+        setPendingAction(null);
+      } catch (err) {
+        console.error("Error processing consent decision:", err);
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Error processing consent decision. Please try again.",
+          })
+        );
+
+        setConsentModalOpen(false);
+        setPendingAction(null);
+      }
+    },
+    [
+      pendingAction,
+      consentsHistory,
+      dispatch,
+      handleViewDataset,
+      handlePurchase,
+      userId,
+      userRole,
+    ]
+  );
+
+  // Handle dataset selection/preview with enhanced consent verification
+  const handleViewDataset = useCallback(
+    async (datasetId) => {
+      try {
+        // Define the purpose for this action
+        const purpose =
+          "Viewing dataset details for research/patient evaluation";
+
+        // Verify consent before proceeding
+        const hasConsent = await requestAndVerifyConsent(
+          purpose,
+          datasetId,
+          "VIEW"
+        );
+        if (!hasConsent) {
+          return; // Consent modal will be shown or action was denied
         }
 
         setDetailsLoading(true);
         setSelectedDataset(datasetId);
         setPreviewOpen(true);
 
-        // Log access with enhanced detail for HIPAA compliance
-        await hipaaComplianceService.logDataAccess(
-          datasetId,
-          "Viewing dataset details for research evaluation",
-          "VIEW",
-          {
-            timestamp: new Date().toISOString(),
-            sessionId,
-            userId,
-            userRole,
-            accessMethod: "preview",
-            viewContext: "modal",
-            consentVerified: true,
-          }
-        );
+        // Log access for HIPAA compliance with enhanced details
+        await hipaaComplianceService.logDataAccess(datasetId, purpose, "VIEW", {
+          userRole,
+          userId,
+          timestamp: new Date().toISOString(),
+          method: "DATASET_PREVIEW",
+          consentVerified: true,
+          dataCategory:
+            healthData.find((d) => d.id === datasetId)?.category || "Unknown",
+          ipAddress: "client", // Server will log actual IP
+        });
 
         // Get dataset details
         const details = await getHealthDataDetails(datasetId);
-
-        // Track viewed datasets for audit
-        setViewedDatasets((prev) => new Set([...prev, datasetId]));
-
-        // Log successful dataset view
-        trackUserActivity("DATASET_VIEWED", {
-          datasetId,
-          datasetTitle: details?.title || "Unknown dataset",
-          datasetCategory: details?.category || "Unknown category",
-        });
-
         setDatasetDetails(details);
 
         // Call optional callback
@@ -650,18 +526,21 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       } catch (err) {
         console.error("Error getting dataset details:", err);
 
+        // Log the error for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("DATASET_VIEW_ERROR", {
+          datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+          errorMessage: err.message || "Unknown error viewing dataset",
+        });
+
         dispatch(
           addNotification({
             type: "error",
             message: "Failed to load dataset details",
           })
         );
-
-        // Log error for audit
-        trackUserActivity("DATASET_VIEW_ERROR", {
-          datasetId,
-          error: err.message,
-        });
       } finally {
         setDetailsLoading(false);
       }
@@ -670,10 +549,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       getHealthDataDetails,
       dispatch,
       onDatasetSelect,
-      trackUserActivity,
+      requestAndVerifyConsent,
+      healthData,
       userId,
       userRole,
-      sessionId,
     ]
   );
 
@@ -681,63 +560,53 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const handlePurchase = useCallback(
     async (id) => {
       try {
-        // Always verify both consent types for purchase
-        const [hasSharingConsent, hasDownloadConsent] = await Promise.all([
-          hipaaComplianceService.verifyConsent(
-            hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-            {
-              requireExplicit: true,
-              validateExpiration: true,
-              purpose: "dataset_purchase",
-            }
-          ),
-          hipaaComplianceService.verifyConsent(
-            hipaaComplianceService.CONSENT_TYPES.DATA_DOWNLOAD,
-            {
-              requireExplicit: true,
-              validateExpiration: true,
-              purpose: "dataset_purchase",
-            }
-          ),
-        ]);
+        // Define the purpose for this action
+        const purpose =
+          "Purchasing dataset for research/personal health records";
 
-        if (!hasSharingConsent || !hasDownloadConsent) {
-          // Store pending action and request consent
-          setPendingAction({
-            action: "purchase",
-            id,
-          });
-
-          setConsentModalOpen(true);
-          return;
+        // Verify consent before proceeding - this requires more explicit consent
+        const hasConsent = await requestAndVerifyConsent(
+          purpose,
+          id,
+          "PURCHASE"
+        );
+        if (!hasConsent) {
+          return; // Consent modal will be shown or action was denied
         }
 
-        // Log action for HIPAA compliance with enhanced detail
-        await hipaaComplianceService.logDataAccess(
-          id,
-          "Purchasing dataset for research",
-          "PURCHASE",
-          {
-            timestamp: new Date().toISOString(),
-            sessionId,
-            userId,
-            userRole,
-            purchaseContext: "research_use",
-            purchaseMethod: "direct",
-            consentVerified: hasSharingConsent && hasDownloadConsent,
-          }
-        );
+        // Log action for HIPAA compliance with comprehensive details
+        await hipaaComplianceService.logDataAccess(id, purpose, "PURCHASE", {
+          userRole,
+          userId,
+          timestamp: new Date().toISOString(),
+          consentVerified: true,
+          ipAddress: "client", // Server will log actual IP
+          datasetInfo: {
+            category:
+              healthData.find((d) => d.id === id)?.category || "Unknown",
+            price: healthData.find((d) => d.id === id)?.price || "Unknown",
+            anonymized:
+              healthData.find((d) => d.id === id)?.anonymized || false,
+          },
+          transactionId: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        });
 
         // Purchase data
         await purchaseData(id);
 
-        // Track downloaded datasets for audit
-        setDownloadedDatasets((prev) => new Set([...prev, id]));
-
-        // Log successful purchase
-        trackUserActivity("DATASET_PURCHASED", {
-          datasetId: id,
-        });
+        // Record this purchase in the consent history for future reference
+        const updatedHistory = [
+          ...consentsHistory,
+          {
+            consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+            timestamp: new Date().toISOString(),
+            consentGiven: true,
+            purpose: "Dataset purchase confirmation",
+            datasetId: id,
+            actionType: "PURCHASE_COMPLETED",
+          },
+        ];
+        setConsentsHistory(updatedHistory);
 
         dispatch(
           addNotification({
@@ -749,11 +618,17 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         if (onPurchase) {
           onPurchase(id);
         }
-
-        // Close preview if open
-        setPreviewOpen(false);
       } catch (err) {
         console.error("Purchase error:", err);
+
+        // Log purchase failure for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_FAILED", {
+          datasetId: id,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+          errorMessage: err.message || "Unknown purchase error",
+        });
 
         dispatch(
           addNotification({
@@ -761,60 +636,66 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             message: "Failed to purchase dataset. Please try again.",
           })
         );
-
-        // Log error for audit
-        trackUserActivity("PURCHASE_ERROR", {
-          datasetId: id,
-          error: err.message,
-        });
       }
     },
     [
       purchaseData,
       dispatch,
       onPurchase,
-      trackUserActivity,
+      requestAndVerifyConsent,
+      consentsHistory,
+      healthData,
       userId,
       userRole,
-      sessionId,
     ]
   );
 
   // Close the preview modal
   const handleClosePreview = useCallback(() => {
-    setPreviewOpen(false);
+    // Log closing preview for HIPAA compliance
+    if (selectedDataset) {
+      hipaaComplianceService.createAuditLog("PREVIEW_CLOSED", {
+        datasetId: selectedDataset,
+        timestamp: new Date().toISOString(),
+        userRole,
+        userId,
+      });
+    }
 
-    // Log preview close
-    trackUserActivity("PREVIEW_CLOSED", {
-      datasetId: selectedDataset,
-    });
-  }, [selectedDataset, trackUserActivity]);
+    setPreviewOpen(false);
+  }, [selectedDataset, userRole, userId]);
 
   // Change view mode
   const handleViewModeChange = useCallback(
     (mode) => {
-      setViewMode(mode);
-
-      // Log view mode change
-      trackUserActivity("VIEW_MODE_CHANGED", {
+      // Log view mode change for HIPAA compliance
+      hipaaComplianceService.createAuditLog("VIEW_MODE_CHANGE", {
         previousMode: viewMode,
         newMode: mode,
+        timestamp: new Date().toISOString(),
+        userRole,
+        userId,
       });
+
+      setViewMode(mode);
     },
-    [viewMode, trackUserActivity]
+    [viewMode, userRole, userId]
   );
 
   // Toggle show only favorites
   const handleToggleFavorites = useCallback(
     (value) => {
-      setShowOnlyFavorites(value);
-
-      // Log favorites toggle
-      trackUserActivity("FAVORITES_FILTER_TOGGLED", {
-        showOnlyFavorites: value,
+      // Log favorites toggle for HIPAA compliance
+      hipaaComplianceService.createAuditLog("FAVORITES_FILTER_TOGGLE", {
+        state: value ? "FAVORITES_ONLY" : "ALL_DATASETS",
+        timestamp: new Date().toISOString(),
+        userRole,
+        userId,
       });
+
+      setShowOnlyFavorites(value);
     },
-    [trackUserActivity]
+    [userRole, userId]
   );
 
   // Filter datasets based on all criteria
@@ -822,15 +703,6 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     if (!healthData.length) return [];
 
     let filtered = [...healthData];
-
-    // Track filter application for audit
-    trackUserActivity("FILTERS_APPLIED", {
-      filtersUsed: Object.entries(filters)
-        .filter(([_, value]) => value !== "")
-        .map(([key, value]) => `${key}:${value}`)
-        .join(","),
-      resultCount: filtered.length,
-    });
 
     // Apply advanced filters if set
     if (filters.studyType && filters.studyType !== "All Types") {
@@ -922,83 +794,56 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     }
 
     return filtered;
-  }, [
-    healthData,
-    filters,
-    showOnlyFavorites,
-    favoriteDatasets,
-    trackUserActivity,
-  ]);
+  }, [healthData, filters, showOnlyFavorites, favoriteDatasets]);
 
-  // Consent Modal Component
-  const ConsentModal = () => {
-    if (!consentModalOpen) return null;
+  // Render consent modal component
+  const renderConsentModal = () => {
+    if (!consentModalOpen || !pendingAction) return null;
 
-    const currentPendingAction = pendingAction?.action || "unknown";
-    const actionText = {
-      download: "download this dataset",
-      view: "view this dataset details",
-      purchase: "purchase this dataset",
-      unknown: "access this data",
-    }[currentPendingAction];
+    const { purpose, actionType, consentType } = pendingAction;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl">
-          <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              HIPAA Consent Required
-            </h3>
-            <p className="text-gray-600">
-              To {actionText}, you must provide consent for data access in
-              accordance with HIPAA regulations.
-            </p>
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4">
+          <div className="mb-4">
+            <h3 className="text-xl font-bold mb-2">HIPAA Consent Required</h3>
+            <p className="text-gray-700">Your consent is required for:</p>
+            <p className="font-medium my-2 text-blue-700">{purpose}</p>
+
+            <div className="my-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-sm text-gray-700 mb-3">
+                By providing consent, you acknowledge:
+              </p>
+              <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                <li>This action will be logged for HIPAA compliance</li>
+                <li>Your consent will be securely documented</li>
+                {actionType === "PURCHASE" && (
+                  <li>
+                    Purchasing this dataset creates a permanent record of your
+                    consent
+                  </li>
+                )}
+                {consentType ===
+                  hipaaComplianceService.CONSENT_TYPES.DATA_SHARING && (
+                  <li>
+                    You're agreeing to the secure sharing of health information
+                  </li>
+                )}
+                <li>You can revoke consent for future access at any time</li>
+              </ul>
+            </div>
           </div>
 
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <h4 className="font-medium text-blue-800 mb-2">
-              By providing consent, you acknowledge:
-            </h4>
-            <ul className="list-disc pl-5 text-sm text-blue-700 space-y-1">
-              <li>
-                All data access is logged and audited per HIPAA requirements
-              </li>
-              <li>
-                You will only use this data for legitimate research purposes
-              </li>
-              <li>You will maintain confidentiality of any patient data</li>
-              <li>
-                Your consent will be recorded with a timestamp and your user ID
-              </li>
-              <li>You can revoke consent at any time via privacy settings</li>
-            </ul>
-          </div>
-
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 mt-6">
             <button
-              onClick={() => {
-                setConsentModalOpen(false);
-                setPendingAction(null);
-              }}
-              className="px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+              onClick={() => handleConsentApproval(false)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
             >
-              Cancel
+              Decline
             </button>
-
             <button
-              onClick={() =>
-                processConsentRequest(
-                  currentPendingAction === "view"
-                    ? hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
-                    : hipaaComplianceService.CONSENT_TYPES.DATA_DOWNLOAD,
-                  currentPendingAction === "download"
-                    ? "dataset_download"
-                    : currentPendingAction === "purchase"
-                      ? "dataset_purchase"
-                      : "dataset_view"
-                )
-              }
-              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+              onClick={() => handleConsentApproval(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
             >
               I Consent
             </button>
@@ -1042,13 +887,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         categories={CATEGORIES}
         studyTypes={STUDY_TYPES}
         dataFormats={DATA_FORMATS}
-        handleDatasetDownload={handleDatasetDownload}
-        sessionId={sessionId}
-        consentStatus={consentStatus}
+        consentVerified={consentVerified}
       />
 
-      {/* Consent Modal */}
-      <ConsentModal />
+      {/* Render consent modal when needed */}
+      {renderConsentModal()}
     </>
   );
 };
