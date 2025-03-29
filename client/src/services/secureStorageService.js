@@ -2,46 +2,147 @@
 import apiService from "./apiService.js";
 import hipaaComplianceService from "./hipaaComplianceService.js";
 import errorHandlingService from "./errorHandlingService.js";
+import encryptionService from "./encryptionService.js";
 import { STORAGE_CONFIG } from "../config/environmentConfig.js";
 
 /**
- * Client-side secure storage service for handling file operations
- * with proper HIPAA compliance and security measures
+ * SecureStorageService
+ *
+ * A HIPAA-compliant secure storage service for handling file operations
+ * with proper encryption, audit logging, and security measures.
+ *
+ * Features:
+ * - Client-side validation and sanitization
+ * - Encryption for sensitive data
+ * - Comprehensive HIPAA compliance logging
+ * - PHI (Protected Health Information) detection
+ * - Secure file management
  */
 class SecureStorageService {
   constructor() {
-    this.MAX_FILE_SIZE = STORAGE_CONFIG?.MAX_FILE_SIZE || 50 * 1024 * 1024; // 50MB default
-    this.ALLOWED_MIME_TYPES = STORAGE_CONFIG?.ALLOWED_MIME_TYPES || [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "application/pdf",
-      "application/json",
-      "text/plain",
-    ];
+    // Default configuration with fallbacks
+    this.config = {
+      maxFileSize: STORAGE_CONFIG?.MAX_FILE_SIZE || 50 * 1024 * 1024, // 50MB default
+      allowedMimeTypes: STORAGE_CONFIG?.ALLOWED_MIME_TYPES || [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "application/pdf",
+        "application/json",
+        "text/plain",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ],
+      endpoints: {
+        upload: STORAGE_CONFIG?.ENDPOINTS?.UPLOAD || "api/storage/upload",
+        delete: STORAGE_CONFIG?.ENDPOINTS?.DELETE || "api/storage/delete",
+        download: STORAGE_CONFIG?.ENDPOINTS?.DOWNLOAD || "api/storage/download",
+      },
+      encryptFiles: STORAGE_CONFIG?.ENCRYPT_FILES !== false, // Default to true if not specified
+      retentionPeriod: STORAGE_CONFIG?.RETENTION_PERIOD || 7 * 365, // 7 years default for HIPAA
+    };
+
+    // Initialize service
+    this.initService();
   }
 
   /**
-   * Validates file before upload
-   * @param {File} file - File to validate
-   * @returns {boolean} Validation result
-   * @throws {Error} Validation error
+   * Initialize the service
+   * @private
    */
-  validateFile(file) {
+  initService() {
+    // Log service initialization for compliance
+    hipaaComplianceService
+      .createAuditLog("STORAGE_SERVICE_INIT", {
+        timestamp: new Date().toISOString(),
+        configuration: {
+          maxFileSize: this.config.maxFileSize,
+          allowedMimeTypes: this.config.allowedMimeTypes,
+          encryptionEnabled: this.config.encryptFiles,
+        },
+      })
+      .catch((err) =>
+        console.error("Failed to log service initialization:", err)
+      );
+  }
+
+  /**
+   * Comprehensively validates file before upload
+   * @param {File} file - File to validate
+   * @param {Object} options - Validation options
+   * @returns {boolean} Validation result
+   * @throws {Error} Validation error with specific reason
+   */
+  validateFile(file, options = {}) {
+    // Required file
     if (!file) {
       throw new Error("No file provided");
     }
 
-    if (file.size > this.MAX_FILE_SIZE) {
+    // File size validation
+    const maxSize = options.maxFileSize || this.config.maxFileSize;
+    if (file.size > maxSize) {
       throw new Error(
-        `File size must be less than ${this.MAX_FILE_SIZE / (1024 * 1024)}MB`
+        `File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds maximum allowed size of ${(maxSize / (1024 * 1024)).toFixed(2)}MB`
       );
     }
 
-    if (!this.ALLOWED_MIME_TYPES.includes(file.type)) {
+    // File type validation
+    const allowedTypes =
+      options.allowedMimeTypes || this.config.allowedMimeTypes;
+    if (!allowedTypes.includes(file.type)) {
       throw new Error(
-        `File type ${file.type} not allowed. Supported types: ${this.ALLOWED_MIME_TYPES.join(", ")}`
+        `File type "${file.type}" is not allowed. Supported types: ${allowedTypes.join(", ")}`
       );
+    }
+
+    // Filename validation - prevent path traversal
+    if (
+      file.name &&
+      (file.name.includes("../") || file.name.includes("..\\"))
+    ) {
+      throw new Error("Invalid filename: contains potential path traversal");
+    }
+
+    // Optional extension validation
+    if (options.allowedExtensions) {
+      const fileExt = file.name.split(".").pop().toLowerCase();
+      if (!options.allowedExtensions.includes(`.${fileExt}`)) {
+        throw new Error(
+          `File extension ".${fileExt}" is not allowed. Supported extensions: ${options.allowedExtensions.join(", ")}`
+        );
+      }
+    }
+
+    // Optional content scan (if file is readable as text)
+    if (
+      options.scanForPHI &&
+      (file.type.includes("text") || file.type.includes("json"))
+    ) {
+      // Set up file reader to check content
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const content = e.target.result;
+            const phiResult = this.checkForPHI(content);
+            if (phiResult.containsPHI) {
+              reject(
+                new Error(
+                  "File contains unmasked PHI and cannot be uploaded without proper authorization"
+                )
+              );
+            } else {
+              resolve(true);
+            }
+          } catch (err) {
+            reject(new Error(`Error analyzing file content: ${err.message}`));
+          }
+        };
+        reader.onerror = () =>
+          reject(new Error("Failed to read file for validation"));
+        reader.readAsText(file);
+      });
     }
 
     return true;
@@ -51,47 +152,88 @@ class SecureStorageService {
    * Upload a profile image with proper security and HIPAA compliance
    * @param {File} file - Image file to upload
    * @param {Object} options - Upload options
-   * @returns {Promise<Object>} Upload result
+   * @returns {Promise<Object>} Upload result with secure reference
    */
   async uploadProfileImage(file, options = {}) {
     try {
-      // Validate file
-      this.validateFile(file);
+      // Validate file with strict image-specific options
+      const imageOptions = {
+        allowedMimeTypes: ["image/jpeg", "image/png", "image/gif"],
+        maxFileSize: 5 * 1024 * 1024, // 5MB for profile images
+      };
 
-      // Create audit metadata for HIPAA compliance
+      await this.validateFile(file, imageOptions);
+
+      // Enhanced audit metadata for HIPAA compliance
       const auditMetadata = {
         uploadType: "PROFILE_IMAGE",
         userId: options.userIdentifier || "anonymous",
         timestamp: new Date().toISOString(),
         action: "UPLOAD",
+        ipAddress: "client", // Will be replaced by server
+        clientInfo: navigator.userAgent,
+        fileHash: await this.generateFileHash(file),
+        ...options.auditMetadata,
       };
 
-      // Log the upload attempt
+      // Log the upload attempt with comprehensive details
       await hipaaComplianceService.createAuditLog("PROFILE_IMAGE_UPLOAD", {
         fileType: file.type,
         fileSize: file.size,
+        fileName: this.sanitizeFileName(file.name),
         timestamp: new Date().toISOString(),
+        uploadPurpose: options.purpose || "Profile image update",
+        userId: options.userIdentifier,
       });
+
+      // Encrypt file if needed (for sensitive images)
+      let processedFile = file;
+      if (this.config.encryptFiles && options.encrypt !== false) {
+        processedFile = await encryptionService.encryptFile(file);
+      }
 
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", processedFile);
       formData.append("metadata", JSON.stringify(auditMetadata));
+
+      // Track upload progress if callback provided
+      const onProgress = options.onProgress || (() => {});
 
       // Perform actual upload via API service
       const response = await apiService.uploadFile(
-        "api/storage/upload",
-        file,
-        options.onProgress,
+        this.config.endpoints.upload,
+        processedFile,
+        onProgress,
         auditMetadata
+      );
+
+      // Log successful upload
+      await hipaaComplianceService.createAuditLog(
+        "PROFILE_IMAGE_UPLOAD_SUCCESS",
+        {
+          reference: response.reference,
+          timestamp: new Date().toISOString(),
+          userId: options.userIdentifier,
+        }
       );
 
       return {
         success: true,
         reference: response.reference,
-        url: response.url || URL.createObjectURL(file), // Fallback to local URL if server doesn't provide one
+        url: response.url,
+        metadata: response.metadata,
       };
     } catch (error) {
+      // Log upload failure for compliance
+      hipaaComplianceService
+        .createAuditLog("PROFILE_IMAGE_UPLOAD_FAILED", {
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          userId: options.userIdentifier,
+        })
+        .catch((err) => console.error("Failed to log upload error:", err));
+
       return errorHandlingService.handleError(error, {
         code: "UPLOAD_ERROR",
         context: "Profile Image",
@@ -105,50 +247,104 @@ class SecureStorageService {
    * Upload any file securely with HIPAA compliance
    * @param {File} file - File to upload
    * @param {Object} options - Upload options
-   * @returns {Promise<Object>} Upload result
+   * @returns {Promise<Object>} Upload result with secure reference
    */
   async uploadFile(file, options = {}) {
     try {
-      // Validate file
-      this.validateFile(file);
+      // Validate file with provided options
+      await this.validateFile(file, options);
 
-      // Create audit metadata for HIPAA compliance
+      // Generate file hash for integrity checking
+      const fileHash = await this.generateFileHash(file);
+
+      // Enhanced audit metadata for HIPAA compliance
       const auditMetadata = {
         uploadType: options.auditMetadata?.uploadType || "FILE_UPLOAD",
         userId: options.userIdentifier || "anonymous",
         timestamp: new Date().toISOString(),
         action: "UPLOAD",
+        ipAddress: "client", // Will be replaced by server
+        fileHash,
+        fileName: this.sanitizeFileName(file.name),
+        fileType: file.type,
+        fileSize: file.size,
         ...options.auditMetadata,
       };
 
-      // Log the upload attempt
+      // Log the upload attempt with comprehensive details
       await hipaaComplianceService.createAuditLog("FILE_UPLOAD", {
-        fileType: file.type,
-        fileSize: file.size,
         timestamp: new Date().toISOString(),
         ...auditMetadata,
       });
 
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("metadata", JSON.stringify(auditMetadata));
+      // Check if this file contains PHI for health-related uploads
+      if (
+        options.hipaaRelevant &&
+        (file.type.includes("text") || file.type.includes("json"))
+      ) {
+        try {
+          const fileContent = await this.readFileAsText(file);
+          const phiResult = this.checkForPHI(fileContent);
+
+          if (phiResult.containsPHI) {
+            // Add PHI information to metadata for server-side handling
+            auditMetadata.containsPHI = true;
+            auditMetadata.phiTypes = phiResult.phiTypes;
+
+            // If PHI found but uploading is permitted, ensure proper logging
+            await hipaaComplianceService.createAuditLog("PHI_UPLOAD_ATTEMPT", {
+              timestamp: new Date().toISOString(),
+              userId: options.userIdentifier,
+              phiTypes: phiResult.phiTypes,
+              uploadReason: options.uploadReason || "Not specified",
+            });
+          }
+        } catch (readError) {
+          console.warn("Could not scan file for PHI:", readError);
+        }
+      }
+
+      // Encrypt file if needed
+      let processedFile = file;
+      if (this.config.encryptFiles && options.encrypt !== false) {
+        processedFile = await encryptionService.encryptFile(file);
+        auditMetadata.encrypted = true;
+      }
+
+      // Track upload progress if callback provided
+      const onProgress = options.onProgress || (() => {});
 
       // Perform actual upload via API service
       const response = await apiService.uploadFile(
-        options.endpoint || "api/storage/upload",
-        file,
-        options.onProgress,
+        options.endpoint || this.config.endpoints.upload,
+        processedFile,
+        onProgress,
         auditMetadata
       );
+
+      // Log successful upload
+      await hipaaComplianceService.createAuditLog("FILE_UPLOAD_SUCCESS", {
+        reference: response.reference,
+        timestamp: new Date().toISOString(),
+        userId: options.userIdentifier,
+      });
 
       return {
         success: true,
         reference: response.reference,
-        url: response.url || URL.createObjectURL(file), // Fallback to local URL if server doesn't provide one
+        url: response.url,
         metadata: response.metadata,
       };
     } catch (error) {
+      // Log upload failure for compliance
+      hipaaComplianceService
+        .createAuditLog("FILE_UPLOAD_FAILED", {
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          userId: options.userIdentifier,
+        })
+        .catch((err) => console.error("Failed to log upload error:", err));
+
       return errorHandlingService.handleError(error, {
         code: "FILE_UPLOAD_ERROR",
         context: options.context || "File Upload",
@@ -159,7 +355,7 @@ class SecureStorageService {
   }
 
   /**
-   * Delete a file from secure storage
+   * Delete a file from secure storage with HIPAA compliance logging
    * @param {string} reference - Storage reference
    * @param {Object} options - Delete options
    * @returns {Promise<Object>} Deletion result
@@ -170,16 +366,19 @@ class SecureStorageService {
         throw new Error("Storage reference is required");
       }
 
-      // Create audit metadata for HIPAA compliance
+      // Create enhanced audit metadata for HIPAA compliance
       const auditMetadata = {
-        uploadType: options.auditMetadata?.uploadType || "FILE_DELETE",
+        deleteType: options.auditMetadata?.uploadType || "FILE_DELETE",
         userId: options.userIdentifier || "anonymous",
         timestamp: new Date().toISOString(),
         action: "DELETE",
+        ipAddress: "client", // Will be replaced by server
+        clientInfo: navigator.userAgent,
+        deleteReason: options.reason || "User requested deletion",
         ...options.auditMetadata,
       };
 
-      // Log the deletion attempt
+      // Log the deletion attempt with comprehensive details
       await hipaaComplianceService.createAuditLog("FILE_DELETE", {
         reference,
         timestamp: new Date().toISOString(),
@@ -188,17 +387,34 @@ class SecureStorageService {
 
       // Perform actual deletion via API service
       const response = await apiService.delete(
-        `api/storage/delete/${reference}`,
+        `${this.config.endpoints.delete}/${reference}`,
         {
           data: auditMetadata,
         }
       );
+
+      // Log successful deletion
+      await hipaaComplianceService.createAuditLog("FILE_DELETE_SUCCESS", {
+        reference,
+        timestamp: new Date().toISOString(),
+        userId: options.userIdentifier,
+      });
 
       return {
         success: true,
         message: response.message || `Successfully deleted ${reference}`,
       };
     } catch (error) {
+      // Log deletion failure for compliance
+      hipaaComplianceService
+        .createAuditLog("FILE_DELETE_FAILED", {
+          reference,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          userId: options.userIdentifier,
+        })
+        .catch((err) => console.error("Failed to log deletion error:", err));
+
       return errorHandlingService.handleError(error, {
         code: "DELETE_ERROR",
         context: options.context || "File Delete",
@@ -209,13 +425,150 @@ class SecureStorageService {
   }
 
   /**
-   * Check file for PHI (Personal Health Information)
+   * Download a file with proper access logging
+   * @param {string} reference - Storage reference
+   * @param {Object} options - Download options
+   * @returns {Promise<Blob>} File blob
+   */
+  async downloadFile(reference, options = {}) {
+    try {
+      if (!reference) {
+        throw new Error("Storage reference is required");
+      }
+
+      // Create audit metadata for HIPAA compliance
+      const auditMetadata = {
+        downloadType: options.downloadType || "FILE_DOWNLOAD",
+        userId: options.userIdentifier || "anonymous",
+        timestamp: new Date().toISOString(),
+        action: "DOWNLOAD",
+        ipAddress: "client", // Will be replaced by server
+        downloadReason: options.reason || "User requested download",
+        ...options.auditMetadata,
+      };
+
+      // Log the download attempt
+      await hipaaComplianceService.createAuditLog("FILE_DOWNLOAD", {
+        reference,
+        timestamp: new Date().toISOString(),
+        ...auditMetadata,
+      });
+
+      // Check if consent is required for download
+      if (options.requireConsent) {
+        const consentVerified = await hipaaComplianceService.verifyConsent(
+          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          {
+            actionType: "DOWNLOAD",
+            dataId: reference,
+            ...auditMetadata,
+          }
+        );
+
+        if (!consentVerified) {
+          throw new Error("User consent required for download");
+        }
+      }
+
+      // Track download progress if callback provided
+      const onProgress = options.onProgress || (() => {});
+
+      // Perform actual download via API service
+      const response = await apiService.downloadFile(
+        `${this.config.endpoints.download}/${reference}`,
+        onProgress,
+        auditMetadata
+      );
+
+      // Decrypt file if needed and if was encrypted
+      let fileData = response.data;
+      if (response.metadata?.encrypted && this.config.encryptFiles) {
+        fileData = await encryptionService.decryptFile(fileData);
+      }
+
+      // Log successful download
+      await hipaaComplianceService.createAuditLog("FILE_DOWNLOAD_SUCCESS", {
+        reference,
+        timestamp: new Date().toISOString(),
+        userId: options.userIdentifier,
+      });
+
+      return fileData;
+    } catch (error) {
+      // Log download failure for compliance
+      hipaaComplianceService
+        .createAuditLog("FILE_DOWNLOAD_FAILED", {
+          reference,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          userId: options.userIdentifier,
+        })
+        .catch((err) => console.error("Failed to log download error:", err));
+
+      return errorHandlingService.handleError(error, {
+        code: "DOWNLOAD_ERROR",
+        context: options.context || "File Download",
+        userVisible: true,
+        throw: true,
+      });
+    }
+  }
+
+  /**
+   * Check file content for PHI (Protected Health Information)
    * Delegates to HIPAA compliance service
-   * @param {string} text - Text to check
-   * @returns {Object} PHI detection result
+   * @param {string} text - Text to check for PHI
+   * @returns {Object} PHI detection result with types found
    */
   checkForPHI(text) {
     return hipaaComplianceService.containsPHI(text);
+  }
+
+  /**
+   * Generate a hash for the file contents
+   * @param {File} file - File to hash
+   * @returns {Promise<string>} Hash of the file
+   * @private
+   */
+  async generateFileHash(file) {
+    try {
+      return await encryptionService.hashFile(file);
+    } catch (error) {
+      console.error("Failed to generate file hash:", error);
+      return "hash-unavailable";
+    }
+  }
+
+  /**
+   * Sanitize a filename to prevent security issues
+   * @param {string} filename - Filename to sanitize
+   * @returns {string} Sanitized filename
+   * @private
+   */
+  sanitizeFileName(filename) {
+    if (!filename) return "unnamed-file";
+
+    // Remove path traversal and control characters
+    return filename
+      .replace(/\.\.\//g, "")
+      .replace(/\.\.\\/g, "")
+      .replace(/[^\w\s.-]/g, "_")
+      .trim();
+  }
+
+  /**
+   * Read file as text asynchronously
+   * @param {File} file - File to read
+   * @returns {Promise<string>} File contents as text
+   * @private
+   */
+  readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(new Error("Failed to read file"));
+      reader.readAsText(file);
+    });
   }
 }
 
