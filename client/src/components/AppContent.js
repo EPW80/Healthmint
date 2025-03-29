@@ -1,4 +1,4 @@
-// src/components/AppContent.js
+// client/src/components/AppContent.js
 import React, { useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";

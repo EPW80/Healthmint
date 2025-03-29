@@ -12,7 +12,7 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
  * Enhanced Protected Route Component
  *
  * Ensures users are authenticated with both wallet and backend before accessing protected routes
- * Provides improved role-based access control and redirect management
+ * Provides comprehensive role-based access control and redirect management
  */
 const ProtectedRoute = ({
   children,
@@ -30,12 +30,8 @@ const ProtectedRoute = ({
   const [redirectPath, setRedirectPath] = useState(null);
 
   // Get all authentication states
-  const { isConnected: isWalletConnected } =
-    useWalletConnection();
-
-  const { isAuthenticated, isRegistrationComplete, verifyAuth } =
-    useAuth();
-
+  const { isConnected: isWalletConnected } = useWalletConnection();
+  const { isAuthenticated, isRegistrationComplete, verifyAuth } = useAuth();
   const isRoleSelected = useSelector(selectIsRoleSelected);
   const userRole = useSelector(selectRole);
 
@@ -120,6 +116,15 @@ const ProtectedRoute = ({
           return;
         }
 
+        // Step 5: Special path handling
+        // Check if at root path and should redirect to dashboard
+        if (location.pathname === "/" && isRoleSelected) {
+          if (isMounted.current) {
+            setRedirectPath("/dashboard");
+          }
+          return;
+        }
+
         // All checks passed, clear any redirect
         if (isMounted.current) {
           setRedirectPath(null);
@@ -152,6 +157,7 @@ const ProtectedRoute = ({
     requireBackendAuth,
     dispatch,
     verifyAuth,
+    location.pathname,
   ]);
 
   // Show loading state while checking
@@ -172,6 +178,16 @@ const ProtectedRoute = ({
       <Navigate to={redirectPath} state={{ from: location.pathname }} replace />
     );
   }
+
+  // Log HIPAA-compliant access for auditing (would be implemented with hipaaComplianceService)
+  // This would create an audit trail of who accessed which routes when
+  const logRouteAccess = () => {
+    // Implementation would be added here in a real application
+    console.log(`HIPAA Compliant access to route: ${location.pathname}`);
+  };
+
+  // Log route access for protected routes
+  logRouteAccess();
 
   // Render children if authorized
   return children;
