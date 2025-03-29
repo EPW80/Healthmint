@@ -1,5 +1,6 @@
 // src/components/ProfileManager.js
 import React, { useState, useEffect, useCallback } from "react";
+import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Save,
@@ -15,7 +16,6 @@ import {
   CheckCircle,
   Shield,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
 import { selectRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import healthDataService from "../services/healthDataService.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
-import { setLoading, setError } from "../redux/slices/uiSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
 /**

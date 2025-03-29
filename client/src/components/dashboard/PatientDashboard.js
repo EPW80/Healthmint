@@ -30,7 +30,7 @@ const PatientDashboard = ({ onNavigate }) => {
   const walletAddress = useSelector((state) => state.wallet.address);
 
   // Use health data hook
-  const { userRecords, fetchHealthData, downloadRecord } = useHealthData({
+  const { userRecords } = useHealthData({
     userRole: "patient",
     loadOnMount: true,
   });
@@ -124,32 +124,6 @@ const PatientDashboard = ({ onNavigate }) => {
   }, [navigateTo, onNavigate]);
 
   // Download a health record
-  const handleDownloadRecord = useCallback(
-    async (recordId) => {
-      try {
-        dispatch(setLoading(true));
-
-        await downloadRecord(recordId);
-
-        dispatch(
-          addNotification({
-            type: "success",
-            message: "Record downloaded successfully",
-          })
-        );
-      } catch (err) {
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to download record. Please try again.",
-          })
-        );
-      } finally {
-        dispatch(setLoading(false));
-      }
-    },
-    [dispatch, downloadRecord]
-  );
 
   // Activity status & icon helpers
   const getActivityIcon = (type) => {
