@@ -4,7 +4,6 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 // Import all reducers
 import authReducer from "./slices/authSlice.js";
 import dataReducer from "./slices/dataSlice.js";
-import profileReducer from "./slices/profileSlice.js";
 import uiReducer from "./slices/uiSlice.js";
 import userReducer from "./slices/userSlice.js";
 import walletReducer from "./slices/walletSlice.js";
