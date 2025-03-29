@@ -1,5 +1,5 @@
-// src/components/roles/RoleSelector.js
-import React, { useState, useEffect } from "react";
+// client/src/components/roles/RoleSelector.js
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { User, Microscope, Loader, AlertCircle } from "lucide-react";
@@ -8,6 +8,7 @@ import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../../redux/slices/userSlice.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import authService from "../../services/authService.js";
+import authUtils from "../../utils/authUtils.js";
 
 /**
  * Role Selector Component with improved navigation
@@ -26,12 +27,13 @@ const RoleSelector = () => {
   // Check for an existing role in localStorage or user profile
   useEffect(() => {
     const checkExistingRole = () => {
+      console.log("Checking for existing role...");
       // Check user profile first
       const userProfile = authService.getCurrentUser();
       if (userProfile && userProfile.role) {
         console.log(`Existing role found: ${userProfile.role}`);
         dispatch(setRole(userProfile.role));
-        return;
+        return true;
       }
 
       // Check localStorage as fallback
@@ -39,87 +41,121 @@ const RoleSelector = () => {
       if (storedRole) {
         console.log(`Role found in localStorage: ${storedRole}`);
         dispatch(setRole(storedRole));
+        return true;
       }
+
+      return false;
     };
 
-    checkExistingRole();
-  }, [dispatch]);
+    const hasRole = checkExistingRole();
 
-  // Check if we already have a role and redirect if needed
-  useEffect(() => {
-    if (isRoleSelected && !loading && !redirecting) {
-      console.log("Role already selected, redirecting to dashboard");
+    // If role is detected, redirect to dashboard
+    if (hasRole && !redirecting) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isRoleSelected, loading, redirecting, navigate]);
+  }, [dispatch, navigate, redirecting]);
 
   /**
-   * Handle role selection with improved user data persistence
+   * Handle role selection with improved user data persistence and error handling
    */
-  const handleRoleSelect = async (role) => {
-    try {
-      // Prevent multiple submissions
-      if (loading) return;
+  const handleRoleSelect = useCallback(
+    async (role) => {
+      try {
+        // Prevent multiple submissions
+        if (loading) return;
 
-      setLoading(true);
-      setError(null);
-      setSelectedRole(role);
-      setRedirecting(true);
+        setLoading(true);
+        setError(null);
+        setSelectedRole(role);
+        setRedirecting(true);
 
-      console.log(`Setting role: ${role}`); // Debug log
+        console.log(`Setting role: ${role}`); // Debug log
 
-      // Audit role selection for HIPAA compliance
-      await hipaaComplianceService.createAuditLog("ROLE_SELECTION", {
-        role,
-        timestamp: new Date().toISOString(),
-        action: "SELECT",
-      });
+        // Create a bypass flag to prevent infinite redirects
+        sessionStorage.setItem("bypass_role_check", "true");
+        sessionStorage.setItem("temp_selected_role", role);
 
-      // Get current user data to merge with role
-      const userData = authService.getCurrentUser() || {};
-      const updatedUserData = {
-        ...userData,
-        role,
-        lastUpdated: new Date().toISOString(),
-      };
+        // Audit role selection for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("ROLE_SELECTION", {
+          role,
+          timestamp: new Date().toISOString(),
+          action: "SELECT",
+        });
 
-      // Update user data in authService
-      authService.completeRegistration(updatedUserData);
+        // Get current user data to merge with role
+        const userData = authService.getCurrentUser() || {};
+        const walletAddress =
+          userData.address || localStorage.getItem("healthmint_wallet_address");
 
-      // Dispatch role selection action to Redux
-      dispatch(setRole(role));
+        if (!walletAddress) {
+          throw new Error(
+            "Wallet address not found. Please reconnect your wallet."
+          );
+        }
 
-      // Update user profile with role information
-      dispatch(updateUserProfile(updatedUserData));
+        const updatedUserData = {
+          ...userData,
+          name: userData.name || "User",
+          role,
+          address: walletAddress,
+          lastUpdated: new Date().toISOString(),
+        };
 
-      // Success notification
-      dispatch(
-        addNotification({
-          type: "success",
-          message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
-          duration: 3000,
-        })
-      );
+        // Update user data in authService with more robust error handling
+        const registrationSuccess = authUtils.forceRegistrationComplete(
+          role,
+          walletAddress,
+          updatedUserData
+        );
 
-      // Use React Router's navigate for a cleaner SPA experience
-      setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 500);
-    } catch (err) {
-      console.error("Role selection error:", err);
-      setError(err.message || "Failed to set role. Please try again.");
+        if (!registrationSuccess) {
+          console.error("Failed to complete registration via authUtils");
+          // Fallback method
+          authService.completeRegistration(updatedUserData);
+        }
 
-      dispatch(
-        addNotification({
-          type: "error",
-          message: err.message || "Failed to set role. Please try again.",
-        })
-      );
+        // Explicitly set in localStorage for redundancy
+        localStorage.setItem("healthmint_user_role", role);
+        localStorage.setItem("healthmint_is_new_user", "false");
 
-      setLoading(false);
-      setRedirecting(false);
-    }
-  };
+        // Dispatch role selection action to Redux
+        dispatch(setRole(role));
+
+        // Update user profile with role information
+        dispatch(updateUserProfile(updatedUserData));
+
+        // Success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
+            duration: 3000,
+          })
+        );
+
+        // Force direct navigation to avoid React Router timing issues
+        window.location.href = "/dashboard";
+      } catch (err) {
+        console.error("Role selection error:", err);
+        setError(err.message || "Failed to set role. Please try again.");
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message: err.message || "Failed to set role. Please try again.",
+          })
+        );
+
+        setLoading(false);
+        setRedirecting(false);
+
+        // Clear any bypass flags on error
+        sessionStorage.removeItem("bypass_role_check");
+        sessionStorage.removeItem("temp_selected_role");
+      }
+    },
+    [dispatch, loading]
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
