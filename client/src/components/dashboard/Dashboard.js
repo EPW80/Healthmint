@@ -1,8 +1,8 @@
 // client/src/components/dashboard/Dashboard.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import PropTypes from 'prop-types';
 import {
   FileText,
   Upload,
@@ -32,7 +32,6 @@ import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import useAsyncOperation from "../../hooks/useAsyncOperation.js";
 import ErrorDisplay from "../ui/ErrorDisplay.js";
 import LoadingSpinner from "../ui/LoadingSpinner.js";
-import RoleSwitcher from "./RoleSwitcher.js";
 
 /**
  * Unified Dashboard Component
@@ -55,7 +54,6 @@ const Dashboard = ({ onNavigate }) => {
   // Extract only needed properties from user profile to avoid unnecessary re-renders
   const {
     pendingRequests = 0,
-    securityScore = 85,
     activeStudies = 0,
     appliedFilters = 0,
   } = useMemo(() => userProfile, [userProfile]);
@@ -76,7 +74,6 @@ const Dashboard = ({ onNavigate }) => {
   const {
     loading: asyncLoading,
     execute: executeAsync,
-    clearError: clearAsyncError,
   } = useAsyncOperation({
     componentId: "Dashboard",
     userId,
@@ -109,8 +106,6 @@ const Dashboard = ({ onNavigate }) => {
     availableDatasets: [],
   });
 
-  const [downloadLoading, setDownloadLoading] = useState(false);
-
   // State for viewing records (patient dashboard)
   const [viewingRecord, setViewingRecord] = useState(null);
 
@@ -119,33 +114,18 @@ const Dashboard = ({ onNavigate }) => {
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [datasetDetails, setDatasetDetails] = useState(null);
+  const [downloadLoading, setDownloadLoading] = useState(false);
+  const [downloadingRecordId, setDownloadingRecordId] = useState(null);
 
   // Combine loading states
   const isLoading = uiLoading || healthDataLoading || asyncLoading;
 
-  // ADD LOADING TIMEOUT FIX
-  useEffect(() => {
-    if (isLoading && !uiError) {
-      console.log("Still loading on Dashboard page...");
-      // Force exit loading state after 5 seconds for testing
-      const timer = setTimeout(() => {
-        console.log("Forcing loading state to false after timeout");
-        dispatch(setLoading(false));
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, uiError, dispatch]);
-
   // Function to fetch all dashboard data
   const fetchDashboardData = useCallback(async () => {
-    console.log("Starting fetchDashboardData");
     try {
-      console.log("Setting loading state to true");
       dispatch(setLoading(true));
       dispatch(setError(null));
 
-      console.log("About to call hipaaComplianceService.createAuditLog");
       // Create HIPAA-compliant audit log
       await hipaaComplianceService.createAuditLog("DASHBOARD_ACCESS", {
         action: "VIEW",
@@ -153,9 +133,7 @@ const Dashboard = ({ onNavigate }) => {
         userId,
         timestamp: new Date().toISOString(),
       });
-      console.log("Audit log created successfully");
 
-      console.log("Setting dashboard data");
       // Set appropriate dashboard data based on role
       setDashboardData((prevData) => ({
         ...prevData,
@@ -163,9 +141,7 @@ const Dashboard = ({ onNavigate }) => {
         recentActivity: [],
         availableDatasets: userRole === "researcher" ? healthData || [] : [],
       }));
-      console.log("Dashboard data set successfully");
 
-      console.log("Setting loading state to false");
       dispatch(setLoading(false));
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
@@ -178,10 +154,9 @@ const Dashboard = ({ onNavigate }) => {
         })
       );
 
-      console.log("Setting loading state to false after error");
       dispatch(setLoading(false));
     }
-  }, [userRole, userId, dispatch, healthData, userProfile.securityScore]);
+  }, [userRole, userId, dispatch, healthData]);
 
   // Fetch dashboard data when component mounts or when dependencies change
   useEffect(() => {
@@ -225,24 +200,42 @@ const Dashboard = ({ onNavigate }) => {
   // Handle record download (Patient dashboard)
   const handleDownloadRecord = useCallback(
     async (recordId) => {
-      setDownloadLoading(true);
-      executeAsync(async () => {
-        try {
-          await downloadRecord(recordId);
-  
-          // Log download for HIPAA compliance
-          await hipaaComplianceService.createAuditLog("RECORD_DOWNLOAD", {
-            action: "DOWNLOAD",
-            recordId,
-            timestamp: new Date().toISOString(),
-            userId
-          });
-        } finally {
-          setDownloadLoading(false);
-        }
-      });
+      try {
+        setDownloadLoading(true);
+        setDownloadingRecordId(recordId);
+
+        await hipaaComplianceService.createAuditLog("RECORD_DOWNLOAD", {
+          action: "DOWNLOAD",
+          recordId,
+          timestamp: new Date().toISOString(),
+          userId,
+        });
+
+        await downloadRecord(recordId);
+
+        // Show success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Record downloaded successfully",
+          })
+        );
+      } catch (error) {
+        console.error("Download error:", error);
+
+        // Show error notification
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Failed to download record",
+          })
+        );
+      } finally {
+        setDownloadLoading(false);
+        setDownloadingRecordId(null);
+      }
     },
-    [executeAsync, downloadRecord, userId]
+    [downloadRecord, dispatch, userId]
   );
 
   // Handle share record (Patient dashboard)
@@ -418,21 +411,14 @@ const Dashboard = ({ onNavigate }) => {
   if (userRole === "patient") {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* User welcome with Role Switcher */}
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, {userProfile?.name || "Patient"}
-            </h1>
-            <p className="text-gray-600">
-              Your patient dashboard for managing health data
-            </p>
-          </div>
-          
-          {/* Role Switcher Component */}
-          <div className="mt-4 md:mt-0">
-            <RoleSwitcher />
-          </div>
+        {/* User welcome */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome, {userProfile?.name || "Patient"}
+          </h1>
+          <p className="text-gray-600">
+            Your patient dashboard for managing health data
+          </p>
         </div>
 
         {/* Stats Grid */}
@@ -653,16 +639,20 @@ const Dashboard = ({ onNavigate }) => {
                     </button>
 
                     <button
-                      onClick={() => handleDownloadRecord(record)}
-                      disabled={downloadLoading}
+                      onClick={() => handleDownloadRecord(record.id)}
+                      disabled={
+                        downloadLoading && downloadingRecordId === record.id
+                      }
                       className={`flex items-center justify-center gap-2 px-4 py-2 ${
-                        downloadLoading
+                        downloadLoading && downloadingRecordId === record.id
                           ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                           : "bg-blue-500 hover:bg-blue-600 text-white"
                       } rounded-lg`}
-                      aria-busy={downloadLoading}
+                      aria-busy={
+                        downloadLoading && downloadingRecordId === record.id
+                      }
                     >
-                      {downloadLoading ? (
+                      {downloadLoading && downloadingRecordId === record.id ? (
                         <LoadingSpinner size="small" color="gray" />
                       ) : (
                         <Download size={18} />
@@ -734,21 +724,14 @@ const Dashboard = ({ onNavigate }) => {
   // RESEARCHER DASHBOARD RENDER
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* User welcome with Role Switcher */}
-      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome, {userProfile?.name || "Researcher"}
-          </h1>
-          <p className="text-gray-600">
-            Your researcher dashboard for discovering and analyzing health data
-          </p>
-        </div>
-        
-        {/* Role Switcher Component */}
-        <div className="mt-4 md:mt-0">
-          <RoleSwitcher />
-        </div>
+      {/* User welcome */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome, {userProfile?.name || "Researcher"}
+        </h1>
+        <p className="text-gray-600">
+          Your researcher dashboard for discovering and analyzing health data
+        </p>
       </div>
 
       {/* Stats Grid */}
@@ -796,6 +779,14 @@ const Dashboard = ({ onNavigate }) => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <button
+          onClick={() => handleNavigateTo("/browse")}
+          className="p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 font-medium"
+        >
+          <Database className="w-5 h-5" />
+          Browse Datasets
+        </button>
+
         <button
           onClick={() => handleNavigateTo("/studies")}
           className="p-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 font-medium"
@@ -1105,7 +1096,7 @@ const Dashboard = ({ onNavigate }) => {
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            No recent activity to display woooooo
+            No recent activity to display
           </div>
         )}
       </div>
