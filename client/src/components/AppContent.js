@@ -1,4 +1,4 @@
-// client/src/components/AppContent.js
+// Modified version of AppContent.js to prevent initialization loops
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -15,6 +15,7 @@ import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
 import UserRegistration from "./UserRegistration.js";
 import { AlertCircle, LogOut, X, Check } from "lucide-react";
+import LoadingSpinner from "./ui/LoadingSpinner.js";
 
 // Hooks and Redux
 import useWalletConnect from "../hooks/useWalletConnect.js";
@@ -140,13 +141,14 @@ function AppContent() {
   const isRoleSelected = useSelector(selectIsRoleSelected);
 
   // Get auth state
-  const { isNewUser, verifyAuth, logout } = useAuth();
+  const { isNewUser, verifyAuth, logout, clearVerificationCache } = useAuth();
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
   const [routeChecksBypassEnabled, setRouteChecksBypassEnabled] =
     useState(false);
+  const [initializationAttempted, setInitializationAttempted] = useState(false);
 
   // Logout confirmation dialog state
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -169,25 +171,42 @@ function AppContent() {
     [dispatch]
   );
 
-  // Add this emergency loop breaker
+  // Add emergency loop breaker
   useEffect(() => {
-    // Emergency loop breaker - if we're still initializing after 4 seconds, force through
     const emergencyTimeout = setTimeout(() => {
-      if (isVerifying || !isInitialized) {
-        console.warn("🚨 EMERGENCY: Breaking auth loop after timeout");
-        // Force all auth states to positive to break any loops
+      if ((isVerifying || !isInitialized) && initializationAttempted) {
+        console.warn("🚨 EMERGENCY: Breaking auth loop after 6s timeout", {
+          isVerifying,
+          isInitialized,
+          initializationAttempted,
+          location: location.pathname,
+        });
         sessionStorage.setItem("auth_verification_override", "true");
         sessionStorage.setItem("bypass_route_protection", "true");
         sessionStorage.setItem("bypass_role_check", "true");
-
-        // Force the app to think it's initialized and not verifying
         setIsVerifying(false);
         setIsInitialized(true);
+        clearVerificationCache();
+        dispatch(
+          addNotification({
+            type: "warning",
+            message:
+              "Authentication took too long. Some features may be limited.",
+            duration: 5000,
+          })
+        );
       }
-    }, 4000);
+    }, 6000); // Increased to 6s to give more time
 
     return () => clearTimeout(emergencyTimeout);
-  }, [isVerifying, isInitialized]);
+  }, [
+    isVerifying,
+    isInitialized,
+    initializationAttempted,
+    clearVerificationCache,
+    dispatch,
+    location.pathname,
+  ]);
 
   // Check for temporary bypass flags that might be set in sessionStorage
   useEffect(() => {
@@ -203,8 +222,15 @@ function AppContent() {
     }
   }, [location.pathname]);
 
-  // Verify authentication on first load
+  // Verify authentication on first load with improved loop prevention
   useEffect(() => {
+    // Only run this once
+    if (initializationAttempted) {
+      return;
+    }
+
+    setInitializationAttempted(true);
+
     // Skip verification if bypass is enabled
     if (routeChecksBypassEnabled) {
       setIsVerifying(false);
@@ -216,9 +242,31 @@ function AppContent() {
       setIsVerifying(true);
       try {
         console.log("Verifying authentication state...");
-        await verifyAuth();
+
+        // Use Promise.race with timeout to prevent hanging
+        const authResult = await Promise.race([
+          verifyAuth(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Auth verification timeout")),
+              3000
+            )
+          ),
+        ]);
+
+        console.log("Auth verification complete:", authResult);
       } catch (error) {
         console.error("Auth verification error:", error);
+
+        // On timeout or error, force initialization to proceed
+        dispatch(
+          addNotification({
+            type: "warning",
+            message:
+              "Authentication verification timed out. Some features may be limited.",
+            duration: 5000,
+          })
+        );
       } finally {
         setIsVerifying(false);
         setIsInitialized(true);
@@ -231,7 +279,7 @@ function AppContent() {
     }, 100);
 
     return () => clearTimeout(timerId);
-  }, [verifyAuth, routeChecksBypassEnabled]);
+  }, [verifyAuth, routeChecksBypassEnabled, dispatch, initializationAttempted]);
 
   // Check for pending transactions
   const checkPendingTransactions = useCallback(async () => {
@@ -380,7 +428,10 @@ function AppContent() {
   if (!isInitialized || isVerifying) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="flex flex-col items-center gap-4">
+          <LoadingSpinner size="large" />
+          <p className="text-gray-600">Initializing Healthmint...</p>
+        </div>
       </div>
     );
   }
@@ -555,7 +606,7 @@ function AppContent() {
             element={
               !isInitialized ? (
                 <div className="flex justify-center items-center min-h-screen">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                  <LoadingSpinner size="large" />
                 </div>
               ) : !isConnected ? (
                 <Navigate to="/login" replace />

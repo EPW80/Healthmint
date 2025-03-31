@@ -6,6 +6,7 @@ import { ENV } from "../config/environmentConfig.js";
  * AuthService
  *
  * Provides authentication services with HIPAA compliance for the Healthmint application.
+ * Includes token validation and refresh capabilities.
  */
 class AuthService {
   constructor() {
@@ -42,18 +43,111 @@ class AuthService {
   }
 
   /**
+   * Ensure the authentication token is valid, refreshing it if necessary
+   * @returns {Promise<string>} The valid token
+   * @throws {Error} If token validation or refresh fails
+   */
+  async ensureValidToken() {
+    try {
+      if (!this.token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Check token expiry
+      const expiryDate = this.tokenExpiry ? new Date(this.tokenExpiry) : null;
+      const now = new Date();
+
+      if (expiryDate && expiryDate <= now) {
+        console.log("Token expired, attempting to refresh...");
+        await this.refreshAccessToken();
+      }
+
+      // Log token validation for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("TOKEN_VALIDATION", {
+        action: "VALIDATE_TOKEN",
+        walletAddress: this.walletAddress,
+        timestamp: now.toISOString(),
+      });
+
+      return this.token;
+    } catch (error) {
+      console.error("Token validation error:", error);
+      await hipaaComplianceService.createAuditLog("TOKEN_VALIDATION_FAILURE", {
+        action: "VALIDATE_TOKEN",
+        walletAddress: this.walletAddress,
+        timestamp: new Date().toISOString(),
+        errorMessage: error.message,
+      });
+      throw new Error("Invalid or expired token: " + error.message);
+    }
+  }
+
+  /**
+   * Refresh the access token using the refresh token
+   * @private
+   * @returns {Promise<void>}
+   */
+  async refreshAccessToken() {
+    try {
+      if (!this.refreshToken) {
+        throw new Error("No refresh token available");
+      }
+
+      // Simulate token refresh (replace with actual API call)
+      const response = await this.performTokenRefresh(this.refreshToken);
+
+      // Update auth state with new tokens
+      this.updateAuthState({
+        token: response.token,
+        refreshToken: response.refreshToken,
+        expiresAt: response.expiresAt,
+        userProfile: this.userProfile, // Preserve existing profile
+        isNewUser: this._isNewUser,
+      });
+
+      console.log("Token refreshed successfully");
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      throw new Error("Failed to refresh token: " + error.message);
+    }
+  }
+
+  /**
+   * Perform token refresh API call
+   * @param {string} refreshToken - Current refresh token
+   * @returns {Promise<Object>} New token data
+   * @private
+   */
+  async performTokenRefresh(refreshToken) {
+    // For demo purposes, simulate a refresh
+    // In a real app, replace with an API call
+    return {
+      token: `refreshed_token_${Date.now()}`,
+      refreshToken: `refreshed_refresh_${Date.now()}`,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+    };
+
+    // Example real implementation:
+    // const response = await fetch(`${this.API_URL}/auth/refresh`, {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify({ refreshToken }),
+    // });
+    // if (!response.ok) throw new Error("Token refresh failed");
+    // return await response.json();
+  }
+
+  /**
    * Check if the user is authenticated
    * @returns {boolean} True if user is authenticated
    */
   isAuthenticated() {
-    // Check if token exists and is not expired
     if (!this.token) return false;
 
-    // Check expiry if available
     if (this.tokenExpiry) {
       const expiryDate = new Date(this.tokenExpiry);
       if (expiryDate <= new Date()) {
-        return false;
+        return false; // Token expired, rely on ensureValidToken to refresh
       }
     }
 
@@ -84,14 +178,12 @@ class AuthService {
   updateAuthState(authData) {
     const { token, refreshToken, expiresAt, userProfile, isNewUser } = authData;
 
-    // Update memory state
     this.token = token;
     this.refreshToken = refreshToken;
     this.tokenExpiry = expiresAt;
     this.userProfile = userProfile;
     this._isNewUser = isNewUser === true;
 
-    // Update localStorage
     if (token) localStorage.setItem(this.tokenKey, token);
     if (refreshToken) localStorage.setItem(this.refreshTokenKey, refreshToken);
     if (expiresAt) localStorage.setItem(this.tokenExpiryKey, expiresAt);
@@ -107,25 +199,21 @@ class AuthService {
    */
   async login(credentials = {}) {
     try {
-      // Extract wallet address from credentials or use stored one
       const walletAddress = credentials.address || this.walletAddress;
 
       if (!walletAddress) {
         throw new Error("Wallet address is required for authentication");
       }
 
-      // Store wallet address
       this.walletAddress = walletAddress;
       localStorage.setItem(this.walletAddressKey, walletAddress);
 
-      // Log auth attempt for HIPAA compliance
       await hipaaComplianceService.createAuditLog("AUTH_ATTEMPT", {
         action: "LOGIN",
         walletAddress,
         timestamp: new Date().toISOString(),
       });
 
-      // Check if we need to do a full API login or can use existing auth
       if (this.isAuthenticated() && this.userProfile) {
         return {
           success: true,
@@ -135,10 +223,8 @@ class AuthService {
         };
       }
 
-      // Perform API login
       const authResult = await this.performApiLogin(walletAddress);
 
-      // Update auth state with login result
       this.updateAuthState({
         token: authResult.token,
         refreshToken: authResult.refreshToken,
@@ -147,7 +233,6 @@ class AuthService {
         isNewUser: authResult.isNewUser,
       });
 
-      // Log successful login for HIPAA compliance
       await hipaaComplianceService.createAuditLog("AUTH_SUCCESS", {
         action: "LOGIN",
         walletAddress,
@@ -163,17 +248,12 @@ class AuthService {
       };
     } catch (error) {
       console.error("Login error:", error);
-
-      // Log auth failure for HIPAA compliance
-      hipaaComplianceService
-        .createAuditLog("AUTH_FAILURE", {
-          action: "LOGIN",
-          walletAddress: credentials.address || this.walletAddress,
-          timestamp: new Date().toISOString(),
-          errorMessage: error.message,
-        })
-        .catch((err) => console.error("Error logging auth failure:", err));
-
+      await hipaaComplianceService.createAuditLog("AUTH_FAILURE", {
+        action: "LOGIN",
+        walletAddress: credentials.address || this.walletAddress,
+        timestamp: new Date().toISOString(),
+        errorMessage: error.message,
+      });
       return {
         success: false,
         error: error.message || "Authentication failed",
@@ -189,18 +269,14 @@ class AuthService {
    */
   async performApiLogin(walletAddress) {
     try {
-      // For demo, simulate API login success
-      // In a real app, replace this with actual API call
+      // Simulate API login for demo
       return {
         token: `demo_token_${Date.now()}`,
         refreshToken: `demo_refresh_${Date.now()}`,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         userProfile: await this.getUserByWallet(walletAddress),
-        isNewUser: false, // Will be true if user doesn't exist yet
+        isNewUser: false,
       };
-
-      // In a real implementation, do something like:
-      // return await apiService.post("/auth/login", { walletAddress });
     } catch (error) {
       console.error("API login error:", error);
       throw new Error("Login failed. Please try again.");
@@ -214,19 +290,14 @@ class AuthService {
    * @private
    */
   async getUserByWallet(walletAddress) {
-    // In a real implementation, this would call the API
-    // For now, check localStorage for an existing profile
     try {
       const profileStr = localStorage.getItem(this.userProfileKey);
       const storedProfile = profileStr ? JSON.parse(profileStr) : null;
 
-      // If we have a profile with matching address, return it
       if (storedProfile && storedProfile.address === walletAddress) {
         return storedProfile;
       }
 
-      // For demo purposes - return null to indicate new user
-      // This would be replaced with an API call in a real app
       const savedUserKey = `healthmint_user_${walletAddress}`;
       const savedUser = localStorage.getItem(savedUserKey);
 
@@ -234,10 +305,8 @@ class AuthService {
         return JSON.parse(savedUser);
       }
 
-      // Set new user flag since we couldn't find a profile
       this._isNewUser = true;
       localStorage.setItem(this.isNewUserKey, "true");
-
       return null;
     } catch (error) {
       console.error("Error getting user by wallet:", error);
@@ -251,21 +320,18 @@ class AuthService {
    */
   async logout() {
     try {
-      // Log the logout attempt for HIPAA compliance
       await hipaaComplianceService.createAuditLog("AUTH_LOGOUT", {
         action: "LOGOUT",
         walletAddress: this.walletAddress,
         timestamp: new Date().toISOString(),
       });
 
-      // Clear localStorage
       localStorage.removeItem(this.tokenKey);
       localStorage.removeItem(this.refreshTokenKey);
       localStorage.removeItem(this.tokenExpiryKey);
       localStorage.removeItem(this.userProfileKey);
       localStorage.removeItem(this.isNewUserKey);
 
-      // Clear memory state
       this.token = null;
       this.refreshToken = null;
       this.tokenExpiry = null;
@@ -290,27 +356,21 @@ class AuthService {
         throw new Error("Wallet address is required for registration");
       }
 
-      // Log registration attempt for HIPAA compliance
       await hipaaComplianceService.createAuditLog("REGISTRATION_ATTEMPT", {
         action: "REGISTER",
         walletAddress: userData.address,
         timestamp: new Date().toISOString(),
       });
 
-      // In a real app, this would be an API call
-      // For now, just store in localStorage
       const savedUserKey = `healthmint_user_${userData.address}`;
       localStorage.setItem(savedUserKey, JSON.stringify(userData));
 
-      // Update user profile
       this.userProfile = userData;
       localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
 
-      // No longer a new user
       this._isNewUser = false;
       localStorage.setItem(this.isNewUserKey, "false");
 
-      // Log registration success
       await hipaaComplianceService.createAuditLog("REGISTRATION_SUCCESS", {
         action: "REGISTER",
         walletAddress: userData.address,
@@ -320,19 +380,12 @@ class AuthService {
       return true;
     } catch (error) {
       console.error("Registration error:", error);
-
-      // Log registration failure
-      hipaaComplianceService
-        .createAuditLog("REGISTRATION_FAILURE", {
-          action: "REGISTER",
-          walletAddress: userData?.address || this.walletAddress,
-          timestamp: new Date().toISOString(),
-          errorMessage: error.message,
-        })
-        .catch((err) =>
-          console.error("Error logging registration failure:", err)
-        );
-
+      await hipaaComplianceService.createAuditLog("REGISTRATION_FAILURE", {
+        action: "REGISTER",
+        walletAddress: userData?.address || this.walletAddress,
+        timestamp: new Date().toISOString(),
+        errorMessage: error.message,
+      });
       return false;
     }
   }
@@ -342,15 +395,12 @@ class AuthService {
    * @param {Object} userData - User data
    */
   completeRegistration(userData) {
-    // Update user profile
     this.userProfile = userData;
     localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
 
-    // No longer a new user
     this._isNewUser = false;
     localStorage.setItem(this.isNewUserKey, "false");
 
-    // Log registration completion
     hipaaComplianceService
       .createAuditLog("REGISTRATION_COMPLETED", {
         action: "COMPLETE_REGISTRATION",
@@ -373,19 +423,15 @@ class AuthService {
         throw new Error("Wallet address is required for profile update");
       }
 
-      // Log profile update for HIPAA compliance
       await hipaaComplianceService.createAuditLog("PROFILE_UPDATE", {
         action: "UPDATE_PROFILE",
         walletAddress: userData.address,
         timestamp: new Date().toISOString(),
       });
 
-      // In a real app, this would be an API call
-      // For now, just update localStorage
       const savedUserKey = `healthmint_user_${userData.address}`;
       localStorage.setItem(savedUserKey, JSON.stringify(userData));
 
-      // Update user profile
       this.userProfile = userData;
       localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
 
@@ -402,60 +448,6 @@ class AuthService {
    */
   getCurrentUser() {
     return this.userProfile;
-  }
-
-  /**
-   * Verify JWT token expiration
-   * @returns {boolean} True if token is valid
-   * @private
-   */
-  verifyToken() {
-    if (!this.token) return false;
-
-    // Check expiry if available
-    if (this.tokenExpiry) {
-      const expiryDate = new Date(this.tokenExpiry);
-      if (expiryDate <= new Date()) {
-        // Token is expired, try to refresh
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Refresh the auth token
-   * @returns {Promise<boolean>} Success or failure
-   * @private
-   */
-  async refreshAuthToken() {
-    try {
-      if (!this.refreshToken) return false;
-
-      // In a real app, call API to refresh token
-      // For now, just create a new demo token
-      const newToken = `demo_token_${Date.now()}`;
-      const newRefreshToken = `demo_refresh_${Date.now()}`;
-      const newExpiry = new Date(
-        Date.now() + 24 * 60 * 60 * 1000
-      ).toISOString(); // 24 hours
-
-      // Update auth state
-      this.token = newToken;
-      this.refreshToken = newRefreshToken;
-      this.tokenExpiry = newExpiry;
-
-      // Update localStorage
-      localStorage.setItem(this.tokenKey, newToken);
-      localStorage.setItem(this.refreshTokenKey, newRefreshToken);
-      localStorage.setItem(this.tokenExpiryKey, newExpiry);
-
-      return true;
-    } catch (error) {
-      console.error("Token refresh error:", error);
-      return false;
-    }
   }
 }
 

@@ -43,66 +43,59 @@ const Dashboard = ({ onNavigate }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Get state from Redux
-  const userRole = useSelector(selectRole);
-  const { loading: uiLoading, error: uiError } = useSelector(
-    (state) => state.ui
+  const userRole = useSelector(selectRole) || "patient"; // Default to patient if undefined
+  const { loading: uiLoading = false, error: uiError = null } = useSelector(
+    (state) => state.ui || {}
   );
   const userProfile = useSelector((state) => state.user.profile || {});
-  const userId = useSelector((state) => state.wallet.address);
+  const userId = useSelector(
+    (state) =>
+      state.wallet.address ||
+      localStorage.getItem("healthmint_wallet_address") ||
+      "unknown"
+  );
 
-  // Extract only needed properties from user profile to avoid unnecessary re-renders
-  // Use default values to prevent null/undefined errors
   const {
     pendingRequests = 0,
     activeStudies = 0,
     appliedFilters = 0,
   } = userProfile || {};
 
-  // Use health data hook for data management with safe defaults
   const {
     userRecords = [],
     healthData = [],
-    getRecordDetails,
-    downloadRecord,
+    getRecordDetails = () => Promise.resolve(null),
+    downloadRecord = () => Promise.resolve(null),
     loading: healthDataLoading = false,
   } = useHealthData({
     userRole,
     loadOnMount: true,
-    initialData: [], // Provide initial data to prevent null
-  });
+    initialData: [],
+  }) || {};
 
-  // Use our async operation hook for async operations
-  const { loading: asyncLoading, execute: executeAsync } = useAsyncOperation({
-    componentId: "Dashboard",
-    userId,
-    onError: (error) => {
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error.message || "Dashboard operation failed",
-        })
-      );
-    },
-  });
+  const { loading: asyncLoading = false, execute: executeAsync } =
+    useAsyncOperation({
+      componentId: "Dashboard",
+      userId,
+      onError: (error) => {
+        dispatch(
+          addNotification({
+            type: "error",
+            message: error.message || "Dashboard operation failed",
+          })
+        );
+      },
+    }) || {};
 
-  // Memoize records length to prevent unnecessary re-renders
-  // Use optional chaining to prevent errors with null/undefined
-  const totalRecords = useMemo(() => userRecords?.length || 0, [userRecords]);
-
-  // Memoize shared records count with safe access
+  const totalRecords = useMemo(() => userRecords.length || 0, [userRecords]);
   const sharedRecords = useMemo(
-    () => (userRecords?.filter((record) => record?.shared) || []).length || 0,
+    () => userRecords.filter((record) => record?.shared).length || 0,
     [userRecords]
   );
 
-  // Local state with safe default values - separate by logical groups
   const [dashboardData, setDashboardData] = useState({
-    // Common data
     recentActivity: [],
-    // Patient specific
     securityScore: 85,
-    // Researcher specific
     availableDatasets: [],
   });
 
