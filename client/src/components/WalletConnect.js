@@ -6,14 +6,19 @@ import { X, CheckCircle, AlertTriangle, Loader } from "lucide-react";
 import useWalletConnection from "../hooks/useWalletConnect.js";
 import useAuth from "../hooks/useAuth.js";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { addNotification } from "../redux/slices/notificationSlice.js";
 
 // Constants
 const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
 
+// WalletConnect component
 const WalletConnect = ({ onConnect }) => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [localError, setLocalError] = useState(null); // Added local error state
 
   // Get wallet connection state
   const {
@@ -38,21 +43,53 @@ const WalletConnect = ({ onConnect }) => {
   } = useAuth();
 
   // Combined error and loading states
-  const error = walletError || authError;
+  const error = localError || walletError || authError;
   const loading = walletLoading || authLoading || isConnecting;
 
   // If auto-connect fails, we want to make it easy for the user to initiate the connection
   const showNetworkWarning = isConnected && network && !network.isSupported;
 
+  // Clear reconnection flags and clean up wallet state
+  useEffect(() => {
+    // Clear any forced reconnect flags when we reach this component
+    sessionStorage.removeItem("force_wallet_reconnect");
+
+    // If we're on the login page and the wallet is not connected,
+    // clean up any potentially stale connection data
+    if (!isConnected) {
+      console.log("WalletConnect: Wallet not connected, cleaning up state");
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
+
+      // Reset connection state
+      setIsConnecting(false);
+      setErrorDismissed(false);
+    }
+
+    console.log("WalletConnect mounted, connection state:", {
+      isConnected,
+      address: address || "none",
+      isNewUser,
+      isRegistrationComplete,
+    });
+  }, [isConnected, address, isNewUser, isRegistrationComplete]);
+
   // Handle redirection after successful connection
   useEffect(() => {
     if (isConnected && !loading) {
+      console.log("WalletConnect: Connection successful, preparing redirect", {
+        isRegistrationComplete,
+        isNewUser,
+      });
+
       const redirectUser = async () => {
         if (isRegistrationComplete) {
           // If registration is complete, go to role selection or dashboard
+          console.log("WalletConnect: Redirecting to role selection");
           navigate("/select-role", { replace: true });
         } else if (isNewUser) {
           // If new user, go to registration
+          console.log("WalletConnect: Redirecting to registration");
           navigate("/register", { replace: true });
         }
       };
@@ -65,24 +102,75 @@ const WalletConnect = ({ onConnect }) => {
   const handleConnect = async () => {
     setErrorDismissed(false);
     setIsConnecting(true);
+    setLocalError(null); // Clear any previous local errors
 
     try {
+      console.log("WalletConnect: Initiating wallet connection...");
+
       // First connect wallet
       const walletResult = await connectWallet();
 
-      if (walletResult.success) {
+      if (walletResult && walletResult.success) {
+        console.log("WalletConnect: Wallet connected successfully");
+
+        // Show success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Wallet connected successfully!",
+            duration: 3000,
+          })
+        );
+
         // Then handle authentication and user state
         const authResult = await login();
 
-        if (authResult.success) {
+        if (authResult && authResult.success) {
+          console.log("WalletConnect: Authentication successful");
+
           // Navigation is handled by the useEffect above based on user state
           if (onConnect) {
             onConnect(authResult);
           }
+        } else {
+          console.error(
+            "WalletConnect: Authentication failed after wallet connection"
+          );
+
+          // Set an appropriate error message
+          setLocalError(
+            authResult?.message || "Authentication failed. Please try again."
+          );
         }
+      } else {
+        console.error(
+          "WalletConnect: Wallet connection failed",
+          walletResult?.error
+        );
+
+        // Set an appropriate error message
+        setLocalError(
+          walletResult?.error || "Failed to connect wallet. Please try again."
+        );
+
+        // Clean up any partial state
+        localStorage.removeItem("healthmint_wallet_address");
+        localStorage.removeItem("healthmint_wallet_connection");
       }
     } catch (err) {
-      console.error("Connection error:", err);
+      console.error("WalletConnect: Connection error:", err);
+      setLocalError(
+        err.message || "Failed to connect wallet. Please try again."
+      );
+
+      // Show error notification for better visibility
+      dispatch(
+        addNotification({
+          type: "error",
+          message: err.message || "Failed to connect wallet. Please try again.",
+          duration: 5000,
+        })
+      );
     } finally {
       setIsConnecting(false);
     }

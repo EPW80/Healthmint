@@ -287,9 +287,26 @@ function AppContent() {
         })
       );
 
-      // Logout and disconnect
-      await logout();
-      await disconnectWallet();
+      // IMPORTANT: Set the force reconnect flag BEFORE disconnecting the wallet
+      // This ensures the flag will be checked on next page load
+      sessionStorage.setItem("force_wallet_reconnect", "true");
+
+      // Logout and disconnect - with error handling for each step
+      try {
+        await logout();
+        console.log("Logout successful");
+      } catch (error) {
+        console.error("Error during logout:", error);
+        // Continue with the process anyway
+      }
+
+      try {
+        await disconnectWallet();
+        console.log("Wallet disconnected successfully");
+      } catch (error) {
+        console.error("Error disconnecting wallet:", error);
+        // Continue with the process anyway
+      }
 
       // Clear Redux states
       dispatch(clearWalletConnection());
@@ -311,6 +328,7 @@ function AppContent() {
       sessionStorage.removeItem("bypass_route_protection");
       sessionStorage.removeItem("bypass_role_check");
       sessionStorage.removeItem("temp_selected_role");
+      sessionStorage.removeItem("auth_verification_override");
 
       // Notification of success
       dispatch(
@@ -336,11 +354,17 @@ function AppContent() {
         })
       );
 
-      // Even on error, clear everything and redirect after a short delay
+      // Even on error, try to clear everything and redirect
       setTimeout(() => {
+        // Set the reconnect flag again as a failsafe
+        sessionStorage.setItem("force_wallet_reconnect", "true");
+
+        // Clear as much state as possible
         dispatch(clearWalletConnection());
         dispatch(clearRole());
         dispatch(clearUserProfile());
+
+        // Force redirect to login
         window.location.replace("/login");
       }, 1000);
     }
