@@ -129,7 +129,12 @@ const ProtectedRoute = ({
 
       if (isLoopDetected && !emergencyFallbackActive) {
         console.warn(
-          `🚨 [ProtectedRoute:${debugId}] Redirect loop detected for ${redirectPath}. Activating emergency bypass.`
+          `🚨 [ProtectedRoute:${debugId}] Redirect loop detected for ${redirectPath}. Activating emergency bypass.`,
+          {
+            redirectHistory: redirectTracker.history,
+            redirectCounts: redirectTracker.counts,
+            sessionCounts: redirectTracker.sessionCounts,
+          }
         );
 
         // Show notification to user
@@ -176,6 +181,10 @@ const ProtectedRoute = ({
         setBypassAuth(true);
         setRedirectPath(null);
         setEmergencyFallbackActive(true);
+
+        console.info(
+          `💡 Emergency redirect recovery activated. Original path: ${redirectPath}`
+        );
       }
     }
   }, [
