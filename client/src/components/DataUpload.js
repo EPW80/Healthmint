@@ -294,7 +294,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 htmlFor="category"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Category
+                Category *
               </label>
               <select
                 id="category"
@@ -317,7 +317,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 htmlFor="description"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Description
+                Description *
               </label>
               <textarea
                 id="description"
@@ -335,7 +335,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 htmlFor="price"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Price (ETH)
+                Price (ETH) *
               </label>
               <input
                 id="price"
