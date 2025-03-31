@@ -1,92 +1,85 @@
-// client/src/components/roles/RoleSelector.js
+// src/components/roles/RoleSelector.js
 import React, { useState, useEffect, useCallback } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Loader, AlertCircle, LogIn } from "lucide-react";
+import { User, Microscope, Loader } from "lucide-react";
 import { setRole } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../../redux/slices/userSlice.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
-// Import authService properly - it's a default export based on the error messages
-import debugAuthState, { default as authServiceDefault } from "../../services/authService.js";
+import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
+import WalletErrorNotification from "../WalletErrorNotification.js";
 
 /**
- * Unified Login and Role Selector Component
- * Now functions as a login page with role selection moved to dashboard
+ * Role Selector Component with improved navigation
  */
 const RoleSelector = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Form state for login
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  
+  // Get wallet address from Redux state
+  const walletAddress = useSelector((state) => state.wallet.address);
+
   // Local state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(null);
   const [redirecting, setRedirecting] = useState(false);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
-  // Check for an existing authenticated user
+  // Check for an existing role in localStorage or user profile
   useEffect(() => {
     // If we're already checking or redirecting, skip
     if (redirecting || initialCheckComplete) {
       return;
     }
 
-    const checkExistingUser = () => {
-      console.log("Checking for existing authentication...");
+    const checkExistingRole = () => {
+      console.log("Checking for existing role...");
 
       // First, check if we came from a redirect loop - if so, don't redirect again
       const fromPath = location.state?.from;
       if (fromPath === "/dashboard") {
-        console.log("Coming from dashboard, skipping auth redirect");
+        console.log("Coming from dashboard, skipping role redirect");
         setInitialCheckComplete(true);
         return false;
       }
 
       // Check if we have an explicit bypass flag
       if (sessionStorage.getItem("bypass_role_check") === "true") {
-        console.log("Bypassing auth check due to session flag");
+        console.log("Bypassing role check due to session flag");
         // Clear the flag after using it once
         sessionStorage.removeItem("bypass_role_check");
         setInitialCheckComplete(true);
         return false;
       }
 
-      // Check if user is already authenticated using localStorage directly
-      // since getCurrentUser isn't available according to error
-      try {
-        const userDataString = localStorage.getItem("healthmint_user_data");
-        if (userDataString) {
-          const userProfile = JSON.parse(userDataString);
-          if (userProfile && userProfile.token) {
-            console.log(`Existing authenticated user found: ${userProfile.email || userProfile.name}`);
-            
-            // Check for role
-            const userRole = userProfile.role || localStorage.getItem("healthmint_user_role");
-            if (userRole) {
-              console.log(`User role found: ${userRole}`);
-              dispatch(setRole(userRole));
-              return true;
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Error checking user authentication:", e);
+      // Check user profile first
+      const userProfile = authService.getCurrentUser();
+      if (userProfile && userProfile.role) {
+        console.log(`Existing role found: ${userProfile.role}`);
+        dispatch(setRole(userProfile.role));
+        return true;
+      }
+
+      // Check localStorage as fallback
+      const storedRole = localStorage.getItem("healthmint_user_role");
+      if (storedRole) {
+        console.log(`Role found in localStorage: ${storedRole}`);
+        dispatch(setRole(storedRole));
+        return true;
       }
 
       setInitialCheckComplete(true);
       return false;
     };
 
-    const isAuthenticated = checkExistingUser();
+    const hasRole = checkExistingRole();
 
-    // If authenticated and we're not already redirecting, go to dashboard
-    if (isAuthenticated && !redirecting) {
+    // If role is detected and we're not already redirecting, go to dashboard
+    if (hasRole && !redirecting) {
       // Set a flag to prevent route protection loops
       sessionStorage.setItem("bypass_route_protection", "true");
 
@@ -99,72 +92,93 @@ const RoleSelector = () => {
     }
   }, [dispatch, navigate, redirecting, location.state, initialCheckComplete]);
 
+  // Check for wallet address
+  useEffect(() => {
+    // Try to get the wallet address from localStorage as fallback
+    const localStorageAddress = localStorage.getItem(
+      "healthmint_wallet_address"
+    );
+
+    if (!walletAddress && !localStorageAddress) {
+      setError("Wallet address not found. Please reconnect your wallet.");
+    } else if (
+      error === "Wallet address not found. Please reconnect your wallet."
+    ) {
+      // Clear any existing wallet error if we now have a wallet address
+      setError(null);
+    }
+  }, [walletAddress, error]);
+
   /**
-   * Handle login with custom implementation
+   * Handle role selection with improved user data persistence and error handling
    */
-  const handleLogin = useCallback(
-    async (e) => {
-      if (e) e.preventDefault();
-      
+  const handleRoleSelect = useCallback(
+    async (role) => {
       try {
         // Prevent multiple submissions
         if (loading) return;
 
         setLoading(true);
         setError(null);
+        setSelectedRole(role);
         setRedirecting(true);
 
-        // Basic validation
-        if (!email || !password) {
-          throw new Error("Please enter both email and password");
-        }
-
-        console.log(`Attempting login for: ${email}`);
+        console.log(`Setting role: ${role}`); // Debug log
 
         // Create a bypass flag to prevent infinite redirects
         sessionStorage.setItem("bypass_route_protection", "true");
+        sessionStorage.setItem("temp_selected_role", role);
 
-        // Since the real login function isn't available (based on error messages),
-        // we'll implement a simple login mechanism
-        
-        // Simulate authentication - in a real app, this would call your API
-        const userData = {
-          id: 'user-' + Math.random().toString(36).substring(2),
-          name: email.split('@')[0], // Use part of email as name
-          email: email,
-          token: 'token-' + Math.random().toString(36).substring(2),
-          roles: ['patient', 'researcher'],
-          lastLogin: new Date().toISOString()
-        };
-
-        // Audit login for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("LOGIN", {
-          email,
+        // Audit role selection for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("ROLE_SELECTION", {
+          role,
           timestamp: new Date().toISOString(),
-          action: "LOGIN",
+          action: "SELECT",
         });
 
-        // Set default role (can be changed in dashboard)
-        const defaultRole = "patient";
+        // Use the address from Redux state first, then fallback to localStorage
+        const currentWalletAddress =
+          walletAddress || localStorage.getItem("healthmint_wallet_address");
 
-        // Get wallet address if available
-        const walletAddress = localStorage.getItem("healthmint_wallet_address");
+        if (!currentWalletAddress) {
+          throw new Error(
+            "Wallet address not found. Please reconnect your wallet."
+          );
+        }
 
-        // Update user data with role
+        // Get current user data to merge with role
+        const userData = authService.getCurrentUser() || {};
+
         const updatedUserData = {
           ...userData,
-          role: defaultRole,
-          address: walletAddress,
+          name: userData.name || "User",
+          role,
+          address: currentWalletAddress,
           lastUpdated: new Date().toISOString(),
         };
 
-        // Store user data in localStorage since setUserData isn't available
-        localStorage.setItem("healthmint_user_data", JSON.stringify(updatedUserData));
-        localStorage.setItem("healthmint_user_role", defaultRole);
+        // Update user data in authService with more robust error handling
+        const registrationSuccess = authUtils.forceRegistrationComplete(
+          role,
+          currentWalletAddress,
+          updatedUserData
+        );
+
+        if (!registrationSuccess) {
+          console.error("Failed to complete registration via authUtils");
+          // Fallback method
+          authService.completeRegistration(updatedUserData);
+        }
+
+        // Explicitly set in localStorage for redundancy
+        localStorage.setItem("healthmint_user_role", role);
         localStorage.setItem("healthmint_is_new_user", "false");
 
+        // Make sure the wallet connection is marked as true
+        localStorage.setItem("healthmint_wallet_connection", "true");
+
         // Dispatch role selection action to Redux
-        dispatch(setRole(defaultRole));
+        dispatch(setRole(role));
 
         // Update user profile with role information
         dispatch(updateUserProfile(updatedUserData));
@@ -173,24 +187,24 @@ const RoleSelector = () => {
         dispatch(
           addNotification({
             type: "success",
-            message: "Login successful! You can now switch between Patient and Researcher views in the dashboard.",
-            duration: 5000,
+            message: `Successfully set role as ${role === "patient" ? "Patient" : "Researcher"}`,
+            duration: 3000,
           })
         );
 
-        // Navigate to dashboard
+        // Use React Router navigation with a state flag to prevent loops
         navigate("/dashboard", {
           replace: true,
-          state: { loginJustCompleted: true },
+          state: { roleJustSelected: true },
         });
       } catch (err) {
-        console.error("Login error:", err);
-        setError(err.message || "Login failed. Please try again.");
+        console.error("Role selection error:", err);
+        setError(err.message || "Failed to set role. Please try again.");
 
         dispatch(
           addNotification({
             type: "error",
-            message: err.message || "Login failed. Please try again.",
+            message: err.message || "Failed to set role. Please try again.",
           })
         );
 
@@ -199,109 +213,119 @@ const RoleSelector = () => {
 
         // Clear any bypass flags on error
         sessionStorage.removeItem("bypass_route_protection");
+        sessionStorage.removeItem("temp_selected_role");
       }
     },
-    [dispatch, loading, navigate, email, password]
+    [dispatch, loading, navigate, walletAddress]
   );
 
-  // Show login form instead of role selection
+  // Handle error notification close
+  const handleErrorClose = () => {
+    setError(null);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      {error && (
-        <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-md flex items-center gap-2">
-          <AlertCircle size={20} className="flex-shrink-0 text-red-500" />
-          <span>{error}</span>
-        </div>
+      {/* Error notification popup */}
+      {error && error.includes("Wallet address not found") && (
+        <WalletErrorNotification
+          message={error}
+          isVisible={true}
+          onClose={handleErrorClose}
+          autoRedirect={false}
+        />
       )}
 
-      <div className="max-w-md w-full">
+      <div className="max-w-4xl w-full">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Healthmint</h1>
+          <h1 className="text-3xl font-bold mb-2">Choose Your Role</h1>
           <p className="text-gray-600">
-            Sign in to access the Healthmint platform
+            Select how you want to use the Healthmint platform
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleLogin}>
-            <div className="mb-4">
-              <label 
-                htmlFor="email" 
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your email"
-                required
+        <div className="flex flex-col md:flex-row gap-6 justify-center items-stretch">
+          {/* Patient Card */}
+          <div
+            className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
+              selectedRole === "patient" ? "ring-2 ring-blue-500" : ""
+            } ${loading ? "opacity-75 pointer-events-none" : ""}`}
+            onClick={() => !loading && handleRoleSelect("patient")}
+          >
+            <div className="p-8 flex flex-col items-center gap-4 h-full">
+              <div className="bg-blue-50 p-4 rounded-full">
+                <User className="w-12 h-12 text-blue-500" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800">Patient</h2>
+              <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
+                Share and manage your health data securely on the blockchain.
+                Control access to your records and potentially earn rewards for
+                contributing to medical research.
+              </p>
+              <button
+                className={`w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
+                  loading ? "opacity-75 cursor-not-allowed" : ""
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !loading && handleRoleSelect("patient");
+                }}
                 disabled={loading}
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label 
-                htmlFor="password" 
-                className="block text-sm font-medium text-gray-700 mb-1"
+                aria-label="Select Patient Role"
               >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your password"
-                required
+                {loading && selectedRole === "patient" ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Setting Patient Role...
+                  </>
+                ) : (
+                  "Select Patient Role"
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Researcher Card */}
+          <div
+            className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
+              selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
+            } ${loading ? "opacity-75 pointer-events-none" : ""}`}
+            onClick={() => !loading && handleRoleSelect("researcher")}
+          >
+            <div className="p-8 flex flex-col items-center gap-4 h-full">
+              <div className="bg-purple-50 p-4 rounded-full">
+                <Microscope className="w-12 h-12 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Researcher
+              </h2>
+              <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
+                Access and analyze anonymized health data for research purposes.
+                Discover patterns, conduct studies, and contribute to medical
+                advancements with blockchain-verified data integrity.
+              </p>
+              <button
+                className={`w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
+                  loading ? "opacity-75 cursor-not-allowed" : ""
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !loading && handleRoleSelect("researcher");
+                }}
                 disabled={loading}
-              />
-            </div>
-            
-            <button
-              type="submit"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Sign In
-                </>
-              )}
-            </button>
-            
-            <div className="mt-4 text-center text-sm">
-              <a 
-                href="/forgot-password" 
-                className="text-blue-600 hover:text-blue-800"
+                aria-label="Select Researcher Role"
               >
-                Forgot password?
-              </a>
-              <span className="mx-2 text-gray-500">•</span>
-              <a 
-                href="/register" 
-                className="text-blue-600 hover:text-blue-800"
-              >
-                Create an account
-              </a>
+                {loading && selectedRole === "researcher" ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Setting Researcher Role...
+                  </>
+                ) : (
+                  "Select Researcher Role"
+                )}
+              </button>
             </div>
-          </form>
-        </div>
-        
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>
-            After login, you'll be able to choose between Patient and Researcher views from the dashboard.
-          </p>
+          </div>
         </div>
       </div>
     </div>
