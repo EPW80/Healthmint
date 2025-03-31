@@ -71,6 +71,7 @@ const ProfileManager = () => {
 
   // Refs for accessibility
   const saveButtonRef = useRef(null);
+  const profileFetchedRef = useRef(false);
 
   // Image Upload and UI State
   const [previewUrl, setPreviewUrl] = useState(
@@ -84,6 +85,56 @@ const ProfileManager = () => {
   const [error, setError] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
+  // Define comprehensive default values for all required structures
+  const defaultProfile = {
+    // Basic information
+    name: "",
+    email: "",
+    age: "",
+    bio: "",
+
+    // Privacy and sharing preferences with defaults
+    sharingPreferences: {
+      anonymousSharing: true,
+      notifyOnAccess: true,
+      allowDirectContact: false,
+    },
+
+    // Notification preferences with defaults
+    emailNotifications: {
+      dataAccess: true,
+      transactions: true,
+      updates: false,
+    },
+
+    inAppNotifications: {
+      messages: true,
+      dataUpdates: true,
+      announcements: false,
+    },
+
+    notificationPreferences: {
+      accessAlerts: true,
+      transactionAlerts: true,
+      researchUpdates: false,
+      newDatasets: true,
+    },
+
+    // Privacy preferences with defaults
+    privacyPreferences: {
+      publicProfile: false,
+      showInstitution: true,
+    },
+
+    // Researcher-specific fields with defaults
+    ethicsStatement: "",
+    ethicsAgreement: false,
+    institution: "",
+    credentials: "",
+    researchFocus: "",
+    publications: [],
+  };
+
   // Set up the formState with our custom hook
   const {
     formState,
@@ -96,67 +147,28 @@ const ProfileManager = () => {
     getChangedFields,
     initialFormState,
     setInitialFormState,
-  } = useHipaaFormState(
-    {
-      name: userProfile?.name || "",
-      email: userProfile?.email || "",
-      age: userProfile?.age || "",
-      bio: userProfile?.bio || "",
-      sharingPreferences: userProfile?.sharingPreferences || {
-        anonymousSharing: true,
-        notifyOnAccess: true,
-        allowDirectContact: false,
-      },
-      emailNotifications: userProfile?.emailNotifications || {
-        dataAccess: true,
-        transactions: true,
-        updates: false,
-      },
-      inAppNotifications: userProfile?.inAppNotifications || {
-        messages: true,
-        dataUpdates: true,
-        announcements: false,
-      },
-      notificationPreferences: userProfile?.notificationPreferences || {
-        accessAlerts: true,
-        transactionAlerts: true,
-        researchUpdates: false,
-        newDatasets: true,
-      },
-      privacyPreferences: userProfile?.privacyPreferences || {
-        publicProfile: false,
-        showInstitution: true,
-      },
-      ethicsStatement: userProfile?.ethicsStatement || "",
-      ethicsAgreement: userProfile?.ethicsAgreement || false,
-      institution: userProfile?.institution || "",
-      credentials: userProfile?.credentials || "",
-      researchFocus: userProfile?.researchFocus || "",
-      publications: userProfile?.publications || [],
+  } = useHipaaFormState(defaultProfile, {
+    sanitizeField: (value, fieldName) =>
+      hipaaComplianceService.sanitizeInputValue(value, fieldName),
+    logFieldChange: (fieldName, value, metadata) => {
+      // This is a placeholder for actual field change logging
+      // We don't log the actual values for HIPAA compliance
+      console.log(`Field ${fieldName} changed`, metadata);
     },
-    {
-      sanitizeField: (value, fieldName) =>
-        hipaaComplianceService.sanitizeInputValue(value, fieldName),
-      logFieldChange: (fieldName, value, metadata) => {
-        // This is a placeholder for actual field change logging
-        // We don't log the actual values for HIPAA compliance
-        console.log(`Field ${fieldName} changed`, metadata);
-      },
-      hipaaService: hipaaComplianceService,
-      userIdentifier: walletAddress,
-      formType: "profile",
-      validate: (values) => {
-        const errors = {};
-        if (!values.name) {
-          errors.name = "Name is required";
-        }
-        if (values.email && !/\S+@\S+\.\S+/.test(values.email)) {
-          errors.email = "Please enter a valid email address";
-        }
-        return errors;
-      },
-    }
-  );
+    hipaaService: hipaaComplianceService,
+    userIdentifier: walletAddress,
+    formType: "profile",
+    validate: (values) => {
+      const errors = {};
+      if (!values.name) {
+        errors.name = "Name is required";
+      }
+      if (values.email && !/\S+@\S+\.\S+/.test(values.email)) {
+        errors.email = "Please enter a valid email address";
+      }
+      return errors;
+    },
+  });
 
   // Use our async operation hook for profile operations
   const { loading, execute: executeAsync } = useAsyncOperation({
@@ -200,10 +212,14 @@ const ProfileManager = () => {
 
   // Load user profile data on mount with proper sanitization
   useEffect(() => {
+    // Only run this effect once
+    if (profileFetchedRef.current) return;
+
     const fetchUserProfile = async () => {
       try {
         setInitialLoading(true);
         setError(null);
+        profileFetchedRef.current = true;
 
         // Create HIPAA-compliant audit log for profile access with enhanced metadata
         await hipaaComplianceService.createAuditLog("PROFILE_ACCESS", {
@@ -219,56 +235,6 @@ const ProfileManager = () => {
         const profile = await userService.getCurrentUser();
 
         if (profile) {
-          // Define comprehensive default values for all required structures
-          const defaultProfile = {
-            // Basic information
-            name: "",
-            email: "",
-            age: "",
-            bio: "",
-
-            // Privacy and sharing preferences with defaults
-            sharingPreferences: {
-              anonymousSharing: true,
-              notifyOnAccess: true,
-              allowDirectContact: false,
-            },
-
-            // Notification preferences with defaults
-            emailNotifications: {
-              dataAccess: true,
-              transactions: true,
-              updates: false,
-            },
-
-            inAppNotifications: {
-              messages: true,
-              dataUpdates: true,
-              announcements: false,
-            },
-
-            notificationPreferences: {
-              accessAlerts: true,
-              transactionAlerts: true,
-              researchUpdates: false,
-              newDatasets: true,
-            },
-
-            // Privacy preferences with defaults
-            privacyPreferences: {
-              publicProfile: false,
-              showInstitution: true,
-            },
-
-            // Researcher-specific fields with defaults
-            ethicsStatement: "",
-            ethicsAgreement: false,
-            institution: "",
-            credentials: "",
-            researchFocus: "",
-            publications: [],
-          };
-
           // Merge profile data with defaults using deep merge to handle nested objects
           const mergedProfile = deepMerge(defaultProfile, profile);
 
@@ -308,23 +274,9 @@ const ProfileManager = () => {
             action: "FALLBACK_TO_DEFAULTS",
           });
 
-          // Use a default profile with minimal information
-          const defaultEmptyProfile = {
-            name: "",
-            email: "",
-            sharingPreferences: {
-              anonymousSharing: true,
-              notifyOnAccess: true,
-              allowDirectContact: false,
-            },
-            notificationPreferences: {
-              accessAlerts: true,
-              transactionAlerts: true,
-            },
-          };
-
-          setInitialFormState(defaultEmptyProfile);
-          resetForm(defaultEmptyProfile);
+          // Use default profile
+          setInitialFormState(defaultProfile);
+          resetForm(defaultProfile);
 
           // Show a non-blocking warning to the user
           dispatch(
@@ -362,23 +314,19 @@ const ProfileManager = () => {
           })
         );
 
-        // Use a minimal default profile despite the error
-        const fallbackProfile = {
-          name: "",
-          email: "",
-          sharingPreferences: { anonymousSharing: true, notifyOnAccess: true },
-          notificationPreferences: { accessAlerts: true },
-        };
-
-        setInitialFormState(fallbackProfile);
-        resetForm(fallbackProfile);
+        // Use default profile despite the error
+        setInitialFormState(defaultProfile);
+        resetForm(defaultProfile);
       } finally {
         setInitialLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [dispatch, walletAddress, userRole, setInitialFormState, resetForm]);
+    // We intentionally use an empty dependency array to ensure this only runs once
+    // The profileFetchedRef ensures we don't run this multiple times
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle publication changes
   const handlePublicationChange = useCallback(
