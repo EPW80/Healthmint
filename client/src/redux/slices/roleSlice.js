@@ -1,5 +1,6 @@
 // src/redux/slices/roleSlice.js
 import * as pkg from "@reduxjs/toolkit";
+import hipaaComplianceService from "../../services/hipaaComplianceService"; // Add this import
 
 const { createSlice } = pkg;
 
@@ -12,7 +13,6 @@ export const USER_ROLES = {
 };
 
 // Helper function to get permissions based on role
-// IMPORTANT: Moved this function up before it's used
 const getRolePermissions = (role) => {
   switch (role) {
     case USER_ROLES.PATIENT:
@@ -33,7 +33,11 @@ const loadInitialState = () => {
   try {
     const savedRole = localStorage.getItem("healthmint_user_role");
     if (savedRole && Object.values(USER_ROLES).includes(savedRole)) {
-      console.log(`Loaded role from storage: ${savedRole}`);
+      // Production-safe logging
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`Loaded role from storage: ${savedRole}`);
+      }
+
       return {
         role: savedRole,
         isRoleSelected: true,
@@ -83,7 +87,20 @@ const roleSlice = createSlice({
       // Save to localStorage for persistence
       try {
         localStorage.setItem("healthmint_user_role", role);
-        console.log(`Saved role to storage: ${role}`);
+
+        // Production-safe logging
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`Saved role to storage: ${role}`);
+        }
+
+        // Add HIPAA audit logging for role changes
+        hipaaComplianceService
+          .createAuditLog("ROLE_CHANGE", {
+            action: "UPDATE",
+            newRole: role,
+            timestamp: new Date().toISOString(),
+          })
+          .catch((err) => console.error("Failed to log role change:", err));
       } catch (e) {
         console.error("Error saving role to storage:", e);
       }
@@ -93,6 +110,17 @@ const roleSlice = createSlice({
     },
 
     clearRole: (state) => {
+      // Log role clearing for HIPAA compliance
+      if (state.role) {
+        hipaaComplianceService
+          .createAuditLog("ROLE_CHANGE", {
+            action: "CLEAR",
+            previousRole: state.role,
+            timestamp: new Date().toISOString(),
+          })
+          .catch((err) => console.error("Failed to log role clearing:", err));
+      }
+
       state.role = null;
       state.isRoleSelected = false;
       state.permissions = [];
@@ -110,6 +138,18 @@ const roleSlice = createSlice({
     setPermissions: (state, action) => {
       state.permissions = action.payload;
       state.lastUpdated = new Date().toISOString();
+
+      // Log permission changes for HIPAA compliance
+      hipaaComplianceService
+        .createAuditLog("PERMISSIONS_CHANGE", {
+          action: "UPDATE",
+          role: state.role,
+          permissions: action.payload,
+          timestamp: new Date().toISOString(),
+        })
+        .catch((err) =>
+          console.error("Failed to log permissions change:", err)
+        );
     },
 
     setLoading: (state, action) => {

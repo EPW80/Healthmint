@@ -5,16 +5,16 @@ const apiService = {
   async get(endpoint, params = {}, config = {}) {
     try {
       console.log(`[API] GET request to ${endpoint}`);
-      
+
       // Handle missing server by returning mock data
       if (endpoint === "datasets/browse") {
         return {
           data: [],
           total: 0,
-          success: true
+          success: true,
         };
       }
-      
+
       // For any other endpoints, return a successful empty response
       return { success: true, data: null };
     } catch (error) {
@@ -26,37 +26,43 @@ const apiService = {
   async post(endpoint, data = {}, config = {}) {
     try {
       console.log(`[API] POST request to ${endpoint} with data:`, data);
-      
+
       // Handle auth challenge specially
-      if (endpoint === "/api/auth/challenge" || endpoint === "api/auth/challenge") {
+      if (
+        endpoint === "/api/auth/challenge" ||
+        endpoint === "api/auth/challenge"
+      ) {
         return {
           nonce: "mock-nonce-" + Date.now(),
-          success: true
+          success: true,
         };
       }
-      
+
       // Handle wallet verification
-      if (endpoint === "/api/auth/wallet/verify" || endpoint === "api/auth/wallet/verify") {
+      if (
+        endpoint === "/api/auth/wallet/verify" ||
+        endpoint === "api/auth/wallet/verify"
+      ) {
         return {
           token: "mock-token",
           refreshToken: "mock-refresh-token",
           expiresIn: 3600,
           user: {
             address: data.address,
-            roles: ["patient"]
+            roles: ["patient"],
           },
-          success: true
+          success: true,
         };
       }
-      
+
       // Handle role updates
       if (endpoint === "/api/user/role") {
         return {
           success: true,
-          roles: [data.role]
+          roles: [data.role],
         };
       }
-      
+
       // For any other endpoints, return a successful empty response
       return { success: true, data: null };
     } catch (error) {
@@ -83,7 +89,7 @@ const apiService = {
       console.error(`[API] DELETE error for ${endpoint}:`, error);
       return { success: false, error: error.message };
     }
-  }
+  },
 };
 
 export default apiService;
