@@ -1,5 +1,6 @@
 // client/src/components/dashboard/Dashboard.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -53,7 +54,6 @@ const Dashboard = ({ onNavigate }) => {
   // Extract only needed properties from user profile to avoid unnecessary re-renders
   const {
     pendingRequests = 0,
-    securityScore = 85,
     activeStudies = 0,
     appliedFilters = 0,
   } = useMemo(() => userProfile, [userProfile]);
@@ -74,7 +74,6 @@ const Dashboard = ({ onNavigate }) => {
   const {
     loading: asyncLoading,
     execute: executeAsync,
-    clearError: clearAsyncError,
   } = useAsyncOperation({
     componentId: "Dashboard",
     userId,
@@ -115,6 +114,8 @@ const Dashboard = ({ onNavigate }) => {
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [datasetDetails, setDatasetDetails] = useState(null);
+  const [downloadLoading, setDownloadLoading] = useState(false);
+  const [downloadingRecordId, setDownloadingRecordId] = useState(null);
 
   // Combine loading states
   const isLoading = uiLoading || healthDataLoading || asyncLoading;
@@ -199,19 +200,42 @@ const Dashboard = ({ onNavigate }) => {
   // Handle record download (Patient dashboard)
   const handleDownloadRecord = useCallback(
     async (recordId) => {
-      executeAsync(async () => {
-        await downloadRecord(recordId);
+      try {
+        setDownloadLoading(true);
+        setDownloadingRecordId(recordId);
 
-        // Log download for HIPAA compliance
         await hipaaComplianceService.createAuditLog("RECORD_DOWNLOAD", {
           action: "DOWNLOAD",
           recordId,
           timestamp: new Date().toISOString(),
           userId,
         });
-      });
+
+        await downloadRecord(recordId);
+
+        // Show success notification
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Record downloaded successfully",
+          })
+        );
+      } catch (error) {
+        console.error("Download error:", error);
+
+        // Show error notification
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Failed to download record",
+          })
+        );
+      } finally {
+        setDownloadLoading(false);
+        setDownloadingRecordId(null);
+      }
     },
-    [executeAsync, downloadRecord, userId]
+    [downloadRecord, dispatch, userId]
   );
 
   // Handle share record (Patient dashboard)
@@ -615,16 +639,20 @@ const Dashboard = ({ onNavigate }) => {
                     </button>
 
                     <button
-                      onClick={() => handleDownloadRecord(record)}
-                      disabled={downloadLoading}
+                      onClick={() => handleDownloadRecord(record.id)}
+                      disabled={
+                        downloadLoading && downloadingRecordId === record.id
+                      }
                       className={`flex items-center justify-center gap-2 px-4 py-2 ${
-                        downloadLoading
+                        downloadLoading && downloadingRecordId === record.id
                           ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                           : "bg-blue-500 hover:bg-blue-600 text-white"
                       } rounded-lg`}
-                      aria-busy={downloadLoading}
+                      aria-busy={
+                        downloadLoading && downloadingRecordId === record.id
+                      }
                     >
-                      {downloadLoading ? (
+                      {downloadLoading && downloadingRecordId === record.id ? (
                         <LoadingSpinner size="small" color="gray" />
                       ) : (
                         <Download size={18} />
