@@ -867,6 +867,55 @@ class HipaaComplianceService {
       return "Generalize or remove this field";
     }
   }
+
+  /**
+   * Gets the history of user consent decisions for a specific consent type
+   * @param {string} consentType - Type of consent to retrieve history for
+   * @returns {Array<Object>} Array of consent history entries
+   */
+  getConsentHistory(consentType) {
+    try {
+      // If no specific consent type is provided, return all consent history
+      if (!consentType) {
+        const allConsents = JSON.parse(
+          localStorage.getItem("hipaa_user_consents") || "{}"
+        );
+
+        const history = [];
+        for (const [type, consentData] of Object.entries(allConsents)) {
+          history.push({
+            consentType: type,
+            granted: consentData.granted,
+            timestamp: consentData.timestamp,
+            details: consentData.details || {},
+          });
+        }
+
+        return history;
+      }
+
+      // For a specific consent type
+      const consents = JSON.parse(
+        localStorage.getItem("hipaa_user_consents") || "{}"
+      );
+
+      if (!consents[consentType]) {
+        return []; // No history for this consent type
+      }
+
+      return [
+        {
+          consentType,
+          granted: consents[consentType].granted,
+          timestamp: consents[consentType].timestamp,
+          details: consents[consentType].details || {},
+        },
+      ];
+    } catch (error) {
+      console.error("Failed to get consent history:", error);
+      return [];
+    }
+  }
 }
 
 // Create and export singleton instance
