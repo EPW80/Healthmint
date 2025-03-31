@@ -1,5 +1,6 @@
 // src/redux/store.js
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
+import { hipaaAuditMiddleware } from "./middleware/hipaaAuditMiddleware";
 
 // Import all reducers
 import authReducer from "./slices/authSlice.js";
@@ -48,7 +49,6 @@ const IGNORED_PATHS = [
 const rootReducer = combineReducers({
   auth: authReducer,
   data: dataReducer,
-  profile: roleReducer,
   ui: uiReducer,
   user: userReducer,
   wallet: walletReducer,
@@ -102,7 +102,7 @@ const store = configureStore({
           // Add extra arguments for API calls if needed
         },
       },
-    }),
+    }).concat(hipaaAuditMiddleware),
   devTools: process.env.NODE_ENV !== "production",
   preloadedState: {
     ui: {

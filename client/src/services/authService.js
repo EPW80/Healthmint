@@ -6,7 +6,7 @@ import { ENV } from "../config/environmentConfig.js";
  * AuthService
  *
  * Provides authentication services with HIPAA compliance for the Healthmint application.
- * Includes token validation and refresh capabilities.
+ * Includes token validation, refresh capabilities, and recovery mechanisms.
  */
 class AuthService {
   constructor() {
@@ -45,12 +45,22 @@ class AuthService {
   /**
    * Ensure the authentication token is valid, refreshing it if necessary
    * @returns {Promise<string>} The valid token
-   * @throws {Error} If token validation or refresh fails
+   * @throws {Error} If token validation or recovery fails
    */
   async ensureValidToken() {
     try {
       if (!this.token) {
-        throw new Error("No authentication token found");
+        console.warn("[AuthService] No token found, attempting to recover");
+        // Attempt to recover using stored wallet address
+        const walletAddress = localStorage.getItem(this.walletAddressKey);
+        if (walletAddress) {
+          const loginResult = await this.login({ address: walletAddress });
+          if (!loginResult.success) {
+            throw new Error("Token recovery failed: " + loginResult.error);
+          }
+        } else {
+          throw new Error("No authentication token or wallet address found");
+        }
       }
 
       // Check token expiry
@@ -58,7 +68,7 @@ class AuthService {
       const now = new Date();
 
       if (expiryDate && expiryDate <= now) {
-        console.log("Token expired, attempting to refresh...");
+        console.log("[AuthService] Token expired, refreshing...");
         await this.refreshAccessToken();
       }
 
@@ -71,7 +81,7 @@ class AuthService {
 
       return this.token;
     } catch (error) {
-      console.error("Token validation error:", error);
+      console.error("[AuthService] Token validation error:", error);
       await hipaaComplianceService.createAuditLog("TOKEN_VALIDATION_FAILURE", {
         action: "VALIDATE_TOKEN",
         walletAddress: this.walletAddress,
@@ -105,9 +115,9 @@ class AuthService {
         isNewUser: this._isNewUser,
       });
 
-      console.log("Token refreshed successfully");
+      console.log("[AuthService] Token refreshed successfully");
     } catch (error) {
-      console.error("Token refresh error:", error);
+      console.error("[AuthService] Token refresh error:", error);
       throw new Error("Failed to refresh token: " + error.message);
     }
   }
@@ -120,21 +130,11 @@ class AuthService {
    */
   async performTokenRefresh(refreshToken) {
     // For demo purposes, simulate a refresh
-    // In a real app, replace with an API call
     return {
       token: `refreshed_token_${Date.now()}`,
       refreshToken: `refreshed_refresh_${Date.now()}`,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
     };
-
-    // Example real implementation:
-    // const response = await fetch(`${this.API_URL}/auth/refresh`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ refreshToken }),
-    // });
-    // if (!response.ok) throw new Error("Token refresh failed");
-    // return await response.json();
   }
 
   /**
@@ -247,7 +247,7 @@ class AuthService {
         userProfile: authResult.userProfile,
       };
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("[AuthService] Login error:", error);
       await hipaaComplianceService.createAuditLog("AUTH_FAILURE", {
         action: "LOGIN",
         walletAddress: credentials.address || this.walletAddress,
@@ -278,7 +278,7 @@ class AuthService {
         isNewUser: false,
       };
     } catch (error) {
-      console.error("API login error:", error);
+      console.error("[AuthService] API login error:", error);
       throw new Error("Login failed. Please try again.");
     }
   }
@@ -309,7 +309,7 @@ class AuthService {
       localStorage.setItem(this.isNewUserKey, "true");
       return null;
     } catch (error) {
-      console.error("Error getting user by wallet:", error);
+      console.error("[AuthService] Error getting user by wallet:", error);
       return null;
     }
   }
@@ -340,7 +340,7 @@ class AuthService {
 
       return true;
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("[AuthService] Logout error:", error);
       return false;
     }
   }
@@ -379,7 +379,7 @@ class AuthService {
 
       return true;
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error("[AuthService] Registration error:", error);
       await hipaaComplianceService.createAuditLog("REGISTRATION_FAILURE", {
         action: "REGISTER",
         walletAddress: userData?.address || this.walletAddress,
@@ -408,7 +408,10 @@ class AuthService {
         timestamp: new Date().toISOString(),
       })
       .catch((err) =>
-        console.error("Error logging registration completion:", err)
+        console.error(
+          "[AuthService] Error logging registration completion:",
+          err
+        )
       );
   }
 
@@ -437,7 +440,7 @@ class AuthService {
 
       return userData;
     } catch (error) {
-      console.error("Profile update error:", error);
+      console.error("[AuthService] Profile update error:", error);
       throw error;
     }
   }

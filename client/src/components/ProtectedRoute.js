@@ -138,10 +138,9 @@ const ProtectedRoute = ({
       authCheckAttempts.current += 1;
       if (authCheckAttempts.current > 3) {
         console.warn(
-          `[ProtectedRoute:${debugId}] Too many auth attempts, bypassing`
+          `[ProtectedRoute:${debugId}] Too many auth attempts, redirecting to login`
         );
-        setBypassAuth(true);
-        sessionStorage.setItem("bypass_route_protection", "true");
+        setRedirectPath("/login");
         setIsLoading(false);
         authCheckCompletedRef.current = true;
         return;
@@ -253,10 +252,8 @@ const ProtectedRoute = ({
       }
     };
 
-    const timeoutId = setTimeout(checkAuth, 100);
-    return () => clearTimeout(timeoutId);
+    checkAuth();
   }, [
-    redirectPath,
     bypassAuth,
     isWalletConnected,
     isAuthenticated,
@@ -273,76 +270,31 @@ const ProtectedRoute = ({
     checkBypassFlags,
   ]);
 
-  // Emergency timeout with redirect loop detection
+  // Emergency timeout
   useEffect(() => {
     if (bypassAuth || !isLoading || authCheckCompletedRef.current) return;
 
     const handleEmergency = () => {
       if (!isMounted.current) return;
 
-      if (redirectPath && redirectTracker.trackRedirect(redirectPath)) {
-        console.warn(
-          `[ProtectedRoute:${debugId}] Redirect loop detected: ${redirectPath}`
-        );
-        dispatch(
-          addNotification({
-            type: "warning",
-            message: "Navigation loop detected. Applying fix...",
-            duration: 5000,
-          })
-        );
-        redirectTracker.temporarilyDisableDetection();
-        sessionStorage.setItem("auth_verification_override", "true");
-        sessionStorage.setItem("bypass_route_protection", "true");
-
-        if (!localStorage.getItem("healthmint_wallet_connection")) {
-          localStorage.setItem("healthmint_wallet_connection", "true");
-          localStorage.setItem("healthmint_wallet_address", "0xEmergencyFix");
-        }
-        if (!isRoleSelected && !localStorage.getItem("healthmint_user_role")) {
-          localStorage.setItem("healthmint_user_role", "patient");
-          dispatch(
-            addNotification({
-              type: "info",
-              message: "Assigned default role: patient",
-              duration: 5000,
-            })
-          );
-        }
-
-        setBypassAuth(true);
-        setRedirectPath(null);
-        resetVerificationAttempts();
-      } else if (!redirectPath) {
-        console.warn(
-          `[ProtectedRoute:${debugId}] Auth taking too long, bypassing`
-        );
-        dispatch(
-          addNotification({
-            type: "warning",
-            message: "Authentication delayed. Applying fix...",
-            duration: 5000,
-          })
-        );
-        setBypassAuth(true);
-        sessionStorage.setItem("bypass_route_protection", "true");
-      }
-
+      console.warn(
+        `[ProtectedRoute:${debugId}] Emergency: forcing redirect to login`
+      );
+      dispatch(
+        addNotification({
+          type: "warning",
+          message: "Authentication issue detected. Redirecting to login...",
+          duration: 5000,
+        })
+      );
+      setRedirectPath("/login");
       setIsLoading(false);
       authCheckCompletedRef.current = true;
     };
 
     const timer = setTimeout(handleEmergency, 8000);
     return () => clearTimeout(timer);
-  }, [
-    isLoading,
-    redirectPath,
-    bypassAuth,
-    isRoleSelected,
-    dispatch,
-    debugId,
-    resetVerificationAttempts,
-  ]);
+  }, [isLoading, dispatch, debugId]);
 
   if (isLoading) {
     return (
