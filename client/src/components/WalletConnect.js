@@ -113,6 +113,15 @@ const WalletConnect = ({ onConnect }) => {
       if (walletResult && walletResult.success) {
         console.log("WalletConnect: Wallet connected successfully");
 
+        // Save wallet address to localStorage immediately after successful connection
+        if (walletResult.address) {
+          localStorage.setItem(
+            "healthmint_wallet_address",
+            walletResult.address
+          );
+          localStorage.setItem("healthmint_wallet_connection", "true");
+        }
+
         // Show success notification
         dispatch(
           addNotification({

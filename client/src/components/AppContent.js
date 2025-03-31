@@ -389,10 +389,12 @@ function AppContent() {
   const shouldShowNavigation = () => {
     return (
       isConnected &&
+      // Ensure we have a wallet address either from Redux or localStorage
+      (address || localStorage.getItem("healthmint_wallet_address")) &&
       !isNewUser &&
       location.pathname !== "/login" &&
       location.pathname !== "/register" &&
-      location.pathname !== "/select-role" // Don't show nav on role selection
+      location.pathname !== "/select-role"
     );
   };
 
@@ -401,7 +403,7 @@ function AppContent() {
       {/* Only show navigation when authenticated and not in registration or role selection */}
       {shouldShowNavigation() && (
         <Navigation
-          account={address}
+          account={address || localStorage.getItem("healthmint_wallet_address")}
           onLogout={initiateLogout}
           role={userRole}
           network={network}
@@ -441,7 +443,9 @@ function AppContent() {
                 <Navigate to="/login" replace />
               ) : isNewUser ? (
                 <UserRegistration
-                  walletAddress={address}
+                  walletAddress={
+                    address || localStorage.getItem("healthmint_wallet_address")
+                  }
                   onComplete={handleRegistrationComplete}
                 />
               ) : (

@@ -1,14 +1,15 @@
 // client/src/components/roles/RoleSelector.js
 import React, { useState, useEffect, useCallback } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, Microscope, Loader, AlertCircle } from "lucide-react";
+import { User, Microscope, Loader } from "lucide-react";
 import { setRole } from "../../redux/slices/roleSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../../redux/slices/userSlice.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
+import WalletErrorNotification from "../WalletErrorNotification.js";
 
 /**
  * Role Selector Component with improved navigation
@@ -17,6 +18,9 @@ const RoleSelector = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Get wallet address from Redux state
+  const walletAddress = useSelector((state) => state.wallet.address);
 
   // Local state
   const [loading, setLoading] = useState(false);
@@ -88,6 +92,23 @@ const RoleSelector = () => {
     }
   }, [dispatch, navigate, redirecting, location.state, initialCheckComplete]);
 
+  // Check for wallet address
+  useEffect(() => {
+    // Try to get the wallet address from localStorage as fallback
+    const localStorageAddress = localStorage.getItem(
+      "healthmint_wallet_address"
+    );
+
+    if (!walletAddress && !localStorageAddress) {
+      setError("Wallet address not found. Please reconnect your wallet.");
+    } else if (
+      error === "Wallet address not found. Please reconnect your wallet."
+    ) {
+      // Clear any existing wallet error if we now have a wallet address
+      setError(null);
+    }
+  }, [walletAddress, error]);
+
   /**
    * Handle role selection with improved user data persistence and error handling
    */
@@ -115,29 +136,31 @@ const RoleSelector = () => {
           action: "SELECT",
         });
 
-        // Get current user data to merge with role
-        const userData = authService.getCurrentUser() || {};
-        const walletAddress =
-          userData.address || localStorage.getItem("healthmint_wallet_address");
+        // Use the address from Redux state first, then fallback to localStorage
+        const currentWalletAddress =
+          walletAddress || localStorage.getItem("healthmint_wallet_address");
 
-        if (!walletAddress) {
+        if (!currentWalletAddress) {
           throw new Error(
             "Wallet address not found. Please reconnect your wallet."
           );
         }
 
+        // Get current user data to merge with role
+        const userData = authService.getCurrentUser() || {};
+
         const updatedUserData = {
           ...userData,
           name: userData.name || "User",
           role,
-          address: walletAddress,
+          address: currentWalletAddress,
           lastUpdated: new Date().toISOString(),
         };
 
         // Update user data in authService with more robust error handling
         const registrationSuccess = authUtils.forceRegistrationComplete(
           role,
-          walletAddress,
+          currentWalletAddress,
           updatedUserData
         );
 
@@ -150,6 +173,9 @@ const RoleSelector = () => {
         // Explicitly set in localStorage for redundancy
         localStorage.setItem("healthmint_user_role", role);
         localStorage.setItem("healthmint_is_new_user", "false");
+
+        // Make sure the wallet connection is marked as true
+        localStorage.setItem("healthmint_wallet_connection", "true");
 
         // Dispatch role selection action to Redux
         dispatch(setRole(role));
@@ -190,16 +216,24 @@ const RoleSelector = () => {
         sessionStorage.removeItem("temp_selected_role");
       }
     },
-    [dispatch, loading, navigate]
+    [dispatch, loading, navigate, walletAddress]
   );
+
+  // Handle error notification close
+  const handleErrorClose = () => {
+    setError(null);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      {error && (
-        <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg shadow-md flex items-center gap-2">
-          <AlertCircle size={20} className="flex-shrink-0 text-red-500" />
-          <span>{error}</span>
-        </div>
+      {/* Error notification popup */}
+      {error && error.includes("Wallet address not found") && (
+        <WalletErrorNotification
+          message={error}
+          isVisible={true}
+          onClose={handleErrorClose}
+          autoRedirect={false}
+        />
       )}
 
       <div className="max-w-4xl w-full">
@@ -252,6 +286,47 @@ const RoleSelector = () => {
           </div>
 
           {/* Researcher Card */}
+          <div
+            className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
+              selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
+            } ${loading ? "opacity-75 pointer-events-none" : ""}`}
+            onClick={() => !loading && handleRoleSelect("researcher")}
+          >
+            <div className="p-8 flex flex-col items-center gap-4 h-full">
+              <div className="bg-purple-50 p-4 rounded-full">
+                <Microscope className="w-12 h-12 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Researcher
+              </h2>
+              <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
+                Access and analyze anonymized health data for research purposes.
+                Discover patterns, conduct studies, and contribute to medical
+                advancements with blockchain-verified data integrity.
+              </p>
+              <button
+                className={`w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
+                  loading ? "opacity-75 cursor-not-allowed" : ""
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !loading && handleRoleSelect("researcher");
+                }}
+                disabled={loading}
+                aria-label="Select Researcher Role"
+              >
+                {loading && selectedRole === "researcher" ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Setting Researcher Role...
+                  </>
+                ) : (
+                  "Select Researcher Role"
+                )}
+              </button>
+            </div>
+          </div>
+
           <div
             className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
               selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
