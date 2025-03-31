@@ -1,6 +1,6 @@
 // src/redux/slices/roleSlice.js
 import * as pkg from "@reduxjs/toolkit";
-import hipaaComplianceService from "../services/hipaaComplianceService.js"; // Add this import
+import hipaaComplianceService from "../../services/hipaaComplianceService"; // Add this import
 
 const { createSlice } = pkg;
 
