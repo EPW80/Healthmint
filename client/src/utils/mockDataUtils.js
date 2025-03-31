@@ -1,5 +1,5 @@
 // src/utils/mockDataUtils.js
-import generateMockHealthRecords from "../mockData/mockHealthRecords";
+import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
 
 /**
  * Utility functions for managing mock health data
