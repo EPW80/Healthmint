@@ -43,66 +43,59 @@ const Dashboard = ({ onNavigate }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Get state from Redux
-  const userRole = useSelector(selectRole);
-  const { loading: uiLoading, error: uiError } = useSelector(
-    (state) => state.ui
+  const userRole = useSelector(selectRole) || "patient"; // Default to patient if undefined
+  const { loading: uiLoading = false, error: uiError = null } = useSelector(
+    (state) => state.ui || {}
   );
   const userProfile = useSelector((state) => state.user.profile || {});
-  const userId = useSelector((state) => state.wallet.address);
+  const userId = useSelector(
+    (state) =>
+      state.wallet.address ||
+      localStorage.getItem("healthmint_wallet_address") ||
+      "unknown"
+  );
 
-  // Extract only needed properties from user profile to avoid unnecessary re-renders
   const {
     pendingRequests = 0,
     activeStudies = 0,
     appliedFilters = 0,
-  } = useMemo(() => userProfile, [userProfile]);
+  } = userProfile || {};
 
-  // Use health data hook for data management
   const {
-    userRecords,
-    healthData,
-    getRecordDetails,
-    downloadRecord,
-    loading: healthDataLoading,
+    userRecords = [],
+    healthData = [],
+    getRecordDetails = () => Promise.resolve(null),
+    downloadRecord = () => Promise.resolve(null),
+    loading: healthDataLoading = false,
   } = useHealthData({
     userRole,
     loadOnMount: true,
-  });
+    initialData: [],
+  }) || {};
 
-  // Use our async operation hook for async operations
-  const {
-    loading: asyncLoading,
-    execute: executeAsync,
-  } = useAsyncOperation({
-    componentId: "Dashboard",
-    userId,
-    onError: (error) => {
-      dispatch(
-        addNotification({
-          type: "error",
-          message: error.message || "Dashboard operation failed",
-        })
-      );
-    },
-  });
+  const { loading: asyncLoading = false, execute: executeAsync } =
+    useAsyncOperation({
+      componentId: "Dashboard",
+      userId,
+      onError: (error) => {
+        dispatch(
+          addNotification({
+            type: "error",
+            message: error.message || "Dashboard operation failed",
+          })
+        );
+      },
+    }) || {};
 
-  // Memoize records length to prevent unnecessary re-renders
-  const totalRecords = useMemo(() => userRecords.length, [userRecords]);
-
-  // Memoize shared records count
+  const totalRecords = useMemo(() => userRecords.length || 0, [userRecords]);
   const sharedRecords = useMemo(
-    () => userRecords.filter((record) => record.shared).length || 0,
+    () => userRecords.filter((record) => record?.shared).length || 0,
     [userRecords]
   );
 
-  // Local state with safe default values - separate by logical groups
   const [dashboardData, setDashboardData] = useState({
-    // Common data
     recentActivity: [],
-    // Patient specific
     securityScore: 85,
-    // Researcher specific
     availableDatasets: [],
   });
 
@@ -137,7 +130,7 @@ const Dashboard = ({ onNavigate }) => {
       // Set appropriate dashboard data based on role
       setDashboardData((prevData) => ({
         ...prevData,
-        securityScore: userProfile.securityScore || 85,
+        securityScore: userProfile?.securityScore || 85,
         recentActivity: [],
         availableDatasets: userRole === "researcher" ? healthData || [] : [],
       }));
@@ -156,7 +149,7 @@ const Dashboard = ({ onNavigate }) => {
 
       dispatch(setLoading(false));
     }
-  }, [userRole, userId, dispatch, healthData]);
+  }, [userRole, userId, dispatch, healthData, userProfile]);
 
   // Fetch dashboard data when component mounts or when dependencies change
   useEffect(() => {
@@ -556,7 +549,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
           )}
 
-          {userRecords.length === 0 ? (
+          {!userRecords || userRecords.length === 0 ? (
             <div className="text-center py-8 bg-blue-50 rounded-lg">
               <FileText className="w-12 h-12 text-blue-300 mx-auto mb-3" />
               <p className="text-blue-700 mb-2">
@@ -741,7 +734,9 @@ const Dashboard = ({ onNavigate }) => {
             <Database className="text-purple-500 w-8 h-8" />
             <div>
               <p className="text-gray-600 text-sm">Available Datasets</p>
-              <p className="text-2xl font-semibold">{healthData.length || 0}</p>
+              <p className="text-2xl font-semibold">
+                {healthData?.length || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -964,7 +959,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
           )}
 
-          {healthData.length === 0 ? (
+          {!healthData || healthData.length === 0 ? (
             <div className="text-center py-8 bg-purple-50 rounded-lg">
               <Database className="w-12 h-12 text-purple-300 mx-auto mb-3" />
               <p className="text-purple-700 mb-2">No datasets available</p>
@@ -1032,7 +1027,7 @@ const Dashboard = ({ onNavigate }) => {
             ))
           )}
 
-          {healthData.length > 3 && (
+          {healthData && healthData.length > 3 && (
             <div className="mt-4 text-center">
               <button
                 onClick={() => handleNavigateTo("/browse")}

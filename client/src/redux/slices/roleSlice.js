@@ -1,8 +1,5 @@
 // src/redux/slices/roleSlice.js
-import * as pkg from "@reduxjs/toolkit";
-import hipaaComplianceService from "../../services/hipaaComplianceService"; // Add this import
-
-const { createSlice } = pkg;
+import { createSlice } from "@reduxjs/toolkit";
 
 // Define user roles
 export const USER_ROLES = {
@@ -93,14 +90,7 @@ const roleSlice = createSlice({
           console.log(`Saved role to storage: ${role}`);
         }
 
-        // Add HIPAA audit logging for role changes
-        hipaaComplianceService
-          .createAuditLog("ROLE_CHANGE", {
-            action: "UPDATE",
-            newRole: role,
-            timestamp: new Date().toISOString(),
-          })
-          .catch((err) => console.error("Failed to log role change:", err));
+        // HIPAA audit logging will be handled by middleware
       } catch (e) {
         console.error("Error saving role to storage:", e);
       }
@@ -110,17 +100,6 @@ const roleSlice = createSlice({
     },
 
     clearRole: (state) => {
-      // Log role clearing for HIPAA compliance
-      if (state.role) {
-        hipaaComplianceService
-          .createAuditLog("ROLE_CHANGE", {
-            action: "CLEAR",
-            previousRole: state.role,
-            timestamp: new Date().toISOString(),
-          })
-          .catch((err) => console.error("Failed to log role clearing:", err));
-      }
-
       state.role = null;
       state.isRoleSelected = false;
       state.permissions = [];
@@ -138,18 +117,6 @@ const roleSlice = createSlice({
     setPermissions: (state, action) => {
       state.permissions = action.payload;
       state.lastUpdated = new Date().toISOString();
-
-      // Log permission changes for HIPAA compliance
-      hipaaComplianceService
-        .createAuditLog("PERMISSIONS_CHANGE", {
-          action: "UPDATE",
-          role: state.role,
-          permissions: action.payload,
-          timestamp: new Date().toISOString(),
-        })
-        .catch((err) =>
-          console.error("Failed to log permissions change:", err)
-        );
     },
 
     setLoading: (state, action) => {
@@ -183,11 +150,9 @@ export const setRoleWithValidation = (role) => (dispatch) => {
       throw new Error(`Invalid role: ${role}`);
     }
 
-    // Add any async validation or API calls here
-
     dispatch(setRole(role));
 
-    // Example of setting default permissions based on role
+    // Set default permissions based on role
     const permissions = getRolePermissions(role);
     dispatch(setPermissions(permissions));
   } catch (error) {

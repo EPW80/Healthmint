@@ -5,7 +5,7 @@ import authService from "../services/authService.js";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
 
 /**
- * Custom hook for authentication operations
+ * Custom hook for authentication operations with improved loop prevention
  */
 const useAuth = (options = {}) => {
   const dispatch = useDispatch();
@@ -18,6 +18,16 @@ const useAuth = (options = {}) => {
   // Add verification attempt tracking
   const verificationAttempts = useRef(0);
   const lastVerifyTime = useRef(0);
+
+  // Add a verification lock to prevent concurrent verifications
+  const isVerifying = useRef(false);
+
+  // Add a verification result cache to prevent redundant checks
+  const verificationCache = useRef({
+    timestamp: 0,
+    result: null,
+    ttl: 5000, // Cache TTL in milliseconds (5 seconds)
+  });
 
   // Check for a manual override in sessionStorage
   const checkOverride = () => {
@@ -34,16 +44,28 @@ const useAuth = (options = {}) => {
   };
 
   /**
-   * Verify authentication state with rate limiting and attempt limiting
+   * Verify authentication state with rate limiting, attempt limiting, and caching
    */
   const verifyAuth = useCallback(async () => {
+    if (isVerifying.current) {
+      console.log("Auth verification already in progress, skipping");
+      return null;
+    }
+
     try {
-      // Check for override first
       if (checkOverride()) {
         return true;
       }
 
-      // Don't allow too many verification attempts
+      const now = Date.now();
+      if (
+        now - verificationCache.current.timestamp <
+        verificationCache.current.ttl
+      ) {
+        console.log("Using cached auth verification result");
+        return verificationCache.current.result;
+      }
+
       verificationAttempts.current += 1;
       if (verificationAttempts.current > 5) {
         console.warn(
@@ -53,11 +75,15 @@ const useAuth = (options = {}) => {
         setIsAuthenticated(true);
         setIsRegistrationComplete(true);
         setLoading(false);
+
+        verificationCache.current = {
+          timestamp: now,
+          result: true,
+          ttl: verificationCache.current.ttl,
+        };
         return true;
       }
 
-      // Rate limit verification attempts
-      const now = Date.now();
       if (
         now - lastVerifyTime.current < 1000 &&
         verificationAttempts.current > 1
@@ -67,11 +93,12 @@ const useAuth = (options = {}) => {
       }
       lastVerifyTime.current = now;
 
+      isVerifying.current = true;
+
       console.log(`Auth verification attempt #${verificationAttempts.current}`);
       setLoading(true);
       setError(null);
 
-      // Check if wallet is connected via localStorage
       const walletConnected =
         localStorage.getItem("healthmint_wallet_connection") === "true";
       if (!walletConnected) {
@@ -80,18 +107,22 @@ const useAuth = (options = {}) => {
         setIsRegistrationComplete(false);
         setIsNewUser(false);
         setLoading(false);
+
+        verificationCache.current = {
+          timestamp: now,
+          result: false,
+          ttl: verificationCache.current.ttl,
+        };
+        isVerifying.current = false;
         return false;
       }
 
-      // Check if user is authenticated with authService
       const user = authService.getCurrentUser();
 
       if (user) {
         console.log("User found in authService:", !!user);
-        // Update Redux store with user profile
         dispatch(updateUserProfile(user));
 
-        // Check registration status
         const isComplete = authService.isRegistrationComplete();
         const newUser = authService.isNewUser();
 
@@ -101,21 +132,21 @@ const useAuth = (options = {}) => {
         setIsRegistrationComplete(isComplete);
         setIsNewUser(newUser);
         setLoading(false);
+
+        verificationCache.current = {
+          timestamp: now,
+          result: true,
+          ttl: verificationCache.current.ttl,
+        };
+        isVerifying.current = false;
         return true;
       } else {
-        // Try to get user role from localStorage as a fallback
         const role = localStorage.getItem("healthmint_user_role");
         const walletAddress = localStorage.getItem("healthmint_wallet_address");
 
         if (role && walletAddress) {
           console.log("User role found in localStorage:", role);
-          // Create minimal user profile
-          const minimalUser = {
-            role,
-            address: walletAddress,
-          };
-
-          // Force registration to be complete
+          const minimalUser = { role, address: walletAddress };
           authService.completeRegistration(minimalUser);
           dispatch(updateUserProfile(minimalUser));
 
@@ -123,19 +154,31 @@ const useAuth = (options = {}) => {
           setIsRegistrationComplete(true);
           setIsNewUser(false);
           setLoading(false);
+
+          verificationCache.current = {
+            timestamp: now,
+            result: true,
+            ttl: verificationCache.current.ttl,
+          };
+          isVerifying.current = false;
           return true;
         }
 
-        // No user in authService or localStorage
         console.log("No user found in authService or localStorage");
         setIsAuthenticated(false);
         setIsRegistrationComplete(false);
 
-        // Check if new user flag is set
         const isNewUserFlag =
           localStorage.getItem("healthmint_is_new_user") === "true";
         setIsNewUser(isNewUserFlag);
         setLoading(false);
+
+        verificationCache.current = {
+          timestamp: now,
+          result: false,
+          ttl: verificationCache.current.ttl,
+        };
+        isVerifying.current = false;
         return false;
       }
     } catch (err) {
@@ -143,7 +186,6 @@ const useAuth = (options = {}) => {
       setError(err.message || "Authentication verification failed");
       setLoading(false);
 
-      // On error, force success state after several attempts
       if (verificationAttempts.current > 3) {
         console.warn(
           "Multiple auth verification errors, forcing success state"
@@ -152,12 +194,39 @@ const useAuth = (options = {}) => {
         setIsAuthenticated(true);
         setIsRegistrationComplete(true);
         setIsNewUser(false);
+
+        verificationCache.current = {
+          timestamp: Date.now(),
+          result: true,
+          ttl: verificationCache.current.ttl,
+        };
+        isVerifying.current = false;
         return true;
       }
 
+      verificationCache.current = {
+        timestamp: Date.now(),
+        result: false,
+        ttl: verificationCache.current.ttl,
+      };
+      isVerifying.current = false;
       return false;
+    } finally {
+      isVerifying.current = false;
+      setLoading(false);
     }
   }, [dispatch]);
+
+  /**
+   * Clear verification cache to force fresh verification
+   */
+  const clearVerificationCache = useCallback(() => {
+    verificationCache.current = {
+      timestamp: 0,
+      result: null,
+      ttl: verificationCache.current.ttl,
+    };
+  }, []);
 
   /**
    * Login user with wallet address
@@ -172,7 +241,6 @@ const useAuth = (options = {}) => {
         throw new Error("No wallet address found");
       }
 
-      // Login with authService
       const result = await authService.login(walletAddress);
 
       if (result.success) {
@@ -180,13 +248,13 @@ const useAuth = (options = {}) => {
         setIsRegistrationComplete(authService.isRegistrationComplete());
         setIsNewUser(authService.isNewUser());
 
-        // Get user profile and update Redux store
         const user = authService.getCurrentUser();
         if (user) {
           dispatch(updateUserProfile(user));
         }
 
-        setLoading(false);
+        clearVerificationCache();
+
         return result;
       } else {
         throw new Error(result.message || "Login failed");
@@ -194,10 +262,11 @@ const useAuth = (options = {}) => {
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Login failed");
-      setLoading(false);
       return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
     }
-  }, [dispatch]);
+  }, [dispatch, clearVerificationCache]);
 
   /**
    * Register a new user
@@ -212,7 +281,6 @@ const useAuth = (options = {}) => {
           throw new Error("Wallet address is required for registration");
         }
 
-        // Register with authService
         const result = await authService.register(userData);
 
         if (result.success) {
@@ -220,10 +288,10 @@ const useAuth = (options = {}) => {
           setIsRegistrationComplete(true);
           setIsNewUser(false);
 
-          // Update Redux store with user profile
           dispatch(updateUserProfile(userData));
 
-          setLoading(false);
+          clearVerificationCache();
+
           return true;
         } else {
           throw new Error(result.message || "Registration failed");
@@ -231,11 +299,12 @@ const useAuth = (options = {}) => {
       } catch (err) {
         console.error("Registration error:", err);
         setError(err.message || "Registration failed");
-        setLoading(false);
         return false;
+      } finally {
+        setLoading(false);
       }
     },
-    [dispatch]
+    [dispatch, clearVerificationCache]
   );
 
   /**
@@ -245,34 +314,40 @@ const useAuth = (options = {}) => {
     try {
       setLoading(true);
 
-      // Clear Auth Service state
       await authService.logout();
 
-      // Reset local state
       setIsAuthenticated(false);
       setIsRegistrationComplete(false);
       setIsNewUser(false);
       setError(null);
 
-      // Clear overrides
       sessionStorage.removeItem("auth_verification_override");
       verificationAttempts.current = 0;
 
-      setLoading(false);
+      clearVerificationCache();
+
       return true;
     } catch (err) {
       console.error("Logout error:", err);
       setError(err.message || "Logout failed");
-      setLoading(false);
       return false;
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [clearVerificationCache]);
 
   /**
    * Reset error state
    */
   const clearError = useCallback(() => {
     setError(null);
+  }, []);
+
+  /**
+   * Reset verification attempts counter
+   */
+  const resetVerificationAttempts = useCallback(() => {
+    verificationAttempts.current = 0;
   }, []);
 
   // Combine all returned values
@@ -287,6 +362,8 @@ const useAuth = (options = {}) => {
     logout,
     clearError,
     verifyAuth,
+    clearVerificationCache,
+    resetVerificationAttempts,
   };
 };
 

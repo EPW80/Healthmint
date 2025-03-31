@@ -1,4 +1,4 @@
-// src/hooks/useWalletConnect.js - Simplified version to prevent infinite loops
+// src/hooks/useWalletConnect.js
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { ethers } from "ethers";
@@ -98,6 +98,10 @@ const useWalletConnect = (options = {}) => {
       // Get network details
       const networkDetails = getNetworkFromChainId(connectedChainId);
 
+      // Save wallet information to localStorage immediately
+      localStorage.setItem("healthmint_wallet_address", connectedAddress);
+      localStorage.setItem("healthmint_wallet_connection", "true");
+
       // Update Redux state
       dispatch(
         updateWalletConnection({
@@ -132,6 +136,10 @@ const useWalletConnect = (options = {}) => {
 
       setError(errorMessage);
 
+      // Clean up any partial wallet connection data
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
+
       return {
         success: false,
         error: errorMessage,
@@ -150,6 +158,10 @@ const useWalletConnect = (options = {}) => {
   const disconnectWallet = useCallback(async () => {
     try {
       setLoading(true);
+
+      // Clear wallet data from localStorage
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
 
       // Clear Redux state
       dispatch(clearWalletConnection());
@@ -212,6 +224,13 @@ const useWalletConnect = (options = {}) => {
     [dispatch]
   );
 
+  /**
+   * Get pending transactions (placeholder implementation)
+   */
+  const getPendingTransactions = useCallback(async () => {
+    return []; // Placeholder - in a real app, you would fetch actual pending transactions
+  }, []);
+
   // Set up event listeners for wallet changes
   useEffect(() => {
     if (!window.ethereum?.on) return;
@@ -224,6 +243,10 @@ const useWalletConnect = (options = {}) => {
         // User disconnected their wallet
         dispatch(clearWalletConnection());
 
+        // Also clear localStorage
+        localStorage.removeItem("healthmint_wallet_address");
+        localStorage.removeItem("healthmint_wallet_connection");
+
         dispatch(
           addNotification({
             type: "info",
@@ -234,6 +257,10 @@ const useWalletConnect = (options = {}) => {
         // Account changed
         const newAccount = accounts[0];
 
+        // Update localStorage
+        localStorage.setItem("healthmint_wallet_address", newAccount);
+
+        // Update Redux state
         dispatch(updateUserProfile({ address: newAccount }));
         dispatch(updateWalletConnection({ address: newAccount }));
 
@@ -274,6 +301,36 @@ const useWalletConnect = (options = {}) => {
     window.ethereum.on("accountsChanged", handleAccountsChanged);
     window.ethereum.on("chainChanged", handleChainChanged);
 
+    // Check if there's a wallet address in localStorage but not in Redux
+    const storedAddress = localStorage.getItem("healthmint_wallet_address");
+    const storedConnection =
+      localStorage.getItem("healthmint_wallet_connection") === "true";
+
+    if (storedAddress && storedConnection && !address) {
+      // If we have stored wallet data but no Redux state, restore from localStorage
+      window.ethereum
+        .request({ method: "eth_chainId" })
+        .then((chainId) => {
+          const networkDetails = getNetworkFromChainId(chainId);
+
+          // Update Redux state
+          dispatch(
+            updateWalletConnection({
+              address: storedAddress,
+              chainId,
+              isConnected: true,
+              network: networkDetails,
+              walletType: "metamask",
+              lastConnected: Date.now(),
+            })
+          );
+
+          // Update user profile
+          dispatch(updateUserProfile({ address: storedAddress }));
+        })
+        .catch(console.error);
+    }
+
     // Auto-connect if requested
     if (autoConnect && !isConnected) {
       // Use eth_accounts instead of eth_requestAccounts to avoid popup
@@ -281,7 +338,11 @@ const useWalletConnect = (options = {}) => {
         .request({ method: "eth_accounts" })
         .then((accounts) => {
           if (accounts && accounts.length > 0) {
-            const address = accounts[0];
+            const connectedAddress = accounts[0];
+
+            // Save to localStorage
+            localStorage.setItem("healthmint_wallet_address", connectedAddress);
+            localStorage.setItem("healthmint_wallet_connection", "true");
 
             // Get chain ID
             window.ethereum
@@ -292,7 +353,7 @@ const useWalletConnect = (options = {}) => {
                 // Update Redux state
                 dispatch(
                   updateWalletConnection({
-                    address,
+                    address: connectedAddress,
                     chainId,
                     isConnected: true,
                     network: networkDetails,
@@ -302,7 +363,7 @@ const useWalletConnect = (options = {}) => {
                 );
 
                 // Update user profile
-                dispatch(updateUserProfile({ address }));
+                dispatch(updateUserProfile({ address: connectedAddress }));
               })
               .catch(console.error);
           }
@@ -323,7 +384,7 @@ const useWalletConnect = (options = {}) => {
       window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
       window.ethereum.removeListener("chainChanged", handleChainChanged);
     };
-  }, [autoConnect, dispatch, getNetworkFromChainId, isConnected]);
+  }, [autoConnect, dispatch, getNetworkFromChainId, isConnected, address]);
 
   return {
     // State
@@ -340,6 +401,7 @@ const useWalletConnect = (options = {}) => {
     connectWallet,
     disconnectWallet,
     switchNetwork,
+    getPendingTransactions,
   };
 };
 
