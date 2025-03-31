@@ -1,8 +1,16 @@
-// src/hooks/useAuth.js
+// src/hooks/useAuth.js - Updated version
 import { useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
 import authService from "../services/authService.js";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
+import { addNotification } from "../redux/slices/notificationSlice.js";
+import { clearRole } from "../redux/slices/roleSlice.js";
+import { clearWalletConnection } from "../redux/slices/walletSlice.js";
+import {
+  trackVerificationAttempt,
+  resetVerificationAttempts,
+  performLogout,
+} from "../utils/authLoopPrevention.js";
 
 /**
  * Custom hook for authentication operations with improved loop prevention
@@ -15,11 +23,7 @@ const useAuth = (options = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Add verification attempt tracking
-  const verificationAttempts = useRef(0);
-  const lastVerifyTime = useRef(0);
-
-  // Add a verification lock to prevent concurrent verifications
+  // Add verification locking to prevent concurrent verifications
   const isVerifying = useRef(false);
 
   // Add a verification result cache to prevent redundant checks
@@ -66,11 +70,10 @@ const useAuth = (options = {}) => {
         return verificationCache.current.result;
       }
 
-      verificationAttempts.current += 1;
-      if (verificationAttempts.current > 5) {
-        console.warn(
-          `Too many auth verification attempts (${verificationAttempts.current}), forcing success state`
-        );
+      // Use our loop detection utility
+      const loopDetected = trackVerificationAttempt();
+      if (loopDetected) {
+        console.warn("Auth verification loop detected, forcing success state");
         sessionStorage.setItem("auth_verification_override", "true");
         setIsAuthenticated(true);
         setIsRegistrationComplete(true);
@@ -84,18 +87,9 @@ const useAuth = (options = {}) => {
         return true;
       }
 
-      if (
-        now - lastVerifyTime.current < 1000 &&
-        verificationAttempts.current > 1
-      ) {
-        console.warn("Auth verification too frequent, delaying");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-      lastVerifyTime.current = now;
-
       isVerifying.current = true;
 
-      console.log(`Auth verification attempt #${verificationAttempts.current}`);
+      console.log(`Auth verification attempt in progress`);
       setLoading(true);
       setError(null);
 
@@ -120,7 +114,7 @@ const useAuth = (options = {}) => {
       const user = authService.getCurrentUser();
 
       if (user) {
-        console.log("User found in authService:", !!user);
+        console.log("User found in authService");
         dispatch(updateUserProfile(user));
 
         const isComplete = authService.isRegistrationComplete();
@@ -186,24 +180,7 @@ const useAuth = (options = {}) => {
       setError(err.message || "Authentication verification failed");
       setLoading(false);
 
-      if (verificationAttempts.current > 3) {
-        console.warn(
-          "Multiple auth verification errors, forcing success state"
-        );
-        sessionStorage.setItem("auth_verification_override", "true");
-        setIsAuthenticated(true);
-        setIsRegistrationComplete(true);
-        setIsNewUser(false);
-
-        verificationCache.current = {
-          timestamp: Date.now(),
-          result: true,
-          ttl: verificationCache.current.ttl,
-        };
-        isVerifying.current = false;
-        return true;
-      }
-
+      // Fallback to prevent complete blocking
       verificationCache.current = {
         timestamp: Date.now(),
         result: false,
@@ -254,6 +231,7 @@ const useAuth = (options = {}) => {
         }
 
         clearVerificationCache();
+        resetVerificationAttempts();
 
         return result;
       } else {
@@ -291,6 +269,7 @@ const useAuth = (options = {}) => {
           dispatch(updateUserProfile(userData));
 
           clearVerificationCache();
+          resetVerificationAttempts();
 
           return true;
         } else {
@@ -309,45 +288,56 @@ const useAuth = (options = {}) => {
 
   /**
    * Logout user and clear auth state
+   * Enhanced with reliable redirection to login page
    */
   const logout = useCallback(async () => {
     try {
       setLoading(true);
 
-      await authService.logout();
+      // Use our improved logout function from authLoopPrevention
+      await performLogout();
 
+      // Clear Redux state
+      dispatch(clearRole());
+      dispatch(clearWalletConnection());
+
+      // Update local state
       setIsAuthenticated(false);
       setIsRegistrationComplete(false);
       setIsNewUser(false);
       setError(null);
 
-      sessionStorage.removeItem("auth_verification_override");
-      verificationAttempts.current = 0;
-
+      // Clear verification state
       clearVerificationCache();
+      resetVerificationAttempts();
+
+      // Show notification
+      dispatch(
+        addNotification({
+          type: "info",
+          message: "Successfully logged out",
+          duration: 3000,
+        })
+      );
 
       return true;
     } catch (err) {
       console.error("Logout error:", err);
       setError(err.message || "Logout failed");
-      return false;
+
+      // Force logout even if there was an error
+      await performLogout();
+      return true;
     } finally {
       setLoading(false);
     }
-  }, [clearVerificationCache]);
+  }, [dispatch, clearVerificationCache]);
 
   /**
    * Reset error state
    */
   const clearError = useCallback(() => {
     setError(null);
-  }, []);
-
-  /**
-   * Reset verification attempts counter
-   */
-  const resetVerificationAttempts = useCallback(() => {
-    verificationAttempts.current = 0;
   }, []);
 
   // Combine all returned values

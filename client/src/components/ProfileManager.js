@@ -27,6 +27,7 @@ import useHipaaFormState from "../hooks/useHipaaFormState.js";
 import useAsyncOperation from "../hooks/useAsyncOperation.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
+
 /**
  * Helper function to deep merge objects with defaults
  * This ensures nested objects are properly merged rather than overwritten
@@ -56,6 +57,75 @@ function deepMerge(defaults, userData) {
 
   return result;
 }
+
+/**
+ * Preprocess the profile data to ensure valid values
+ * @param {Object} profile - The profile data to clean
+ * @param {Object} defaultProfile - Default profile for reference
+ * @returns {Object} - Profile data with valid values
+ */
+const preprocessProfileData = (profile, defaultProfile) => {
+  if (!profile) return { ...defaultProfile };
+
+  // Start with a deep copy
+  const cleanProfile = JSON.parse(JSON.stringify(profile));
+
+  // Fix common problem fields
+  if (
+    cleanProfile.age === undefined ||
+    cleanProfile.age === null ||
+    isNaN(cleanProfile.age)
+  ) {
+    cleanProfile.age = "";
+  }
+
+  // Make sure all fields have valid values
+  Object.keys(defaultProfile).forEach((key) => {
+    // Handle undefined or null values
+    if (cleanProfile[key] === undefined || cleanProfile[key] === null) {
+      if (typeof defaultProfile[key] === "number") {
+        cleanProfile[key] = 0;
+      } else if (typeof defaultProfile[key] === "string") {
+        cleanProfile[key] = "";
+      } else if (typeof defaultProfile[key] === "boolean") {
+        cleanProfile[key] = false;
+      } else if (Array.isArray(defaultProfile[key])) {
+        cleanProfile[key] = [];
+      } else if (
+        typeof defaultProfile[key] === "object" &&
+        defaultProfile[key] !== null
+      ) {
+        cleanProfile[key] = { ...defaultProfile[key] };
+      }
+    }
+
+    // Handle NaN values in numeric fields
+    if (typeof cleanProfile[key] === "number" && isNaN(cleanProfile[key])) {
+      cleanProfile[key] = 0;
+    }
+  });
+
+  // Ensure nested objects exist
+  if (!cleanProfile.sharingPreferences) {
+    cleanProfile.sharingPreferences = { ...defaultProfile.sharingPreferences };
+  }
+  if (!cleanProfile.notificationPreferences) {
+    cleanProfile.notificationPreferences = {
+      ...defaultProfile.notificationPreferences,
+    };
+  }
+  if (!cleanProfile.privacyPreferences) {
+    cleanProfile.privacyPreferences = { ...defaultProfile.privacyPreferences };
+  }
+  if (!cleanProfile.emailNotifications) {
+    cleanProfile.emailNotifications = { ...defaultProfile.emailNotifications };
+  }
+  if (!cleanProfile.inAppNotifications) {
+    cleanProfile.inAppNotifications = { ...defaultProfile.inAppNotifications };
+  }
+
+  return cleanProfile;
+};
 
 /**
  * ProfileManager Component
@@ -147,13 +217,18 @@ const ProfileManager = () => {
     getChangedFields,
     initialFormState,
     setInitialFormState,
+    setFormState,
   } = useHipaaFormState(defaultProfile, {
     sanitizeField: (value, fieldName) =>
-      hipaaComplianceService.sanitizeInputValue(value, fieldName),
+      hipaaComplianceService.sanitizeInputValue
+        ? hipaaComplianceService.sanitizeInputValue(value, fieldName)
+        : value,
     logFieldChange: (fieldName, value, metadata) => {
       // This is a placeholder for actual field change logging
       // We don't log the actual values for HIPAA compliance
-      console.log(`Field ${fieldName} changed`, metadata);
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`Field ${fieldName} changed`, metadata);
+      }
     },
     hipaaService: hipaaComplianceService,
     userIdentifier: walletAddress,
@@ -235,8 +310,11 @@ const ProfileManager = () => {
         const profile = await userService.getCurrentUser();
 
         if (profile) {
+          // Preprocess the profile to ensure valid values
+          const cleanProfile = preprocessProfileData(profile, defaultProfile);
+
           // Merge profile data with defaults using deep merge to handle nested objects
-          const mergedProfile = deepMerge(defaultProfile, profile);
+          const mergedProfile = deepMerge(defaultProfile, cleanProfile);
 
           // Log the profile structure for debugging (DEVELOPMENT ONLY)
           if (process.env.NODE_ENV !== "production") {
@@ -250,13 +328,12 @@ const ProfileManager = () => {
           }
 
           // Sanitize the profile data before setting in state
-          const sanitizedProfile = hipaaComplianceService.sanitizeData(
-            mergedProfile,
-            {
-              accessPurpose: "Initial Profile Load",
-              dataSource: "API",
-            }
-          );
+          const sanitizedProfile = hipaaComplianceService.sanitizeData
+            ? hipaaComplianceService.sanitizeData(mergedProfile, {
+                accessPurpose: "Initial Profile Load",
+                dataSource: "API",
+              })
+            : mergedProfile;
 
           // Update initial form state with sanitized data
           setInitialFormState(sanitizedProfile);
@@ -418,7 +495,7 @@ const ProfileManager = () => {
       if (privacyChanged || sharingChanged) {
         // Verify or request consent with enhanced metadata
         const consentResult = await hipaaComplianceService.verifyConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          hipaaComplianceService.CONSENT_TYPES?.DATA_SHARING || "data_sharing",
           {
             userId: walletAddress,
             timestamp: new Date().toISOString(),
@@ -437,7 +514,7 @@ const ProfileManager = () => {
 
         // Record explicit consent
         await hipaaComplianceService.recordConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          hipaaComplianceService.CONSENT_TYPES?.DATA_SHARING || "data_sharing",
           true,
           {
             userId: walletAddress,
@@ -458,6 +535,22 @@ const ProfileManager = () => {
   }, [formState, initialFormState, walletAddress]);
 
   const handleSaveProfile = async () => {
+    // Check formState directly for NaN values and fix them
+    const checkFormForNaN = (form) => {
+      const fixedForm = { ...form };
+      if (
+        fixedForm.age === undefined ||
+        fixedForm.age === null ||
+        isNaN(fixedForm.age)
+      ) {
+        fixedForm.age = "";
+      }
+      return fixedForm;
+    };
+
+    // Fix any NaN values right before validation
+    setFormState(checkFormForNaN(formState));
+
     // Use our validateForm method from the form hook
     const isValid = validateForm();
     if (!isValid) {
@@ -502,11 +595,13 @@ const ProfileManager = () => {
       });
 
       // Apply consistent sanitization before any data transmission
-      const sanitizedData = hipaaComplianceService.sanitizeData(formState, {
-        excludeFields: ["password", "walletType", "securityQuestions"],
-        accessPurpose: "Profile Update Submission",
-        includeAuditMetadata: true,
-      });
+      const sanitizedData = hipaaComplianceService.sanitizeData
+        ? hipaaComplianceService.sanitizeData(formState, {
+            excludeFields: ["password", "walletType", "securityQuestions"],
+            accessPurpose: "Profile Update Submission",
+            includeAuditMetadata: true,
+          })
+        : formState;
 
       const updatedProfile = {
         ...userProfile,
@@ -673,7 +768,7 @@ const ProfileManager = () => {
                   id="name"
                   name="name"
                   type="text"
-                  value={formState.name}
+                  value={formState.name || ""}
                   onChange={handleChange}
                   className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                     errors.name ? "border-red-300" : ""
@@ -700,7 +795,7 @@ const ProfileManager = () => {
                   id="email"
                   name="email"
                   type="email"
-                  value={formState.email}
+                  value={formState.email || ""}
                   onChange={handleChange}
                   className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                     errors.email ? "border-red-300" : ""
@@ -732,11 +827,27 @@ const ProfileManager = () => {
                   <input
                     id="age"
                     name="age"
-                    type="number"
-                    value={formState.age}
-                    onChange={handleChange}
+                    type="text" // Using text type to avoid browser validation issues
+                    value={
+                      formState.age === null ||
+                      formState.age === undefined ||
+                      isNaN(formState.age)
+                        ? ""
+                        : formState.age
+                    }
+                    onChange={(e) => {
+                      // Only allow numeric values
+                      const value = e.target.value;
+                      if (value === "" || /^\d+$/.test(value)) {
+                        handleChange({
+                          target: {
+                            name: "age",
+                            value: value === "" ? "" : value,
+                          },
+                        });
+                      }
+                    }}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    min="0"
                     aria-label="Age"
                     aria-describedby={
                       userRole === "patient" ? "age-hint" : undefined

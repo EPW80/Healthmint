@@ -318,6 +318,12 @@ class AuthService {
    * Log out the current user
    * @returns {Promise<boolean>} Success or failure
    */
+  // Updated logout method for authService.js
+
+  /**
+   * Log out the current user
+   * @returns {Promise<boolean>} Success or failure
+   */
   async logout() {
     try {
       await hipaaComplianceService.createAuditLog("AUTH_LOGOUT", {
@@ -326,17 +332,24 @@ class AuthService {
         timestamp: new Date().toISOString(),
       });
 
+      // Clear all auth-related localStorage
       localStorage.removeItem(this.tokenKey);
       localStorage.removeItem(this.refreshTokenKey);
       localStorage.removeItem(this.tokenExpiryKey);
       localStorage.removeItem(this.userProfileKey);
       localStorage.removeItem(this.isNewUserKey);
+      localStorage.removeItem(this.walletAddressKey);
 
+      // IMPORTANT: Also clear role to prevent going to role selection screen
+      localStorage.removeItem("healthmint_user_role");
+
+      // Reset all state variables
       this.token = null;
       this.refreshToken = null;
       this.tokenExpiry = null;
       this.userProfile = null;
       this._isNewUser = false;
+      this.walletAddress = null;
 
       return true;
     } catch (error) {
