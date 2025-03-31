@@ -220,6 +220,24 @@ const ProtectedRoute = ({
         return;
       }
 
+      // ADDED: Check for forced wallet reconnect flag
+      if (sessionStorage.getItem("force_wallet_reconnect") === "true") {
+        console.log(
+          `[ProtectedRoute:${debugId}] Force wallet reconnect flag found, redirecting to login`
+        );
+
+        // Clear the flag so we don't get into a loop
+        sessionStorage.removeItem("force_wallet_reconnect");
+
+        if (isMounted.current) {
+          setRedirectPath("/login");
+          setIsLoading(false);
+        }
+
+        isCheckingRef.current = false;
+        return;
+      }
+
       // Mark that we're checking auth
       isCheckingRef.current = true;
       let authCheckSuccess = false;
@@ -274,10 +292,15 @@ const ProtectedRoute = ({
             "healthmint_wallet_address"
           );
 
+          // IMPROVED: More comprehensive check for wallet connection
           if (!isWalletConnected && !isWalletConnectedFromStorage) {
             console.log(
               `[ProtectedRoute:${debugId}] Wallet not connected, redirecting to login`
             );
+
+            // Clear any stale wallet data to prevent confusion
+            localStorage.removeItem("healthmint_wallet_address");
+            localStorage.removeItem("healthmint_wallet_connection");
 
             if (isMounted.current) {
               setRedirectPath("/login");
@@ -310,9 +333,16 @@ const ProtectedRoute = ({
             `[ProtectedRoute:${debugId}] Wallet connection check error:`,
             error
           );
-          // Continue to next check
+          // ADDED: On error, it's safer to redirect to login
+          if (isMounted.current) {
+            setRedirectPath("/login");
+            setIsLoading(false);
+          }
+          isCheckingRef.current = false;
+          return;
         }
 
+        // Rest of the authentication checks continue as before...
         // Step 2: Check registration status with more robust fallback
         try {
           // Check localStorage directly for registration status as backup
@@ -477,6 +507,7 @@ const ProtectedRoute = ({
 
     return () => clearTimeout(timeoutId);
   }, [
+    isLoading,
     isWalletConnected,
     isAuthenticated,
     isRoleSelected,
@@ -586,7 +617,7 @@ const ProtectedRoute = ({
       clearTimeout(emergencyTimeout);
     };
   }, [
-    isLoading,
+    isLoading, // This was the missing dependency
     redirectPath,
     isWalletConnected,
     isRoleSelected,
