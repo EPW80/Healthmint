@@ -1,5 +1,4 @@
 // src/services/authService.js
-import apiService from "./apiService.js";
 import hipaaComplianceService from "./hipaaComplianceService.js";
 import { ENV } from "../config/environmentConfig.js";
 
