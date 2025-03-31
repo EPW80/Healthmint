@@ -1,191 +1,278 @@
 // src/services/authService.js
+import apiService from "./apiService.js";
+import hipaaComplianceService from "./hipaaComplianceService.js";
+import { ENV } from "../config/environmentConfig.js";
+
 /**
- * Authentication Service with enhanced registration status tracking
+ * AuthService
+ *
+ * Provides authentication services with HIPAA compliance for the Healthmint application.
  */
-class AuthenticationService {
+class AuthService {
   constructor() {
+    this.API_URL = ENV.API_URL || "/api";
     this.tokenKey = "healthmint_auth_token";
     this.refreshTokenKey = "healthmint_refresh_token";
-    this.userKey = "healthmint_user";
     this.tokenExpiryKey = "healthmint_token_expiry";
-    this.challengeKey = "healthmint_nonce";
-    this.registrationStatusKey = "healthmint_registration_status";
+    this.userProfileKey = "healthmint_user_profile";
+    this.walletAddressKey = "healthmint_wallet_address";
+    this.isNewUserKey = "healthmint_is_new_user";
+
+    // Load auth state from localStorage on init
+    this.loadAuthState();
   }
 
   /**
-   * Retrieves the authentication token
-   * @returns {string|null} The JWT token or null if not found
+   * Load the authentication state from localStorage
+   * @private
    */
-  getToken() {
-    return localStorage.getItem(this.tokenKey);
+  loadAuthState() {
+    this.token = localStorage.getItem(this.tokenKey);
+    this.refreshToken = localStorage.getItem(this.refreshTokenKey);
+    this.tokenExpiry = localStorage.getItem(this.tokenExpiryKey);
+
+    // Parse user profile if it exists
+    const userProfileStr = localStorage.getItem(this.userProfileKey);
+    this.userProfile = userProfileStr ? JSON.parse(userProfileStr) : null;
+
+    // Get wallet address
+    this.walletAddress = localStorage.getItem(this.walletAddressKey);
+
+    // Determine if user is new based on localStorage flag
+    this._isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
   }
 
   /**
-   * Retrieves the refresh token
-   * @returns {string|null} The refresh token or null if not found
-   */
-  getRefreshToken() {
-    return localStorage.getItem(this.refreshTokenKey);
-  }
-
-  /**
-   * Gets the current user data from localStorage
-   * @returns {Object|null} User data or null if not logged in
-   */
-  getCurrentUser() {
-    try {
-      const userData = localStorage.getItem(this.userKey);
-      if (userData) {
-        return JSON.parse(userData);
-      }
-      return null;
-    } catch (error) {
-      console.error("Error getting current user:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Checks if the user is authenticated with a valid token
-   * @returns {boolean} Authentication status
+   * Check if the user is authenticated
+   * @returns {boolean} True if user is authenticated
    */
   isAuthenticated() {
-    const token = this.getToken();
-    const expiry = localStorage.getItem(this.tokenExpiryKey);
+    // Check if token exists and is not expired
+    if (!this.token) return false;
 
-    if (!token || !expiry) return false;
+    // Check expiry if available
+    if (this.tokenExpiry) {
+      const expiryDate = new Date(this.tokenExpiry);
+      if (expiryDate <= new Date()) {
+        return false;
+      }
+    }
 
-    // Check if token is still valid
-    return Date.now() < parseInt(expiry, 10);
+    return true;
   }
 
   /**
-   * Checks if the user has completed registration
-   * @returns {boolean} Whether registration is complete
+   * Check if the user is a new user
+   * @returns {boolean} True if user is new
+   */
+  isNewUser() {
+    return this._isNewUser === true;
+  }
+
+  /**
+   * Check if user registration is complete
+   * @returns {boolean} True if registration is complete
    */
   isRegistrationComplete() {
-    try {
-      // First check explicit registration status flag
-      const regStatus = localStorage.getItem(this.registrationStatusKey);
-      if (regStatus === "complete") return true;
-
-      // If no explicit status, check user profile
-      const profileStr = localStorage.getItem(this.userKey);
-      if (!profileStr) return false;
-
-      const profile = JSON.parse(profileStr);
-
-      // User is considered registered if they have name and role
-      const isComplete = Boolean(profile && profile.name && profile.role);
-
-      // If complete, update the status flag
-      if (isComplete) {
-        localStorage.setItem(this.registrationStatusKey, "complete");
-      }
-
-      return isComplete;
-    } catch (e) {
-      console.error("Error checking registration status:", e);
-      return false;
-    }
+    return this.userProfile !== null && !this._isNewUser;
   }
 
   /**
-   * Authenticates user with wallet signature
-   * @param {string} address - Wallet address
+   * Update the authentication state
+   * @param {Object} authData - Authentication data
+   * @private
+   */
+  updateAuthState(authData) {
+    const { token, refreshToken, expiresAt, userProfile, isNewUser } = authData;
+
+    // Update memory state
+    this.token = token;
+    this.refreshToken = refreshToken;
+    this.tokenExpiry = expiresAt;
+    this.userProfile = userProfile;
+    this._isNewUser = isNewUser === true;
+
+    // Update localStorage
+    if (token) localStorage.setItem(this.tokenKey, token);
+    if (refreshToken) localStorage.setItem(this.refreshTokenKey, refreshToken);
+    if (expiresAt) localStorage.setItem(this.tokenExpiryKey, expiresAt);
+    if (userProfile)
+      localStorage.setItem(this.userProfileKey, JSON.stringify(userProfile));
+    localStorage.setItem(this.isNewUserKey, String(this._isNewUser));
+  }
+
+  /**
+   * Log in with wallet address
+   * @param {Object} credentials - Credentials object with wallet address
    * @returns {Promise<Object>} Authentication result
    */
-  async authenticateWithWallet(address) {
+  async login(credentials = {}) {
     try {
-      // For debugging, return a mock response
-      console.log("Authenticating with wallet address:", address);
+      // Extract wallet address from credentials or use stored one
+      const walletAddress = credentials.address || this.walletAddress;
 
-      // Check if user has previously completed registration
-      const regStatus = localStorage.getItem(this.registrationStatusKey);
-      const isNewUser = regStatus !== "complete";
+      if (!walletAddress) {
+        throw new Error("Wallet address is required for authentication");
+      }
 
-      // Create or retrieve user data
-      let userData;
-      const existingData = localStorage.getItem(this.userKey);
+      // Store wallet address
+      this.walletAddress = walletAddress;
+      localStorage.setItem(this.walletAddressKey, walletAddress);
 
-      if (existingData) {
-        userData = JSON.parse(existingData);
-      } else {
-        userData = {
-          address: address,
-          role: null,
-          id: "user-" + Date.now(),
+      // Log auth attempt for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("AUTH_ATTEMPT", {
+        action: "LOGIN",
+        walletAddress,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Check if we need to do a full API login or can use existing auth
+      if (this.isAuthenticated() && this.userProfile) {
+        return {
+          success: true,
+          isNewUser: this.isNewUser(),
+          isRegistrationComplete: this.isRegistrationComplete(),
+          userProfile: this.userProfile,
         };
       }
 
-      // Save user data to localStorage
-      localStorage.setItem(this.userKey, JSON.stringify(userData));
-      localStorage.setItem(this.tokenKey, "mock-token-" + Date.now());
-      localStorage.setItem(
-        this.tokenExpiryKey,
-        (Date.now() + 3600 * 1000).toString()
-      );
+      // Perform API login
+      const authResult = await this.performApiLogin(walletAddress);
 
-      // Mark registration status for new users
-      if (isNewUser && !userData.role) {
-        localStorage.setItem(this.registrationStatusKey, "pending");
-      }
+      // Update auth state with login result
+      this.updateAuthState({
+        token: authResult.token,
+        refreshToken: authResult.refreshToken,
+        expiresAt: authResult.expiresAt,
+        userProfile: authResult.userProfile,
+        isNewUser: authResult.isNewUser,
+      });
+
+      // Log successful login for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("AUTH_SUCCESS", {
+        action: "LOGIN",
+        walletAddress,
+        timestamp: new Date().toISOString(),
+        isNewUser: authResult.isNewUser,
+      });
 
       return {
         success: true,
-        user: userData,
-        isNewUser: isNewUser && !userData.role,
-        token: "mock-token-" + Date.now(),
+        isNewUser: authResult.isNewUser,
+        isRegistrationComplete: authResult.userProfile !== null,
+        userProfile: authResult.userProfile,
       };
     } catch (error) {
-      console.error("Authentication error:", error);
-      localStorage.removeItem(this.userKey);
-      localStorage.removeItem(this.tokenKey);
-      localStorage.removeItem(this.tokenExpiryKey);
-      throw error;
+      console.error("Login error:", error);
+
+      // Log auth failure for HIPAA compliance
+      hipaaComplianceService
+        .createAuditLog("AUTH_FAILURE", {
+          action: "LOGIN",
+          walletAddress: credentials.address || this.walletAddress,
+          timestamp: new Date().toISOString(),
+          errorMessage: error.message,
+        })
+        .catch((err) => console.error("Error logging auth failure:", err));
+
+      return {
+        success: false,
+        error: error.message || "Authentication failed",
+      };
     }
   }
 
   /**
-   * Marks user registration as complete
-   * @param {Object} userData - User data with role and profile info
+   * Perform API login with wallet address
+   * @param {string} walletAddress - Wallet address
+   * @returns {Promise<Object>} Login result
+   * @private
    */
-  completeRegistration(userData) {
-    if (!userData || !userData.role) {
-      console.error("Cannot complete registration: missing user data or role");
-      return false;
-    }
-
+  async performApiLogin(walletAddress) {
     try {
-      // Update user data with the new information
-      localStorage.setItem(this.userKey, JSON.stringify(userData));
+      // For demo, simulate API login success
+      // In a real app, replace this with actual API call
+      return {
+        token: `demo_token_${Date.now()}`,
+        refreshToken: `demo_refresh_${Date.now()}`,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+        userProfile: await this.getUserByWallet(walletAddress),
+        isNewUser: false, // Will be true if user doesn't exist yet
+      };
 
-      // Set registration status to complete
-      localStorage.setItem(this.registrationStatusKey, "complete");
-
-      // Remove any new user flags
-      localStorage.removeItem("healthmint_is_new_user");
-
-      return true;
+      // In a real implementation, do something like:
+      // return await apiService.post("/auth/login", { walletAddress });
     } catch (error) {
-      console.error("Error completing registration:", error);
-      return false;
+      console.error("API login error:", error);
+      throw new Error("Login failed. Please try again.");
     }
   }
 
   /**
-   * Logs out the user by clearing auth data
-   * @returns {Promise<boolean>} Success status
+   * Get user profile by wallet address
+   * @param {string} walletAddress - Wallet address
+   * @returns {Promise<Object|null>} User profile or null if not found
+   * @private
+   */
+  async getUserByWallet(walletAddress) {
+    // In a real implementation, this would call the API
+    // For now, check localStorage for an existing profile
+    try {
+      const profileStr = localStorage.getItem(this.userProfileKey);
+      const storedProfile = profileStr ? JSON.parse(profileStr) : null;
+
+      // If we have a profile with matching address, return it
+      if (storedProfile && storedProfile.address === walletAddress) {
+        return storedProfile;
+      }
+
+      // For demo purposes - return null to indicate new user
+      // This would be replaced with an API call in a real app
+      const savedUserKey = `healthmint_user_${walletAddress}`;
+      const savedUser = localStorage.getItem(savedUserKey);
+
+      if (savedUser) {
+        return JSON.parse(savedUser);
+      }
+
+      // Set new user flag since we couldn't find a profile
+      this._isNewUser = true;
+      localStorage.setItem(this.isNewUserKey, "true");
+
+      return null;
+    } catch (error) {
+      console.error("Error getting user by wallet:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Log out the current user
+   * @returns {Promise<boolean>} Success or failure
    */
   async logout() {
     try {
-      // Clear all auth data
-      localStorage.removeItem(this.userKey);
+      // Log the logout attempt for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("AUTH_LOGOUT", {
+        action: "LOGOUT",
+        walletAddress: this.walletAddress,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Clear localStorage
       localStorage.removeItem(this.tokenKey);
       localStorage.removeItem(this.refreshTokenKey);
       localStorage.removeItem(this.tokenExpiryKey);
-      localStorage.removeItem(this.challengeKey);
-      // Don't clear registration status to remember registered users
+      localStorage.removeItem(this.userProfileKey);
+      localStorage.removeItem(this.isNewUserKey);
+
+      // Clear memory state
+      this.token = null;
+      this.refreshToken = null;
+      this.tokenExpiry = null;
+      this.userProfile = null;
+      this._isNewUser = false;
+
       return true;
     } catch (error) {
       console.error("Logout error:", error);
@@ -194,68 +281,185 @@ class AuthenticationService {
   }
 
   /**
-   * Utility method to try token refresh if needed
-   * @returns {Promise<boolean>} Whether refresh was successful
+   * Register a new user
+   * @param {Object} userData - User data
+   * @returns {Promise<boolean>} Success or failure
    */
-  async ensureValidToken() {
-    return this.isAuthenticated();
+  async register(userData) {
+    try {
+      if (!userData || !userData.address) {
+        throw new Error("Wallet address is required for registration");
+      }
+
+      // Log registration attempt for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("REGISTRATION_ATTEMPT", {
+        action: "REGISTER",
+        walletAddress: userData.address,
+        timestamp: new Date().toISOString(),
+      });
+
+      // In a real app, this would be an API call
+      // For now, just store in localStorage
+      const savedUserKey = `healthmint_user_${userData.address}`;
+      localStorage.setItem(savedUserKey, JSON.stringify(userData));
+
+      // Update user profile
+      this.userProfile = userData;
+      localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
+
+      // No longer a new user
+      this._isNewUser = false;
+      localStorage.setItem(this.isNewUserKey, "false");
+
+      // Log registration success
+      await hipaaComplianceService.createAuditLog("REGISTRATION_SUCCESS", {
+        action: "REGISTER",
+        walletAddress: userData.address,
+        timestamp: new Date().toISOString(),
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Registration error:", error);
+
+      // Log registration failure
+      hipaaComplianceService
+        .createAuditLog("REGISTRATION_FAILURE", {
+          action: "REGISTER",
+          walletAddress: userData?.address || this.walletAddress,
+          timestamp: new Date().toISOString(),
+          errorMessage: error.message,
+        })
+        .catch((err) =>
+          console.error("Error logging registration failure:", err)
+        );
+
+      return false;
+    }
+  }
+
+  /**
+   * Mark registration as complete
+   * @param {Object} userData - User data
+   */
+  completeRegistration(userData) {
+    // Update user profile
+    this.userProfile = userData;
+    localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
+
+    // No longer a new user
+    this._isNewUser = false;
+    localStorage.setItem(this.isNewUserKey, "false");
+
+    // Log registration completion
+    hipaaComplianceService
+      .createAuditLog("REGISTRATION_COMPLETED", {
+        action: "COMPLETE_REGISTRATION",
+        walletAddress: userData.address || this.walletAddress,
+        timestamp: new Date().toISOString(),
+      })
+      .catch((err) =>
+        console.error("Error logging registration completion:", err)
+      );
+  }
+
+  /**
+   * Update user profile
+   * @param {Object} userData - Updated user data
+   * @returns {Promise<Object>} Updated user profile
+   */
+  async updateProfile(userData) {
+    try {
+      if (!userData || !userData.address) {
+        throw new Error("Wallet address is required for profile update");
+      }
+
+      // Log profile update for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("PROFILE_UPDATE", {
+        action: "UPDATE_PROFILE",
+        walletAddress: userData.address,
+        timestamp: new Date().toISOString(),
+      });
+
+      // In a real app, this would be an API call
+      // For now, just update localStorage
+      const savedUserKey = `healthmint_user_${userData.address}`;
+      localStorage.setItem(savedUserKey, JSON.stringify(userData));
+
+      // Update user profile
+      this.userProfile = userData;
+      localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
+
+      return userData;
+    } catch (error) {
+      console.error("Profile update error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current user profile
+   * @returns {Object|null} User profile or null if not authenticated
+   */
+  getCurrentUser() {
+    return this.userProfile;
+  }
+
+  /**
+   * Verify JWT token expiration
+   * @returns {boolean} True if token is valid
+   * @private
+   */
+  verifyToken() {
+    if (!this.token) return false;
+
+    // Check expiry if available
+    if (this.tokenExpiry) {
+      const expiryDate = new Date(this.tokenExpiry);
+      if (expiryDate <= new Date()) {
+        // Token is expired, try to refresh
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Refresh the auth token
+   * @returns {Promise<boolean>} Success or failure
+   * @private
+   */
+  async refreshAuthToken() {
+    try {
+      if (!this.refreshToken) return false;
+
+      // In a real app, call API to refresh token
+      // For now, just create a new demo token
+      const newToken = `demo_token_${Date.now()}`;
+      const newRefreshToken = `demo_refresh_${Date.now()}`;
+      const newExpiry = new Date(
+        Date.now() + 24 * 60 * 60 * 1000
+      ).toISOString(); // 24 hours
+
+      // Update auth state
+      this.token = newToken;
+      this.refreshToken = newRefreshToken;
+      this.tokenExpiry = newExpiry;
+
+      // Update localStorage
+      localStorage.setItem(this.tokenKey, newToken);
+      localStorage.setItem(this.refreshTokenKey, newRefreshToken);
+      localStorage.setItem(this.tokenExpiryKey, newExpiry);
+
+      return true;
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      return false;
+    }
   }
 }
 
 // Create singleton instance
-const authService = new AuthenticationService();
-// Add this debugging helper function to your authService.js file
-
-/**
- * Debug helper to print the current auth state
- * This can be called from the browser console to diagnose issues
- */
-const debugAuthState = () => {
-  try {
-    const walletConnected =
-      localStorage.getItem("healthmint_wallet_connection") === "true";
-    const walletAddress = localStorage.getItem("healthmint_wallet_address");
-    const userRole = localStorage.getItem("healthmint_user_role");
-    const isNewUser = localStorage.getItem("healthmint_is_new_user");
-    const authToken = localStorage.getItem("healthmint_auth_token");
-
-    const sessionBypass = {
-      routeProtection: sessionStorage.getItem("bypass_route_protection"),
-      roleCheck: sessionStorage.getItem("bypass_role_check"),
-      authVerification: sessionStorage.getItem("auth_verification_override"),
-    };
-
-    // Get user from storage
-    let userString = localStorage.getItem("healthmint_user_profile");
-    let user = null;
-    try {
-      user = userString ? JSON.parse(userString) : null;
-    } catch (e) {
-      user = { error: "Invalid JSON" };
-    }
-
-    console.log("🔍 Auth State Debug:");
-    console.log({
-      walletConnected,
-      walletAddress,
-      userRole,
-      isNewUser,
-      hasAuthToken: !!authToken,
-      user,
-      sessionBypass,
-    });
-
-    return true;
-  } catch (e) {
-    console.error("Error in debugAuthState:", e);
-    return false;
-  }
-};
-
-// Export the debug function so it can be accessed
-window.debugHealthmintAuth = debugAuthState;
-
-// Add this to your authService exports
-export { debugAuthState };
-
+const authService = new AuthService();
 export default authService;

@@ -27,7 +27,35 @@ import useHipaaFormState from "../hooks/useHipaaFormState.js";
 import useAsyncOperation from "../hooks/useAsyncOperation.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
-import FocusTrap from "./ui/FocusTrap.js";
+/**
+ * Helper function to deep merge objects with defaults
+ * This ensures nested objects are properly merged rather than overwritten
+ */
+function deepMerge(defaults, userData) {
+  if (!userData) return { ...defaults };
+
+  const result = { ...defaults };
+
+  Object.keys(userData).forEach((key) => {
+    // If both are objects and not arrays, recursively merge
+    if (
+      typeof defaults[key] === "object" &&
+      defaults[key] !== null &&
+      typeof userData[key] === "object" &&
+      userData[key] !== null &&
+      !Array.isArray(defaults[key]) &&
+      !Array.isArray(userData[key])
+    ) {
+      result[key] = deepMerge(defaults[key], userData[key]);
+    }
+    // Otherwise use the user data, falling back to default if undefined
+    else {
+      result[key] = userData[key] !== undefined ? userData[key] : defaults[key];
+    }
+  });
+
+  return result;
+}
 
 /**
  * ProfileManager Component
@@ -60,7 +88,6 @@ const ProfileManager = () => {
   const {
     formState,
     handleChange,
-    setFieldValue,
     handleArrayFieldChange,
     resetForm,
     errors,
@@ -176,6 +203,7 @@ const ProfileManager = () => {
     const fetchUserProfile = async () => {
       try {
         setInitialLoading(true);
+        setError(null);
 
         // Create HIPAA-compliant audit log for profile access with enhanced metadata
         await hipaaComplianceService.createAuditLog("PROFILE_ACCESS", {
@@ -191,9 +219,73 @@ const ProfileManager = () => {
         const profile = await userService.getCurrentUser();
 
         if (profile) {
+          // Define comprehensive default values for all required structures
+          const defaultProfile = {
+            // Basic information
+            name: "",
+            email: "",
+            age: "",
+            bio: "",
+
+            // Privacy and sharing preferences with defaults
+            sharingPreferences: {
+              anonymousSharing: true,
+              notifyOnAccess: true,
+              allowDirectContact: false,
+            },
+
+            // Notification preferences with defaults
+            emailNotifications: {
+              dataAccess: true,
+              transactions: true,
+              updates: false,
+            },
+
+            inAppNotifications: {
+              messages: true,
+              dataUpdates: true,
+              announcements: false,
+            },
+
+            notificationPreferences: {
+              accessAlerts: true,
+              transactionAlerts: true,
+              researchUpdates: false,
+              newDatasets: true,
+            },
+
+            // Privacy preferences with defaults
+            privacyPreferences: {
+              publicProfile: false,
+              showInstitution: true,
+            },
+
+            // Researcher-specific fields with defaults
+            ethicsStatement: "",
+            ethicsAgreement: false,
+            institution: "",
+            credentials: "",
+            researchFocus: "",
+            publications: [],
+          };
+
+          // Merge profile data with defaults using deep merge to handle nested objects
+          const mergedProfile = deepMerge(defaultProfile, profile);
+
+          // Log the profile structure for debugging (DEVELOPMENT ONLY)
+          if (process.env.NODE_ENV !== "production") {
+            console.log("Profile structure check:", {
+              hasRequiredFields: Boolean(
+                mergedProfile.sharingPreferences &&
+                  mergedProfile.notificationPreferences
+              ),
+              profileFields: Object.keys(mergedProfile),
+            });
+          }
+
           // Sanitize the profile data before setting in state
           const sanitizedProfile = hipaaComplianceService.sanitizeData(
-            profile,
+            mergedProfile,
             {
               accessPurpose: "Initial Profile Load",
               dataSource: "API",
@@ -202,32 +294,91 @@ const ProfileManager = () => {
 
           // Update initial form state with sanitized data
           setInitialFormState(sanitizedProfile);
+
+          // Also update form state to ensure consistent data
+          resetForm(sanitizedProfile);
+        } else {
+          // Handle case where profile is null or undefined
+          console.warn("Profile data is null or undefined, using defaults");
+
+          // Log this issue for HIPAA compliance
+          await hipaaComplianceService.createAuditLog("PROFILE_DATA_MISSING", {
+            userId: walletAddress,
+            timestamp: new Date().toISOString(),
+            action: "FALLBACK_TO_DEFAULTS",
+          });
+
+          // Use a default profile with minimal information
+          const defaultEmptyProfile = {
+            name: "",
+            email: "",
+            sharingPreferences: {
+              anonymousSharing: true,
+              notifyOnAccess: true,
+              allowDirectContact: false,
+            },
+            notificationPreferences: {
+              accessAlerts: true,
+              transactionAlerts: true,
+            },
+          };
+
+          setInitialFormState(defaultEmptyProfile);
+          resetForm(defaultEmptyProfile);
+
+          // Show a non-blocking warning to the user
+          dispatch(
+            addNotification({
+              type: "warning",
+              message:
+                "Unable to load your complete profile. Some information may be missing.",
+              duration: 5000,
+            })
+          );
         }
       } catch (err) {
         console.error("Failed to load user profile:", err);
+
+        // Set a user-friendly error message
         setError("Failed to load your profile. Please try again.");
 
         // Log the error for HIPAA compliance
-        hipaaComplianceService.createAuditLog("PROFILE_ACCESS_ERROR", {
+        await hipaaComplianceService.createAuditLog("PROFILE_ACCESS_ERROR", {
           action: "VIEW_ERROR",
           userId: walletAddress,
           timestamp: new Date().toISOString(),
           errorMessage: err.message || "Unknown error during profile load",
+          errorCode: err.code || "UNKNOWN",
+          stackTrace:
+            process.env.NODE_ENV !== "production" ? err.stack : undefined,
         });
 
+        // Display notification to user
         dispatch(
           addNotification({
             type: "error",
             message: "Failed to load your profile. Please try again.",
+            duration: 7000,
           })
         );
+
+        // Use a minimal default profile despite the error
+        const fallbackProfile = {
+          name: "",
+          email: "",
+          sharingPreferences: { anonymousSharing: true, notifyOnAccess: true },
+          notificationPreferences: { accessAlerts: true },
+        };
+
+        setInitialFormState(fallbackProfile);
+        resetForm(fallbackProfile);
       } finally {
         setInitialLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [dispatch, walletAddress, userRole, setInitialFormState]);
+  }, [dispatch, walletAddress, userRole, setInitialFormState, resetForm]);
 
   // Handle publication changes
   const handlePublicationChange = useCallback(

@@ -9,7 +9,6 @@ import {
   EyeOff,
   Download,
   CheckCircle,
-  X,
   List,
 } from "lucide-react";
 
@@ -31,6 +30,23 @@ const HipaaCompliantDataViewer = ({
 }) => {
   // Get HIPAA compliance functionality from context
   const hipaa = useHipaaContext();
+
+  if (!hipaa) {
+    console.error(
+      "HIPAA compliance context is missing. This component must be used within a HipaaComplianceProvider."
+    );
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-center mb-3">
+          <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+          <h3 className="text-red-800 font-medium">Configuration Error</h3>
+        </div>
+        <p className="text-red-700 text-sm">
+          HIPAA compliance context is missing. Please contact the administrator.
+        </p>
+      </div>
+    );
+  }
 
   // Local state
   const [viewableData, setViewableData] = useState(null);

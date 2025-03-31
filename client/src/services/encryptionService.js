@@ -1,19 +1,19 @@
 // src/services/encryptionService.js
-import { ENCRYPTION_CONFIG } from "../config/environmentConfig.js";
 
 /**
  * EncryptionService
  * 
- * Provides encryption, decryption, and hashing services for secure file handling
- * in compliance with HIPAA requirements.
+ * Basic encryption, decryption, and hashing services for HIPAA compliance.
+ * Uses Web Crypto API when available, with fallbacks for older browsers.
  */
 class EncryptionService {
   constructor() {
+    // Default configuration with no external dependencies
     this.config = {
-      algorithm: ENCRYPTION_CONFIG?.ALGORITHM || 'AES-GCM',
-      keyLength: ENCRYPTION_CONFIG?.KEY_LENGTH || 256,
-      hashAlgorithm: ENCRYPTION_CONFIG?.HASH_ALGORITHM || 'SHA-256',
-      enabled: ENCRYPTION_CONFIG?.ENABLED !== false, // Default to true
+      algorithm: 'AES-GCM',
+      keyLength: 256,
+      hashAlgorithm: 'SHA-256',
+      enabled: true
     };
     
     // Initialize WebCrypto API

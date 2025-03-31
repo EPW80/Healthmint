@@ -35,7 +35,7 @@ const CATEGORIES = [
 
 const DataUpload = ({ onUploadSuccess, onUploadError }) => {
   const [fileData, setFileData] = useState(null);
-  const [setIpfsHash] = useState("");
+  const [, setIpfsHash] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");

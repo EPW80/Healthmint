@@ -12,6 +12,7 @@ import {
   User,
   X,
   ChevronDown,
+  AlertTriangle
 } from "lucide-react";
 import useNavigation from "../hooks/useNavigation.js";
 
@@ -65,7 +66,14 @@ NavLink.propTypes = {
   mobile: PropTypes.bool,
 };
 
-const Navigation = ({ account, onLogout, userName, role, network, onSwitchNetwork }) => {
+const Navigation = ({
+  account,
+  onLogout,
+  userName,
+  role,
+  network,
+  onSwitchNetwork,
+}) => {
   const { navigateTo } = useNavigation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -94,8 +102,32 @@ const Navigation = ({ account, onLogout, userName, role, network, onSwitchNetwor
     { to: "/profile", label: "Profile Settings", icon: Settings },
   ];
 
+  const showNetworkWarning = network && network.isSupported === false;
+
+  const handleSwitchNetwork = useCallback(() => {
+    if (onSwitchNetwork) {
+      onSwitchNetwork();
+    }
+  }, [onSwitchNetwork]);
+
   return (
     <div className="relative">
+      {/* Network Warning */}
+      {showNetworkWarning && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-2 mx-4 mt-2">
+          <AlertTriangle size={20} className="text-yellow-500 flex-shrink-0" />
+          <span className="flex-1">
+            You're connected to {network?.name || "an unsupported network"}.
+            Please switch to Sepolia Testnet.
+          </span>
+          <button
+            onClick={handleSwitchNetwork}
+            className="ml-2 px-3 py-1 bg-yellow-200 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-300 transition-colors"
+          >
+            Switch
+          </button>
+        </div>
+      )}
       {/* Main Navigation */}
       <nav className="bg-blue-600 shadow-md">
         <div className="container mx-auto px-4">
