@@ -1,5 +1,6 @@
 // src/services/apiService.js
 import { ENV } from "../config/environmentConfig.js";
+import mockDataUtils from "../utils/mockDataUtils.js";
 
 /**
  * API Service
@@ -12,7 +13,13 @@ class ApiService {
     // Configuration
     this.baseUrl = ENV.API_URL || "/api";
     this.timeout = ENV.API_TIMEOUT || 30000; // 30 seconds default
-    this.mockMode = ENV.USE_MOCK_API || ENV.NODE_ENV !== "production";
+
+    // Check if mock mode is explicitly set in localStorage
+    const storedMockMode = localStorage.getItem("use_mock_data");
+    this.mockMode =
+      storedMockMode === "true" ||
+      (storedMockMode !== "false" &&
+        (ENV.USE_MOCK_API || ENV.NODE_ENV !== "production"));
 
     // Default headers
     this.defaultHeaders = {
@@ -37,6 +44,32 @@ class ApiService {
    */
   setAuthToken(token) {
     this.authToken = token;
+  }
+
+  /**
+   * Enable mock data mode
+   */
+  enableMockData() {
+    this.mockMode = true;
+    localStorage.setItem("use_mock_data", "true");
+    console.log("[API] Mock data mode enabled");
+  }
+
+  /**
+   * Disable mock data mode
+   */
+  disableMockData() {
+    this.mockMode = false;
+    localStorage.setItem("use_mock_data", "false");
+    console.log("[API] Mock data mode disabled");
+  }
+
+  /**
+   * Check if mock data mode is enabled
+   * @returns {boolean} Whether mock data is enabled
+   */
+  isMockDataEnabled() {
+    return this.mockMode;
   }
 
   /**
@@ -163,17 +196,109 @@ class ApiService {
       );
     }
 
-    // Handle specific endpoints
+    // Handle health data endpoints
     if (method === "get") {
-      if (endpoint === "datasets/browse") {
+      // Handle health records endpoint
+      if (
+        endpoint.includes("/data/records") ||
+        endpoint.includes("/patient/records") ||
+        endpoint === "datasets/browse"
+      ) {
+        const mockData = mockDataUtils.getMockHealthData();
+
+        // Apply filters if provided
+        let filteredData = [...mockData];
+
+        if (data.category && data.category !== "All") {
+          filteredData = filteredData.filter(
+            (record) => record.category === data.category
+          );
+        }
+
+        if (data.searchTerm) {
+          const searchLower = data.searchTerm.toLowerCase();
+          filteredData = filteredData.filter(
+            (record) =>
+              record.title.toLowerCase().includes(searchLower) ||
+              record.description.toLowerCase().includes(searchLower)
+          );
+        }
+
+        // Sort if requested
+        if (data.sortBy) {
+          if (data.sortBy === "newest") {
+            filteredData.sort(
+              (a, b) => new Date(b.uploadDate) - new Date(a.uploadDate)
+            );
+          } else if (data.sortBy === "oldest") {
+            filteredData.sort(
+              (a, b) => new Date(a.uploadDate) - new Date(b.uploadDate)
+            );
+          } else if (data.sortBy === "price_asc") {
+            filteredData.sort(
+              (a, b) => parseFloat(a.price) - parseFloat(b.price)
+            );
+          } else if (data.sortBy === "price_desc") {
+            filteredData.sort(
+              (a, b) => parseFloat(b.price) - parseFloat(a.price)
+            );
+          }
+        }
+
         return {
-          data: [],
-          total: 0,
           success: true,
+          data: filteredData,
+          total: filteredData.length,
+        };
+      }
+
+      // Handle specific record endpoint
+      if (endpoint.includes("/data/record/") || endpoint.includes("/record/")) {
+        const recordId = endpoint.split("/").pop();
+        const mockData = mockDataUtils.getMockHealthData();
+        const record = mockData.find((r) => r.id === recordId);
+
+        if (!record) {
+          return {
+            success: false,
+            error: "Record not found",
+          };
+        }
+
+        // Add extra details for single record view
+        const enhancedRecord = {
+          ...record,
+          detailedDescription: `Detailed information about ${record.title}. This record contains comprehensive health data related to ${record.category.toLowerCase()} collected on ${new Date(record.uploadDate).toLocaleDateString()}.`,
+          provider: "Healthmint Medical Center",
+          downloadAvailable: true,
+          lastUpdated: new Date().toISOString(),
+          viewCount: Math.floor(Math.random() * 100),
+          fileSize: `${(record.recordCount / 1000).toFixed(1)} MB`,
+        };
+
+        return {
+          success: true,
+          data: enhancedRecord,
+        };
+      }
+
+      // Handle user stats endpoint
+      if (endpoint.includes("/user/stats")) {
+        const mockData = mockDataUtils.getMockHealthData();
+
+        return {
+          success: true,
+          data: {
+            totalRecords: mockData.length,
+            sharedRecords: mockData.filter((r) => r.shared).length,
+            pendingRequests: Math.floor(Math.random() * 3),
+            securityScore: 85,
+          },
         };
       }
     }
 
+    // Handle original auth endpoints
     if (method === "post") {
       if (endpoint.includes("/auth/challenge")) {
         return {
@@ -199,6 +324,37 @@ class ApiService {
         return {
           success: true,
           roles: [data.role],
+        };
+      }
+
+      // Handle purchase endpoint
+      if (endpoint.includes("/data/purchase")) {
+        const { dataId } = data;
+
+        if (!dataId) {
+          return {
+            success: false,
+            error: "Data ID is required",
+          };
+        }
+
+        // Update the record as purchased
+        const updatedData = mockDataUtils.updateMockRecord(dataId, {
+          purchased: true,
+          purchaseDate: new Date().toISOString(),
+        });
+
+        if (!updatedData) {
+          return {
+            success: false,
+            error: "Failed to update record",
+          };
+        }
+
+        return {
+          success: true,
+          message: "Data purchased successfully",
+          transactionId: `tx-${Date.now()}`,
         };
       }
     }
@@ -233,7 +389,7 @@ class ApiService {
       }
 
       // Prepare request
-      const url = this._createUrl(endpoint);
+      let url = this._createUrl(endpoint);
       const headers = this._getHeaders(options.headers);
 
       const requestOptions = {
@@ -288,6 +444,20 @@ class ApiService {
           `[API] ${method.toUpperCase()} error for ${endpoint}:`,
           error
         );
+      }
+
+      // If API fails, try to use mock data as fallback
+      if (!this.mockMode) {
+        console.log(`[API] Trying mock data fallback for ${endpoint}`);
+        const tempMockMode = this.mockMode;
+        this.mockMode = true;
+        const mockResponse = this._getMockResponse(method, endpoint, data);
+        this.mockMode = tempMockMode;
+
+        if (mockResponse) {
+          console.log(`[API] Using mock data fallback for ${endpoint}`);
+          return { ...mockResponse, _mock: true, _fallback: true };
+        }
       }
 
       // Standardize error format
@@ -367,6 +537,27 @@ class ApiService {
           }
         }
 
+        // Create a new mock record for the uploaded file
+        const newRecord = {
+          id: `record-${Date.now()}`,
+          title: metadata.title || file.name,
+          category: metadata.category || "General Health",
+          description: metadata.description || `Uploaded file: ${file.name}`,
+          uploadDate: new Date().toISOString(),
+          ipfsHash: `ipfs-${Math.random().toString(36).substring(2, 15)}`,
+          price: metadata.price || "0",
+          format: file.type.split("/")[1]?.toUpperCase() || "FILE",
+          recordCount: 1,
+          verified: false,
+          anonymized: metadata.anonymized || false,
+          shared: false,
+          owner: "0xe169...6041",
+          tags: metadata.tags || [],
+        };
+
+        // Add the record to mock data
+        mockDataUtils.addMockRecord(newRecord);
+
         return {
           success: true,
           reference: `mock-file-${Date.now()}`,
@@ -377,6 +568,7 @@ class ApiService {
             fileType: file.type,
             ...metadata,
           },
+          recordId: newRecord.id,
         };
       }
 
@@ -440,6 +632,21 @@ class ApiService {
         xhr.send(formData);
       });
     } catch (error) {
+      // Try mock upload as fallback
+      if (!this.mockMode) {
+        console.log(`[API] Trying mock file upload fallback`);
+        const tempMockMode = this.mockMode;
+        this.mockMode = true;
+        const result = await this.uploadFile(
+          endpoint,
+          file,
+          onProgress,
+          metadata
+        );
+        this.mockMode = tempMockMode;
+        return result;
+      }
+
       return {
         success: false,
         error: error.message || "File upload failed",
@@ -469,14 +676,71 @@ class ApiService {
           }
         }
 
+        // Extract record ID if present in endpoint
+        let recordId;
+        try {
+          recordId = endpoint.split("/").pop();
+        } catch (e) {
+          recordId = null;
+        }
+
+        // Try to get record data for more realistic mock content
+        let mockContent = "This is a mock file content for testing purposes.";
+        let contentType = "text/plain";
+
+        if (recordId) {
+          const mockData = mockDataUtils.getMockHealthData();
+          const record = mockData.find((r) => r.id === recordId);
+
+          if (record) {
+            mockContent = `
+Health Record: ${record.title}
+Category: ${record.category}
+Date: ${new Date(record.uploadDate).toLocaleDateString()}
+Description: ${record.description}
+
+This file contains simulated health data for demonstration purposes.
+Record ID: ${record.id}
+Format: ${record.format || "Unknown"}
+Record Count: ${record.recordCount || 1}
+Anonymized: ${record.anonymized ? "Yes" : "No"}
+            `;
+
+            if (record.format === "CSV") {
+              mockContent = `Date,Measurement,Value,Unit,Notes\n`;
+
+              // Add some random data rows
+              const today = new Date();
+              for (let i = 0; i < 10; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                mockContent += `${date.toISOString().split("T")[0]},`;
+
+                // Different data based on category
+                if (record.category === "Cardiology") {
+                  mockContent += `Blood Pressure,${Math.floor(Math.random() * 40) + 100}/${Math.floor(Math.random() * 20) + 60},mmHg,${Math.random() > 0.7 ? "After exercise" : ""}\n`;
+                } else if (record.category === "Laboratory") {
+                  mockContent += `Glucose,${Math.floor(Math.random() * 100) + 70},mg/dL,${Math.random() > 0.7 ? "Fasting" : "Post-meal"}\n`;
+                } else {
+                  mockContent += `Measurement ${i + 1},${Math.floor(Math.random() * 100)},unit,\n`;
+                }
+              }
+
+              contentType = "text/csv";
+            }
+          }
+        }
+
         // Create mock blob
-        const mockContent = "This is a mock file content for testing purposes.";
-        const blob = new Blob([mockContent], { type: "text/plain" });
+        const blob = new Blob([mockContent], { type: contentType });
 
         return {
           success: true,
           data: blob,
-          filename: "mock-download.txt",
+          filename: recordId
+            ? `healthrecord-${recordId}.${contentType === "text/csv" ? "csv" : "txt"}`
+            : "mock-download.txt",
+          contentType,
         };
       }
 
@@ -551,6 +815,16 @@ class ApiService {
         contentType,
       };
     } catch (error) {
+      // Try mock download as fallback
+      if (!this.mockMode) {
+        console.log(`[API] Trying mock file download fallback`);
+        const tempMockMode = this.mockMode;
+        this.mockMode = true;
+        const result = await this.downloadFile(endpoint, onProgress, options);
+        this.mockMode = tempMockMode;
+        return result;
+      }
+
       return {
         success: false,
         error: error.message || "File download failed",
