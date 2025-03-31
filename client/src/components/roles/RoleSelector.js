@@ -1,4 +1,4 @@
-// client/src/components/roles/RoleSelector.js
+// src/components/roles/RoleSelector.js
 import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -286,47 +286,6 @@ const RoleSelector = () => {
           </div>
 
           {/* Researcher Card */}
-          <div
-            className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
-              selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
-            } ${loading ? "opacity-75 pointer-events-none" : ""}`}
-            onClick={() => !loading && handleRoleSelect("researcher")}
-          >
-            <div className="p-8 flex flex-col items-center gap-4 h-full">
-              <div className="bg-purple-50 p-4 rounded-full">
-                <Microscope className="w-12 h-12 text-purple-500" />
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-800">
-                Researcher
-              </h2>
-              <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
-                Access and analyze anonymized health data for research purposes.
-                Discover patterns, conduct studies, and contribute to medical
-                advancements with blockchain-verified data integrity.
-              </p>
-              <button
-                className={`w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
-                  loading ? "opacity-75 cursor-not-allowed" : ""
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  !loading && handleRoleSelect("researcher");
-                }}
-                disabled={loading}
-                aria-label="Select Researcher Role"
-              >
-                {loading && selectedRole === "researcher" ? (
-                  <>
-                    <Loader className="w-4 h-4 mr-2 animate-spin" />
-                    Setting Researcher Role...
-                  </>
-                ) : (
-                  "Select Researcher Role"
-                )}
-              </button>
-            </div>
-          </div>
-
           <div
             className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
               selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
