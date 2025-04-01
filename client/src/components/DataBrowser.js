@@ -7,6 +7,44 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import DataBrowserView from "./DataBrowserView.js";
 
+if (!hipaaComplianceService.logDataAccess) {
+  hipaaComplianceService.logDataAccess = async function(dataId, purpose, action, metadata = {}) {
+    try {
+      // Create the audit log entry
+      const logEntry = {
+        dataId,
+        purpose,
+        action,
+        timestamp: new Date().toISOString(),
+        userId: metadata.userId || 'unknown',
+        ...metadata,
+      };
+      
+      // Use the createAuditLog method which we know exists
+      await this.createAuditLog('DATA_ACCESS', {
+        dataId,
+        purpose,
+        action,
+        ...metadata,
+        timestamp: new Date().toISOString(),
+      });
+      
+      console.log('[HIPAA] Data access logged:', { 
+        dataId, 
+        action, 
+        purpose,
+        timestamp: logEntry.timestamp
+      });
+      
+      return logEntry;
+    } catch (error) {
+      console.error('[HIPAA] Error logging data access:', error);
+      // Return an empty object instead of throwing to prevent crashes
+      return {};
+    }
+  };
+}
+
 // Categories from backend
 const CATEGORIES = [
   "All",

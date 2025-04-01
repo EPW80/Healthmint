@@ -920,4 +920,71 @@ class HipaaComplianceService {
 
 // Create and export singleton instance
 const hipaaComplianceService = new HipaaComplianceService();
+
+// Emergency patching for direct imports
+// Some components might be importing the service directly rather than using the context
+if (!hipaaComplianceService.logDataAccess) {
+  /**
+   * Log data access for HIPAA compliance
+   * 
+   * @param {string} dataId - ID of the accessed data
+   * @param {string} purpose - Purpose of access
+   * @param {string} action - Type of action (VIEW, DOWNLOAD, etc.)
+   * @param {Object} metadata - Additional metadata for the access log
+   * @returns {Promise<Object>} - The created audit log entry
+   */
+  hipaaComplianceService.logDataAccess = async function(dataId, purpose, action, metadata = {}) {
+    try {
+      // Create the audit log entry
+      const logEntry = {
+        dataId,
+        purpose,
+        action,
+        timestamp: new Date().toISOString(),
+        userId: metadata.userId || 'unknown',
+        ...metadata,
+      };
+      
+      // Use the existing createAuditLog method to log the access
+      await this.createAuditLog('DATA_ACCESS', {
+        dataId,
+        purpose,
+        action,
+        ...metadata,
+        timestamp: new Date().toISOString(),
+      });
+      
+      console.log('[HIPAA] Data access logged:', { 
+        dataId, 
+        action, 
+        purpose,
+        timestamp: logEntry.timestamp
+      });
+      
+      return logEntry;
+    } catch (error) {
+      console.error('[HIPAA] Error logging data access:', error);
+      throw new Error('Failed to log data access for HIPAA compliance');
+    }
+  };
+}
+
+// Ensure required methods exist
+if (!hipaaComplianceService.logFieldAccess) {
+  hipaaComplianceService.logFieldAccess = async function(dataId, fieldPath, purpose) {
+    try {
+      await this.createAuditLog('FIELD_ACCESS', {
+        dataId,
+        fieldPath,
+        purpose,
+        timestamp: new Date().toISOString(),
+      });
+      return true;
+    } catch (error) {
+      console.error('[HIPAA] Error logging field access:', error);
+      return false;
+    }
+  };
+}
+
 export default hipaaComplianceService;

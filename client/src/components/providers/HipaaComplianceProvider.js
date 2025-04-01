@@ -1,6 +1,7 @@
 // src/components/providers/HipaaComplianceProvider.js
 import React, { createContext, useContext } from "react";
 import PropTypes from "prop-types";
+import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import useHipaaCompliance from "../../hooks/useHipaaCompliance.js";
 
 // Create context for HIPAA compliance
@@ -15,6 +16,13 @@ const HipaaComplianceContext = createContext(null);
 export const HipaaComplianceProvider = ({ children, options = {} }) => {
   // Use the hook to get all HIPAA functionality
   const hipaaCompliance = useHipaaCompliance(options);
+
+  // The error suggests that when importing hipaaComplianceService directly in other 
+  // components, the logDataAccess method might not be correctly attached to it
+  // Let's ensure the service itself has the method properly attached
+  if (!hipaaComplianceService.logDataAccess) {
+    hipaaComplianceService.logDataAccess = hipaaCompliance.logDataAccess;
+  }
 
   return (
     <HipaaComplianceContext.Provider value={hipaaCompliance}>
