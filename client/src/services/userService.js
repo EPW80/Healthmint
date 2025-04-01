@@ -15,58 +15,106 @@ class UserService {
 
   async getCurrentUser() {
     try {
-      await authService.ensureValidToken();
-      const response = await apiService.get(`${this.basePath}/profile`);
-
-      // Check if we have a valid response with data
-      if (response && response.data) {
-        // Store the profile in localStorage
-        localStorage.setItem(
-          this.userProfileKey,
-          JSON.stringify(response.data)
-        );
-        return response.data;
-      } else {
-        console.warn("User profile API returned no data");
-
-        // Try to get cached profile as fallback
-        const cachedProfile = localStorage.getItem(this.userProfileKey);
-        if (cachedProfile) {
-          try {
-            return JSON.parse(cachedProfile);
-          } catch (parseError) {
-            console.error("Failed to parse cached profile:", parseError);
-          }
-        }
-
-        // If we reach here, return a minimal valid profile to prevent errors
-        return {
-          name: "",
-          email: "",
-          role: localStorage.getItem("healthmint_user_role") || "",
-          address: localStorage.getItem("healthmint_wallet_address") || "",
-        };
-      }
-    } catch (error) {
-      console.warn("Error fetching current user:", error);
-
-      // Try to get cached profile
+      // Check for cached profile first for faster response
       const cachedProfile = localStorage.getItem(this.userProfileKey);
+      let profile = null;
+
       if (cachedProfile) {
         try {
-          return JSON.parse(cachedProfile);
+          profile = JSON.parse(cachedProfile);
+          console.log("Retrieved cached profile from localStorage");
         } catch (parseError) {
           console.error("Failed to parse cached profile:", parseError);
         }
       }
 
-      // Create minimal profile from localStorage data
-      return {
+      // Try to get fresh data from API
+      try {
+        // Only proceed with API call if we have authentication
+        if (authService.isAuthenticated()) {
+          await authService.ensureValidToken();
+          const response = await apiService.get(`${this.basePath}/profile`);
+
+          // Check if we have a valid response with data
+          if (
+            response &&
+            response.data &&
+            Object.keys(response.data).length > 0
+          ) {
+            // Store the updated profile in localStorage
+            localStorage.setItem(
+              this.userProfileKey,
+              JSON.stringify(response.data)
+            );
+            console.log("Retrieved fresh profile from API");
+            return response.data;
+          } else {
+            console.warn(
+              "User profile API returned no data, using cached or default profile"
+            );
+          }
+        } else {
+          console.warn(
+            "User not authenticated for API call, using cached profile"
+          );
+        }
+      } catch (apiError) {
+        // Log API error but continue with fallback mechanisms
+        console.warn("Error fetching current user from API:", apiError);
+
+        // Log this issue for HIPAA compliance
+        await hipaaComplianceService.createAuditLog("PROFILE_API_ERROR", {
+          error: apiError.message || "Unknown API error",
+          timestamp: new Date().toISOString(),
+          action: "API_FALLBACK",
+        });
+      }
+
+      // If we have a valid cached profile, use it
+      if (profile && Object.keys(profile).length > 0) {
+        return profile;
+      }
+
+      // Get critical data from localStorage and Redux
+      const walletAddress = localStorage.getItem("healthmint_wallet_address");
+      const userRole = localStorage.getItem("healthmint_user_role");
+
+      // If we reach here, create and return a minimal profile
+      const defaultProfile = {
+        name: profile?.name || "",
+        email: profile?.email || "",
+        role: userRole || profile?.role || "",
+        address: walletAddress || profile?.address || "",
+        createdAt: profile?.createdAt || new Date().toISOString(),
+        isDefaultProfile: true, // Flag to indicate this is a fallback profile
+      };
+
+      console.log("Returning default profile due to missing API data");
+
+      // Store this default profile in localStorage to prevent repeated issues
+      localStorage.setItem(this.userProfileKey, JSON.stringify(defaultProfile));
+
+      // Log this fallback for HIPAA compliance
+      await hipaaComplianceService.createAuditLog("DEFAULT_PROFILE_CREATED", {
+        timestamp: new Date().toISOString(),
+        userId: walletAddress || "unknown",
+        action: "CREATE_DEFAULT_PROFILE",
+      });
+
+      return defaultProfile;
+    } catch (error) {
+      console.error("Critical error in getCurrentUser:", error);
+
+      // Create an absolute minimal profile to prevent UI crashes
+      const emergencyProfile = {
         name: "",
         email: "",
         role: localStorage.getItem("healthmint_user_role") || "",
         address: localStorage.getItem("healthmint_wallet_address") || "",
+        isEmergencyProfile: true,
       };
+
+      return emergencyProfile;
     }
   }
 
