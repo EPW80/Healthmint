@@ -186,7 +186,7 @@ export const isUserLikelyLoggedOut = () => {
   return !hasWalletAddress && !hasWalletConnection && !hasUserRole && !hasAuthToken;
 };
 
-export default {
+const authLoopPreventionUtils = {
   resetVerificationAttempts,
   trackVerificationAttempt,
   setupLoopDetection,
@@ -195,3 +195,5 @@ export default {
   performLogout,
   isUserLikelyLoggedOut
 };
+
+export default authLoopPreventionUtils;

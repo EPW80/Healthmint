@@ -82,7 +82,6 @@ const ProtectedRoute = ({
     verifyAuth,
     isNewUser,
     clearVerificationCache,
-    resetVerificationAttempts,
   } = useAuth();
   const isRoleSelected = useSelector(selectIsRoleSelected);
   const userRole = useSelector(selectRole);
@@ -254,6 +253,7 @@ const ProtectedRoute = ({
 
     checkAuth();
   }, [
+    redirectPath,
     bypassAuth,
     isWalletConnected,
     isAuthenticated,
@@ -294,7 +294,7 @@ const ProtectedRoute = ({
 
     const timer = setTimeout(handleEmergency, 8000);
     return () => clearTimeout(timer);
-  }, [isLoading, dispatch, debugId]);
+  }, [isLoading, dispatch, debugId, bypassAuth]);
 
   if (isLoading) {
     return (
