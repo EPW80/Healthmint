@@ -25,6 +25,8 @@ export const handleLogout = async (options = {}) => {
       onLogoutStart();
     }
 
+    console.log("Performing complete logout...");
+
     // Create HIPAA-compliant audit log for logout - with proper error handling
     try {
       await hipaaComplianceService.createAuditLog("USER_LOGOUT", {
@@ -54,7 +56,14 @@ export const handleLogout = async (options = {}) => {
       // Continue with logout process
     }
 
-    // Clear localStorage items - CRITICAL for preventing redirect to role selection
+    // ENHANCED: Clear localStorage completely first
+    try {
+      localStorage.clear();
+    } catch (clearError) {
+      console.error("Error clearing localStorage:", clearError);
+    }
+
+    // Clear critical localStorage items individually as backup
     try {
       // These are the critical items that must be removed
       localStorage.removeItem("healthmint_auth_token");
@@ -69,13 +78,29 @@ export const handleLogout = async (options = {}) => {
       console.error("Local storage clearing error:", storageError);
     }
 
-    // Clear session storage items
+    // ENHANCED: Clear sessionStorage completely
+    try {
+      sessionStorage.clear();
+    } catch (sessionClearError) {
+      console.error("Error clearing sessionStorage:", sessionClearError);
+    }
+
+    // Clear session storage items individually as backup
     try {
       sessionStorage.removeItem("auth_verification_override");
       sessionStorage.removeItem("bypass_registration_check");
       sessionStorage.removeItem("bypass_registration_until");
+      sessionStorage.removeItem("bypass_role_check");
+      sessionStorage.removeItem("temp_selected_role");
     } catch (sessionError) {
       console.error("Session storage clearing error:", sessionError);
+    }
+
+    // ENHANCED: Set a flag to force wallet reconnect on next login
+    try {
+      sessionStorage.setItem("force_wallet_reconnect", "true");
+    } catch (flagError) {
+      console.error("Error setting reconnect flag:", flagError);
     }
 
     // Show notification if requested
@@ -102,8 +127,19 @@ export const handleLogout = async (options = {}) => {
       }
     }
 
-    // Redirect to login page - CRITICAL STEP
-    window.location.replace("/login");
+    // ENHANCED: Give a small delay to ensure state clearing is complete
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // ENHANCED: Redirect to login page - CRITICAL STEP
+    console.log("Redirecting to login page...");
+    window.location.href = "/login";
+
+    // Fallback redirect in case the above doesn't trigger immediately
+    setTimeout(() => {
+      console.log("Fallback redirect triggered");
+      window.location.replace("/login");
+    }, 100);
+
     return true;
   } catch (error) {
     console.error("Logout failed:", error);
@@ -132,13 +168,22 @@ export const handleLogout = async (options = {}) => {
       }
     }
 
-    // Even on error, try to redirect to login page
+    // ENHANCED: Even on error, try to force a clean state and redirect to login page
     try {
-      // Still try to clear role to prevent role selection redirect
+      // Completely clear localStorage and sessionStorage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Still try to specifically clear role to prevent role selection redirect
       localStorage.removeItem("healthmint_user_role");
-      window.location.replace("/login");
+
+      // Force redirect to login
+      window.location.href = "/login";
     } catch (redirectError) {
       console.error("Redirect error:", redirectError);
+
+      // Absolute last resort
+      window.location.href = "/login";
     }
 
     return false;
