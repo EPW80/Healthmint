@@ -27,6 +27,7 @@ import useHipaaFormState from "../hooks/useHipaaFormState.js";
 import useAsyncOperation from "../hooks/useAsyncOperation.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
+
 /**
  * Helper function to deep merge objects with defaults
  * This ensures nested objects are properly merged rather than overwritten
@@ -58,6 +59,75 @@ function deepMerge(defaults, userData) {
 }
 
 /**
+ * Preprocess the profile data to ensure valid values
+ * @param {Object} profile - The profile data to clean
+ * @param {Object} defaultProfile - Default profile for reference
+ * @returns {Object} - Profile data with valid values
+ */
+const preprocessProfileData = (profile, defaultProfile) => {
+  if (!profile) return { ...defaultProfile };
+
+  // Start with a deep copy
+  const cleanProfile = JSON.parse(JSON.stringify(profile));
+
+  // Fix common problem fields
+  if (
+    cleanProfile.age === undefined ||
+    cleanProfile.age === null ||
+    isNaN(cleanProfile.age)
+  ) {
+    cleanProfile.age = "";
+  }
+
+  // Make sure all fields have valid values
+  Object.keys(defaultProfile).forEach((key) => {
+    // Handle undefined or null values
+    if (cleanProfile[key] === undefined || cleanProfile[key] === null) {
+      if (typeof defaultProfile[key] === "number") {
+        cleanProfile[key] = 0;
+      } else if (typeof defaultProfile[key] === "string") {
+        cleanProfile[key] = "";
+      } else if (typeof defaultProfile[key] === "boolean") {
+        cleanProfile[key] = false;
+      } else if (Array.isArray(defaultProfile[key])) {
+        cleanProfile[key] = [];
+      } else if (
+        typeof defaultProfile[key] === "object" &&
+        defaultProfile[key] !== null
+      ) {
+        cleanProfile[key] = { ...defaultProfile[key] };
+      }
+    }
+
+    // Handle NaN values in numeric fields
+    if (typeof cleanProfile[key] === "number" && isNaN(cleanProfile[key])) {
+      cleanProfile[key] = 0;
+    }
+  });
+
+  // Ensure nested objects exist
+  if (!cleanProfile.sharingPreferences) {
+    cleanProfile.sharingPreferences = { ...defaultProfile.sharingPreferences };
+  }
+  if (!cleanProfile.notificationPreferences) {
+    cleanProfile.notificationPreferences = {
+      ...defaultProfile.notificationPreferences,
+    };
+  }
+  if (!cleanProfile.privacyPreferences) {
+    cleanProfile.privacyPreferences = { ...defaultProfile.privacyPreferences };
+  }
+  if (!cleanProfile.emailNotifications) {
+    cleanProfile.emailNotifications = { ...defaultProfile.emailNotifications };
+  }
+  if (!cleanProfile.inAppNotifications) {
+    cleanProfile.inAppNotifications = { ...defaultProfile.inAppNotifications };
+  }
+
+  return cleanProfile;
+};
+
+/**
  * ProfileManager Component
  *
  * A unified profile management interface for both patients and researchers
@@ -71,6 +141,7 @@ const ProfileManager = () => {
 
   // Refs for accessibility
   const saveButtonRef = useRef(null);
+  const profileFetchedRef = useRef(false);
 
   // Image Upload and UI State
   const [previewUrl, setPreviewUrl] = useState(
@@ -84,6 +155,56 @@ const ProfileManager = () => {
   const [error, setError] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
+  // Define comprehensive default values for all required structures
+  const defaultProfile = {
+    // Basic information
+    name: "",
+    email: "",
+    age: "",
+    bio: "",
+
+    // Privacy and sharing preferences with defaults
+    sharingPreferences: {
+      anonymousSharing: true,
+      notifyOnAccess: true,
+      allowDirectContact: false,
+    },
+
+    // Notification preferences with defaults
+    emailNotifications: {
+      dataAccess: true,
+      transactions: true,
+      updates: false,
+    },
+
+    inAppNotifications: {
+      messages: true,
+      dataUpdates: true,
+      announcements: false,
+    },
+
+    notificationPreferences: {
+      accessAlerts: true,
+      transactionAlerts: true,
+      researchUpdates: false,
+      newDatasets: true,
+    },
+
+    // Privacy preferences with defaults
+    privacyPreferences: {
+      publicProfile: false,
+      showInstitution: true,
+    },
+
+    // Researcher-specific fields with defaults
+    ethicsStatement: "",
+    ethicsAgreement: false,
+    institution: "",
+    credentials: "",
+    researchFocus: "",
+    publications: [],
+  };
+
   // Set up the formState with our custom hook
   const {
     formState,
@@ -96,67 +217,33 @@ const ProfileManager = () => {
     getChangedFields,
     initialFormState,
     setInitialFormState,
-  } = useHipaaFormState(
-    {
-      name: userProfile?.name || "",
-      email: userProfile?.email || "",
-      age: userProfile?.age || "",
-      bio: userProfile?.bio || "",
-      sharingPreferences: userProfile?.sharingPreferences || {
-        anonymousSharing: true,
-        notifyOnAccess: true,
-        allowDirectContact: false,
-      },
-      emailNotifications: userProfile?.emailNotifications || {
-        dataAccess: true,
-        transactions: true,
-        updates: false,
-      },
-      inAppNotifications: userProfile?.inAppNotifications || {
-        messages: true,
-        dataUpdates: true,
-        announcements: false,
-      },
-      notificationPreferences: userProfile?.notificationPreferences || {
-        accessAlerts: true,
-        transactionAlerts: true,
-        researchUpdates: false,
-        newDatasets: true,
-      },
-      privacyPreferences: userProfile?.privacyPreferences || {
-        publicProfile: false,
-        showInstitution: true,
-      },
-      ethicsStatement: userProfile?.ethicsStatement || "",
-      ethicsAgreement: userProfile?.ethicsAgreement || false,
-      institution: userProfile?.institution || "",
-      credentials: userProfile?.credentials || "",
-      researchFocus: userProfile?.researchFocus || "",
-      publications: userProfile?.publications || [],
-    },
-    {
-      sanitizeField: (value, fieldName) =>
-        hipaaComplianceService.sanitizeInputValue(value, fieldName),
-      logFieldChange: (fieldName, value, metadata) => {
-        // This is a placeholder for actual field change logging
-        // We don't log the actual values for HIPAA compliance
+    setFormState,
+  } = useHipaaFormState(defaultProfile, {
+    sanitizeField: (value, fieldName) =>
+      hipaaComplianceService.sanitizeInputValue
+        ? hipaaComplianceService.sanitizeInputValue(value, fieldName)
+        : value,
+    logFieldChange: (fieldName, value, metadata) => {
+      // This is a placeholder for actual field change logging
+      // We don't log the actual values for HIPAA compliance
+      if (process.env.NODE_ENV !== "production") {
         console.log(`Field ${fieldName} changed`, metadata);
-      },
-      hipaaService: hipaaComplianceService,
-      userIdentifier: walletAddress,
-      formType: "profile",
-      validate: (values) => {
-        const errors = {};
-        if (!values.name) {
-          errors.name = "Name is required";
-        }
-        if (values.email && !/\S+@\S+\.\S+/.test(values.email)) {
-          errors.email = "Please enter a valid email address";
-        }
-        return errors;
-      },
-    }
-  );
+      }
+    },
+    hipaaService: hipaaComplianceService,
+    userIdentifier: walletAddress,
+    formType: "profile",
+    validate: (values) => {
+      const errors = {};
+      if (!values.name) {
+        errors.name = "Name is required";
+      }
+      if (values.email && !/\S+@\S+\.\S+/.test(values.email)) {
+        errors.email = "Please enter a valid email address";
+      }
+      return errors;
+    },
+  });
 
   // Use our async operation hook for profile operations
   const { loading, execute: executeAsync } = useAsyncOperation({
@@ -200,10 +287,14 @@ const ProfileManager = () => {
 
   // Load user profile data on mount with proper sanitization
   useEffect(() => {
+    // Only run this effect once
+    if (profileFetchedRef.current) return;
+
     const fetchUserProfile = async () => {
       try {
         setInitialLoading(true);
         setError(null);
+        profileFetchedRef.current = true;
 
         // Create HIPAA-compliant audit log for profile access with enhanced metadata
         await hipaaComplianceService.createAuditLog("PROFILE_ACCESS", {
@@ -219,58 +310,11 @@ const ProfileManager = () => {
         const profile = await userService.getCurrentUser();
 
         if (profile) {
-          // Define comprehensive default values for all required structures
-          const defaultProfile = {
-            // Basic information
-            name: "",
-            email: "",
-            age: "",
-            bio: "",
-
-            // Privacy and sharing preferences with defaults
-            sharingPreferences: {
-              anonymousSharing: true,
-              notifyOnAccess: true,
-              allowDirectContact: false,
-            },
-
-            // Notification preferences with defaults
-            emailNotifications: {
-              dataAccess: true,
-              transactions: true,
-              updates: false,
-            },
-
-            inAppNotifications: {
-              messages: true,
-              dataUpdates: true,
-              announcements: false,
-            },
-
-            notificationPreferences: {
-              accessAlerts: true,
-              transactionAlerts: true,
-              researchUpdates: false,
-              newDatasets: true,
-            },
-
-            // Privacy preferences with defaults
-            privacyPreferences: {
-              publicProfile: false,
-              showInstitution: true,
-            },
-
-            // Researcher-specific fields with defaults
-            ethicsStatement: "",
-            ethicsAgreement: false,
-            institution: "",
-            credentials: "",
-            researchFocus: "",
-            publications: [],
-          };
+          // Preprocess the profile to ensure valid values
+          const cleanProfile = preprocessProfileData(profile, defaultProfile);
 
           // Merge profile data with defaults using deep merge to handle nested objects
-          const mergedProfile = deepMerge(defaultProfile, profile);
+          const mergedProfile = deepMerge(defaultProfile, cleanProfile);
 
           // Log the profile structure for debugging (DEVELOPMENT ONLY)
           if (process.env.NODE_ENV !== "production") {
@@ -284,13 +328,12 @@ const ProfileManager = () => {
           }
 
           // Sanitize the profile data before setting in state
-          const sanitizedProfile = hipaaComplianceService.sanitizeData(
-            mergedProfile,
-            {
-              accessPurpose: "Initial Profile Load",
-              dataSource: "API",
-            }
-          );
+          const sanitizedProfile = hipaaComplianceService.sanitizeData
+            ? hipaaComplianceService.sanitizeData(mergedProfile, {
+                accessPurpose: "Initial Profile Load",
+                dataSource: "API",
+              })
+            : mergedProfile;
 
           // Update initial form state with sanitized data
           setInitialFormState(sanitizedProfile);
@@ -308,23 +351,9 @@ const ProfileManager = () => {
             action: "FALLBACK_TO_DEFAULTS",
           });
 
-          // Use a default profile with minimal information
-          const defaultEmptyProfile = {
-            name: "",
-            email: "",
-            sharingPreferences: {
-              anonymousSharing: true,
-              notifyOnAccess: true,
-              allowDirectContact: false,
-            },
-            notificationPreferences: {
-              accessAlerts: true,
-              transactionAlerts: true,
-            },
-          };
-
-          setInitialFormState(defaultEmptyProfile);
-          resetForm(defaultEmptyProfile);
+          // Use default profile
+          setInitialFormState(defaultProfile);
+          resetForm(defaultProfile);
 
           // Show a non-blocking warning to the user
           dispatch(
@@ -362,23 +391,19 @@ const ProfileManager = () => {
           })
         );
 
-        // Use a minimal default profile despite the error
-        const fallbackProfile = {
-          name: "",
-          email: "",
-          sharingPreferences: { anonymousSharing: true, notifyOnAccess: true },
-          notificationPreferences: { accessAlerts: true },
-        };
-
-        setInitialFormState(fallbackProfile);
-        resetForm(fallbackProfile);
+        // Use default profile despite the error
+        setInitialFormState(defaultProfile);
+        resetForm(defaultProfile);
       } finally {
         setInitialLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [dispatch, walletAddress, userRole, setInitialFormState, resetForm]);
+    // We intentionally use an empty dependency array to ensure this only runs once
+    // The profileFetchedRef ensures we don't run this multiple times
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle publication changes
   const handlePublicationChange = useCallback(
@@ -470,7 +495,7 @@ const ProfileManager = () => {
       if (privacyChanged || sharingChanged) {
         // Verify or request consent with enhanced metadata
         const consentResult = await hipaaComplianceService.verifyConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          hipaaComplianceService.CONSENT_TYPES?.DATA_SHARING || "data_sharing",
           {
             userId: walletAddress,
             timestamp: new Date().toISOString(),
@@ -489,7 +514,7 @@ const ProfileManager = () => {
 
         // Record explicit consent
         await hipaaComplianceService.recordConsent(
-          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+          hipaaComplianceService.CONSENT_TYPES?.DATA_SHARING || "data_sharing",
           true,
           {
             userId: walletAddress,
@@ -510,6 +535,22 @@ const ProfileManager = () => {
   }, [formState, initialFormState, walletAddress]);
 
   const handleSaveProfile = async () => {
+    // Check formState directly for NaN values and fix them
+    const checkFormForNaN = (form) => {
+      const fixedForm = { ...form };
+      if (
+        fixedForm.age === undefined ||
+        fixedForm.age === null ||
+        isNaN(fixedForm.age)
+      ) {
+        fixedForm.age = "";
+      }
+      return fixedForm;
+    };
+
+    // Fix any NaN values right before validation
+    setFormState(checkFormForNaN(formState));
+
     // Use our validateForm method from the form hook
     const isValid = validateForm();
     if (!isValid) {
@@ -554,11 +595,13 @@ const ProfileManager = () => {
       });
 
       // Apply consistent sanitization before any data transmission
-      const sanitizedData = hipaaComplianceService.sanitizeData(formState, {
-        excludeFields: ["password", "walletType", "securityQuestions"],
-        accessPurpose: "Profile Update Submission",
-        includeAuditMetadata: true,
-      });
+      const sanitizedData = hipaaComplianceService.sanitizeData
+        ? hipaaComplianceService.sanitizeData(formState, {
+            excludeFields: ["password", "walletType", "securityQuestions"],
+            accessPurpose: "Profile Update Submission",
+            includeAuditMetadata: true,
+          })
+        : formState;
 
       const updatedProfile = {
         ...userProfile,
@@ -725,7 +768,7 @@ const ProfileManager = () => {
                   id="name"
                   name="name"
                   type="text"
-                  value={formState.name}
+                  value={formState.name || ""}
                   onChange={handleChange}
                   className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                     errors.name ? "border-red-300" : ""
@@ -752,7 +795,7 @@ const ProfileManager = () => {
                   id="email"
                   name="email"
                   type="email"
-                  value={formState.email}
+                  value={formState.email || ""}
                   onChange={handleChange}
                   className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                     errors.email ? "border-red-300" : ""
@@ -784,11 +827,27 @@ const ProfileManager = () => {
                   <input
                     id="age"
                     name="age"
-                    type="number"
-                    value={formState.age}
-                    onChange={handleChange}
+                    type="text" // Using text type to avoid browser validation issues
+                    value={
+                      formState.age === null ||
+                      formState.age === undefined ||
+                      isNaN(formState.age)
+                        ? ""
+                        : formState.age
+                    }
+                    onChange={(e) => {
+                      // Only allow numeric values
+                      const value = e.target.value;
+                      if (value === "" || /^\d+$/.test(value)) {
+                        handleChange({
+                          target: {
+                            name: "age",
+                            value: value === "" ? "" : value,
+                          },
+                        });
+                      }
+                    }}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    min="0"
                     aria-label="Age"
                     aria-describedby={
                       userRole === "patient" ? "age-hint" : undefined

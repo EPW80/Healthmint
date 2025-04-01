@@ -18,23 +18,55 @@ class UserService {
       await authService.ensureValidToken();
       const response = await apiService.get(`${this.basePath}/profile`);
 
+      // Check if we have a valid response with data
       if (response && response.data) {
+        // Store the profile in localStorage
         localStorage.setItem(
           this.userProfileKey,
           JSON.stringify(response.data)
         );
+        return response.data;
+      } else {
+        console.warn("User profile API returned no data");
+
+        // Try to get cached profile as fallback
+        const cachedProfile = localStorage.getItem(this.userProfileKey);
+        if (cachedProfile) {
+          try {
+            return JSON.parse(cachedProfile);
+          } catch (parseError) {
+            console.error("Failed to parse cached profile:", parseError);
+          }
+        }
+
+        // If we reach here, return a minimal valid profile to prevent errors
+        return {
+          name: "",
+          email: "",
+          role: localStorage.getItem("healthmint_user_role") || "",
+          address: localStorage.getItem("healthmint_wallet_address") || "",
+        };
       }
-      return response.data;
     } catch (error) {
+      console.warn("Error fetching current user:", error);
+
+      // Try to get cached profile
       const cachedProfile = localStorage.getItem(this.userProfileKey);
       if (cachedProfile) {
-        return JSON.parse(cachedProfile);
+        try {
+          return JSON.parse(cachedProfile);
+        } catch (parseError) {
+          console.error("Failed to parse cached profile:", parseError);
+        }
       }
-      throw errorHandlingService.handleError(error, {
-        code: "USER_PROFILE_ERROR",
-        context: "User Profile",
-        userVisible: false,
-      });
+
+      // Create minimal profile from localStorage data
+      return {
+        name: "",
+        email: "",
+        role: localStorage.getItem("healthmint_user_role") || "",
+        address: localStorage.getItem("healthmint_wallet_address") || "",
+      };
     }
   }
 
@@ -111,9 +143,27 @@ class UserService {
         `${this.basePath}/profile`,
         sanitizedData
       );
-      localStorage.setItem(this.userProfileKey, JSON.stringify(response.data));
-      return response.data;
+
+      // Ensure we have a valid response before storing it
+      if (response && response.data) {
+        localStorage.setItem(
+          this.userProfileKey,
+          JSON.stringify(response.data)
+        );
+        return response.data;
+      }
+
+      // If API returns no data, update localStorage and return input data
+      localStorage.setItem(this.userProfileKey, JSON.stringify(sanitizedData));
+      return sanitizedData;
     } catch (error) {
+      // On error, still update localStorage to ensure data isn't lost
+      try {
+        localStorage.setItem(this.userProfileKey, JSON.stringify(profileData));
+      } catch (storageError) {
+        console.error("Failed to update local profile:", storageError);
+      }
+
       throw errorHandlingService.handleError(error, {
         code: "PROFILE_UPDATE_ERROR",
         context: "User Profile",

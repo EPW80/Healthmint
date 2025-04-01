@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useDispatch } from "react-redux";
-import apiService from "../services/apiService";
-import { addNotification } from "../redux/slices/notificationSlice";
-import generateMockHealthRecords from "../mockData/mockHealthRecords";
+import apiService from "../services/apiService.js";
+import { addNotification } from "../redux/slices/notificationSlice.js";
+import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
 
 /**
  * Custom hook for managing health data with fallback to mock data

@@ -1,5 +1,6 @@
 // src/components/roles/RoleSelector.js
 import React, { useState, useEffect, useCallback } from "react";
+import LogoutButton from "../LogoutButton.js";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { User, Microscope, Loader } from "lucide-react";
@@ -10,6 +11,7 @@ import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
 import WalletErrorNotification from "../WalletErrorNotification.js";
+
 
 /**
  * Role Selector Component with improved navigation
@@ -226,6 +228,14 @@ const RoleSelector = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      {/* Add Logout Button in the header area */}
+      <div className="absolute top-4 right-4">
+        <LogoutButton 
+          variant="text" 
+          size="sm" 
+          className="text-gray-600 hover:text-gray-800" 
+        />
+      </div>
       {/* Error notification popup */}
       {error && error.includes("Wallet address not found") && (
         <WalletErrorNotification
@@ -235,7 +245,6 @@ const RoleSelector = () => {
           autoRedirect={false}
         />
       )}
-
       <div className="max-w-4xl w-full">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2">Choose Your Role</h1>
