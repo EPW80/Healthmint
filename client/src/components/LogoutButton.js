@@ -5,6 +5,9 @@ import { LogOut } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { performLogout } from "../utils/authLoopPrevention.js";
+import { clearWalletConnection } from "../redux/slices/walletSlice.js";
+import { clearRole } from "../redux/slices/roleSlice.js";
+import { clearUserProfile } from "../redux/slices/userSlice.js";
 import LoadingSpinner from "./ui/LoadingSpinner";
 
 /**
@@ -40,6 +43,19 @@ const LogoutButton = ({
     text: "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
   };
 
+  // Determine the appropriate spinner color based on the button variant
+  const getSpinnerColor = () => {
+    switch (variant) {
+      case "primary":
+      case "danger":
+        return "white"; // Use white spinner for dark backgrounds
+      case "secondary":
+      case "text":
+      default:
+        return "gray"; // Use gray spinner for light backgrounds
+    }
+  };
+
   const baseClasses =
     "rounded-lg font-medium inline-flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500";
   const buttonClasses = `${baseClasses} ${sizeClasses[size] || sizeClasses.md} ${variantClasses[variant] || variantClasses.primary} ${className}`;
@@ -65,8 +81,18 @@ const LogoutButton = ({
         })
       );
 
-      // Use our enhanced logout function
-      await performLogout();
+      // Clear Redux state before redirecting
+      dispatch(clearWalletConnection());
+      dispatch(clearRole());
+      dispatch(clearUserProfile());
+
+      // Use our enhanced logout function with all options enabled
+      await performLogout({
+        redirectToLogin: true,
+        clearLocalStorage: true,
+        clearSessionStorage: true,
+        useHardRedirect: true,
+      });
 
       // We won't reach this point because performLogout redirects,
       // but we'll include it for completeness
@@ -90,7 +116,11 @@ const LogoutButton = ({
     >
       {loading ? (
         <>
-          <LoadingSpinner size="small" color="currentColor" className="mr-2" />
+          <LoadingSpinner
+            size="small"
+            color={getSpinnerColor()}
+            className="mr-2"
+          />
           <span>Logging out...</span>
         </>
       ) : (

@@ -86,6 +86,17 @@ export const setupLoopDetection = (onLoopDetected) => {
  */
 export const forceRedirectToLogin = () => {
   // Clear all auth-related localStorage and sessionStorage
+  clearAuthStorage();
+
+  // Force a clean redirect to login page
+  window.location.replace("/login");
+};
+
+/**
+ * Clears all authentication-related storage
+ */
+export const clearAuthStorage = () => {
+  // Clear all authentication-related localStorage
   localStorage.removeItem("healthmint_auth_token");
   localStorage.removeItem("healthmint_refresh_token");
   localStorage.removeItem("healthmint_token_expiry");
@@ -94,49 +105,59 @@ export const forceRedirectToLogin = () => {
   localStorage.removeItem("healthmint_user_role");
   localStorage.removeItem("healthmint_wallet_connection");
   localStorage.removeItem("healthmint_wallet_address");
+  localStorage.removeItem("healthmint_wallet_state");
+  localStorage.removeItem("healthmint_favorite_datasets");
+  localStorage.removeItem("healthmint_consent_history");
 
-  // Clear session flags
+  // Clear all authentication-related sessionStorage
   sessionStorage.removeItem("auth_verification_override");
   sessionStorage.removeItem("bypass_registration_check");
   sessionStorage.removeItem("bypass_registration_until");
-
-  // Redirect to login page
-  window.location.href = "/login";
+  sessionStorage.removeItem("bypass_route_protection");
+  sessionStorage.removeItem("bypass_role_check");
+  sessionStorage.removeItem("temp_selected_role");
+  
+  // Set a flag to force wallet reconnect on next login
+  sessionStorage.setItem("force_wallet_reconnect", "true");
 };
 
 /**
  * Complete logout process with reliable redirection to login
+ * @param {Object} options - Optional settings
+ * @returns {Promise<boolean>} - Whether logout was successful
  */
-export const performLogout = async () => {
+export const performLogout = async (options = {}) => {
   try {
+    const {
+      useHardRedirect = true,
+      clearTimeout: shouldClearTimeout = true,
+    } = options;
+    
+    console.log("Performing complete logout...");
+
     // Clear timeout to avoid interference
-    if (loopTimeoutId) {
+    if (shouldClearTimeout && loopTimeoutId) {
       clearTimeout(loopTimeoutId);
       loopTimeoutId = null;
     }
 
-    // First, clear all role-related data
-    localStorage.removeItem("healthmint_user_role");
-
-    // Clear session flags that might interfere with login flow
-    sessionStorage.removeItem("auth_verification_override");
-    sessionStorage.removeItem("bypass_registration_check");
-    sessionStorage.removeItem("bypass_registration_until");
-
-    // Clear other auth data
-    localStorage.removeItem("healthmint_auth_token");
-    localStorage.removeItem("healthmint_refresh_token");
-    localStorage.removeItem("healthmint_token_expiry");
-    localStorage.removeItem("healthmint_user_profile");
-    localStorage.removeItem("healthmint_is_new_user");
-    localStorage.removeItem("healthmint_wallet_connection");
-    localStorage.removeItem("healthmint_wallet_address");
+    // Clear all authentication storage
+    clearAuthStorage();
 
     // Reset verification counter
     resetVerificationAttempts();
 
-    // Hard redirect to login page to avoid router issues
-    window.location.href = "/login";
+    // Add a small delay to ensure state clearing completes
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Redirect to login page
+    if (useHardRedirect) {
+      // Hard redirect to completely reset application state
+      window.location.replace("/login");
+    } else {
+      // Use standard redirect
+      window.location.href = "/login";
+    }
 
     return true;
   } catch (error) {
@@ -148,10 +169,29 @@ export const performLogout = async () => {
   }
 };
 
+/**
+ * Check if user is likely to be logged out based on state
+ * This helps prevent authentication loops by detecting missing auth state
+ * 
+ * @returns {boolean} - Whether user appears to be logged out
+ */
+export const isUserLikelyLoggedOut = () => {
+  // Check for critical auth items
+  const hasWalletAddress = Boolean(localStorage.getItem("healthmint_wallet_address"));
+  const hasWalletConnection = localStorage.getItem("healthmint_wallet_connection") === "true";
+  const hasUserRole = Boolean(localStorage.getItem("healthmint_user_role"));
+  const hasAuthToken = Boolean(localStorage.getItem("healthmint_auth_token"));
+  
+  // If all major auth items are missing, user is likely logged out
+  return !hasWalletAddress && !hasWalletConnection && !hasUserRole && !hasAuthToken;
+};
+
 export default {
   resetVerificationAttempts,
   trackVerificationAttempt,
   setupLoopDetection,
   forceRedirectToLogin,
+  clearAuthStorage,
   performLogout,
+  isUserLikelyLoggedOut
 };

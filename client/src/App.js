@@ -95,56 +95,112 @@ const App = () => {
 
   // Render development tools in non-production environments
   const renderDevTools = () => {
-    if (process.env.NODE_ENV !== "production") {
-      return (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            zIndex: 9999,
-            background: "#f0f0f0",
-            padding: "10px",
-            borderRadius: "5px",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-          }}
-        >
-          <button
-            onClick={toggleMockData}
-            style={{
-              padding: "5px 10px",
-              backgroundColor: mockDataEnabled ? "#d32f2f" : "#4a90e2",
-              color: "white",
-              border: "none",
-              borderRadius: "3px",
-              cursor: "pointer",
-            }}
-          >
-            {mockDataEnabled ? "Disable Mock Data" : "Enable Mock Data"}
-          </button>
+    // Skip rendering entirely in production
+    if (process.env.NODE_ENV === "production") {
+      return null;
+    }
 
-          {mockDataEnabled && (
-            <button
-              onClick={resetMockData}
+    // State to track if panel is expanded
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          zIndex: 9999,
+          background: isExpanded ? "#f0f0f0" : "transparent",
+          padding: isExpanded ? "10px" : "0",
+          borderRadius: "5px",
+          boxShadow: isExpanded ? "0 2px 5px rgba(0,0,0,0.2)" : "none",
+          transition: "all 0.3s ease",
+        }}
+      >
+        {/* Collapsible panel content */}
+        {isExpanded ? (
+          <>
+            <div
               style={{
-                padding: "5px 10px",
-                backgroundColor: "#388e3c",
-                color: "white",
-                border: "none",
-                borderRadius: "3px",
-                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "8px",
               }}
             >
-              Reset Mock Data
-            </button>
-          )}
-        </div>
-      );
-    }
-    return null;
+              <span style={{ fontWeight: "bold" }}>Dev Tools</span>
+              <button
+                onClick={() => setIsExpanded(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  padding: "0 5px",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              <button
+                onClick={toggleMockData}
+                style={{
+                  padding: "5px 10px",
+                  backgroundColor: mockDataEnabled ? "#d32f2f" : "#4a90e2",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "3px",
+                  cursor: "pointer",
+                }}
+              >
+                {mockDataEnabled ? "Disable Mock Data" : "Enable Mock Data"}
+              </button>
+
+              {mockDataEnabled && (
+                <button
+                  onClick={resetMockData}
+                  style={{
+                    padding: "5px 10px",
+                    backgroundColor: "#388e3c",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "3px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Reset Mock Data
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          // Collapsed state - just show an icon
+          <button
+            onClick={() => setIsExpanded(true)}
+            style={{
+              width: "30px",
+              height: "30px",
+              borderRadius: "50%",
+              backgroundColor: "#4a90e2",
+              color: "white",
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              fontSize: "14px",
+              opacity: 0.7,
+            }}
+            title="Dev Tools"
+          >
+            ⚙️
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
