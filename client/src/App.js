@@ -21,6 +21,9 @@ const App = () => {
     apiService.isMockDataEnabled?.() || false
   );
 
+  // Move this state up to the component level
+  const [isDevToolsExpanded, setIsDevToolsExpanded] = useState(false);
+
   // Get the user ID for HIPAA logging from localStorage - fallback to anonymous
   const userIdentifier =
     localStorage.getItem("healthmint_wallet_address") || "anonymous";
@@ -100,9 +103,7 @@ const App = () => {
       return null;
     }
 
-    // State to track if panel is expanded
-    const [isExpanded, setIsExpanded] = useState(false);
-
+    // Use the state from the component level instead of creating new state here
     return (
       <div
         style={{
@@ -110,15 +111,15 @@ const App = () => {
           bottom: "20px",
           right: "20px",
           zIndex: 9999,
-          background: isExpanded ? "#f0f0f0" : "transparent",
-          padding: isExpanded ? "10px" : "0",
+          background: isDevToolsExpanded ? "#f0f0f0" : "transparent",
+          padding: isDevToolsExpanded ? "10px" : "0",
           borderRadius: "5px",
-          boxShadow: isExpanded ? "0 2px 5px rgba(0,0,0,0.2)" : "none",
+          boxShadow: isDevToolsExpanded ? "0 2px 5px rgba(0,0,0,0.2)" : "none",
           transition: "all 0.3s ease",
         }}
       >
         {/* Collapsible panel content */}
-        {isExpanded ? (
+        {isDevToolsExpanded ? (
           <>
             <div
               style={{
@@ -129,7 +130,7 @@ const App = () => {
             >
               <span style={{ fontWeight: "bold" }}>Dev Tools</span>
               <button
-                onClick={() => setIsExpanded(false)}
+                onClick={() => setIsDevToolsExpanded(false)}
                 style={{
                   background: "none",
                   border: "none",
@@ -179,7 +180,7 @@ const App = () => {
         ) : (
           // Collapsed state - just show an icon
           <button
-            onClick={() => setIsExpanded(true)}
+            onClick={() => setIsDevToolsExpanded(true)}
             style={{
               width: "30px",
               height: "30px",
