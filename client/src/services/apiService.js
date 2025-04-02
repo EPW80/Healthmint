@@ -164,15 +164,10 @@ class ApiService {
     }
 
     if (!response.ok) {
-      throw {
-        status: response.status,
-        statusText: response.statusText,
-        message:
-          data?.message || `Request failed with status ${response.status}`,
-        data,
-      };
+      throw new Error(
+        data?.message || `Request failed with status ${response.status}`
+      );
     }
-
     return { data, status: response.status, headers: response.headers };
   }
 
@@ -754,10 +749,7 @@ Anonymized: ${record.anonymized ? "Yes" : "No"}
       });
 
       if (!response.ok) {
-        throw {
-          status: response.status,
-          message: `Download failed: ${response.statusText}`,
-        };
+        throw new Error("Network error during upload");
       }
 
       // Get content length for progress tracking

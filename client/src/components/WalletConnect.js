@@ -113,12 +113,11 @@ const WalletConnect = ({ onConnect }) => {
       if (walletResult && walletResult.success) {
         console.log("WalletConnect: Wallet connected successfully");
 
+        const walletAddress = walletResult.address;
+
         // Save wallet address to localStorage immediately after successful connection
-        if (walletResult.address) {
-          localStorage.setItem(
-            "healthmint_wallet_address",
-            walletResult.address
-          );
+        if (walletAddress) {
+          localStorage.setItem("healthmint_wallet_address", walletAddress);
           localStorage.setItem("healthmint_wallet_connection", "true");
         }
 
@@ -132,7 +131,8 @@ const WalletConnect = ({ onConnect }) => {
         );
 
         // Then handle authentication and user state
-        const authResult = await login();
+        // FIXED: Pass wallet address to login function
+        const authResult = await login(walletAddress);
 
         if (authResult && authResult.success) {
           console.log("WalletConnect: Authentication successful");
