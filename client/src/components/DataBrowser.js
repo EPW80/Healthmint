@@ -6,6 +6,7 @@ import useHealthData from "../hooks/useHealthData.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import DataBrowserView from "./DataBrowserView.js";
+import PaymentModal from "./PaymentModal.js";
 
 if (!hipaaComplianceService.logDataAccess) {
   hipaaComplianceService.logDataAccess = async function(dataId, purpose, action, metadata = {}) {
@@ -149,6 +150,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [consentsHistory, setConsentsHistory] = useState([]);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedDatasetForPurchase, setSelectedDatasetForPurchase] = useState(null);
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -363,11 +366,22 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const purchaseDatasetImpl = useCallback(
     async (id, consentVerified = false) => {
       try {
+        // Find the dataset to purchase
+        const datasetToPurchase = healthData.find(dataset => dataset.id === id);
+        
+        if (!datasetToPurchase) {
+          throw new Error("Dataset not found");
+        }
+        
+        // Open the payment modal instead of proceeding with direct purchase
+        setSelectedDatasetForPurchase(datasetToPurchase);
+        setIsPaymentModalOpen(true);
+        
         // Log action for HIPAA compliance with comprehensive details
         await hipaaComplianceService.logDataAccess(
           id,
-          "Purchasing dataset for research/personal health records",
-          "PURCHASE",
+          "Initiating purchase flow for dataset",
+          "PURCHASE_INITIATED",
           {
             userRole,
             userId,
@@ -376,73 +390,34 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             ipAddress: "client", // Server will log actual IP
             datasetInfo: {
               category:
-                healthData.find((d) => d.id === id)?.category || "Unknown",
-              price: healthData.find((d) => d.id === id)?.price || "Unknown",
+                datasetToPurchase.category || "Unknown",
+              price: datasetToPurchase.price || "Unknown",
               anonymized:
-                healthData.find((d) => d.id === id)?.anonymized || false,
-            },
-            transactionId: `tx-${Date.now()}-${Math.floor(
-              Math.random() * 1000
-            )}`,
+                datasetToPurchase.anonymized || false,
+            }
           }
         );
-
-        // Purchase data
-        await purchaseData(id);
-
-        // Record this purchase in the consent history for future reference
-        const updatedHistory = [
-          ...consentsHistory,
-          {
-            consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-            timestamp: new Date().toISOString(),
-            consentGiven: true,
-            purpose: "Dataset purchase confirmation",
-            datasetId: id,
-            actionType: "PURCHASE_COMPLETED",
-          },
-        ];
-        setConsentsHistory(updatedHistory);
-
-        dispatch(
-          addNotification({
-            type: "success",
-            message: "Dataset purchased successfully!",
-          })
-        );
-
-        if (onPurchase) {
-          onPurchase(id);
-        }
       } catch (err) {
-        console.error("Purchase error:", err);
+        console.error("Purchase initiation error:", err);
 
         // Log purchase failure for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_FAILED", {
+        await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_INIT_FAILED", {
           datasetId: id,
           timestamp: new Date().toISOString(),
           userId,
           userRole,
-          errorMessage: err.message || "Unknown purchase error",
+          errorMessage: err.message || "Unknown error initiating purchase",
         });
 
         dispatch(
           addNotification({
             type: "error",
-            message: "Failed to purchase dataset. Please try again.",
+            message: "Failed to initiate dataset purchase. Please try again.",
           })
         );
       }
     },
-    [
-      purchaseData,
-      dispatch,
-      onPurchase,
-      consentsHistory,
-      healthData,
-      userId,
-      userRole,
-    ]
+    [dispatch, healthData, userId, userRole]
   );
 
   // Request and verify consent for data access
@@ -605,6 +580,68 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       }
     },
     [dispatch, requestAndVerifyConsent, purchaseDatasetImpl]
+  );
+
+  const handlePurchaseComplete = useCallback(
+    async (purchaseData) => {
+      try {
+        // Log successful purchase for HIPAA compliance
+        await hipaaComplianceService.logDataAccess(
+          purchaseData.datasetId,
+          "Dataset purchase completed successfully",
+          "PURCHASE_COMPLETED",
+          {
+            userRole,
+            userId,
+            timestamp: new Date().toISOString(),
+            transactionHash: purchaseData.transactionHash,
+            price: purchaseData.price
+          }
+        );
+
+        // Close the payment modal
+        setIsPaymentModalOpen(false);
+        
+        // Record this purchase in the consent history for future reference
+        const updatedHistory = [
+          ...consentsHistory,
+          {
+            consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+            timestamp: new Date().toISOString(),
+            consentGiven: true,
+            purpose: "Dataset purchase confirmation",
+            datasetId: purchaseData.datasetId,
+            actionType: "PURCHASE_COMPLETED",
+          },
+        ];
+        setConsentsHistory(updatedHistory);
+
+        // Call the purchase complete callback
+        if (purchaseData) {
+          await purchaseData(purchaseData.datasetId);
+        }
+
+        dispatch(
+          addNotification({
+            type: "success",
+            message: "Dataset purchased successfully!",
+          })
+        );
+
+        if (onPurchase) {
+          onPurchase(purchaseData.datasetId);
+        }
+      } catch (err) {
+        console.error("Purchase completion error:", err);
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Error completing purchase. Please contact support.",
+          })
+        );
+      }
+    },
+    [consentsHistory, dispatch, onPurchase, purchaseData, userId, userRole]
   );
 
   // Handle consent approval from modal
@@ -978,6 +1015,15 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         studyTypes={STUDY_TYPES}
         dataFormats={DATA_FORMATS}
         consentVerified={consentVerified}
+      />
+
+      {/* Add the PaymentModal component */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        dataset={selectedDatasetForPurchase}
+        onPurchaseComplete={handlePurchaseComplete}
+        walletAddress={userId}
       />
 
       {/* Render consent modal when needed */}
