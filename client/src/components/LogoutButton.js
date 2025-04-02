@@ -1,4 +1,3 @@
-// client/src/components/LogoutButton.js
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { LogOut } from "lucide-react";
@@ -23,19 +22,17 @@ const LogoutButton = ({
   showIcon = true,
   confirmLogout = false,
   className = "",
-  ...props
+  ...rest
 }) => {
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
 
-  // Button size classes
   const sizeClasses = {
     sm: "px-2 py-1 text-sm",
     md: "px-4 py-2",
     lg: "px-6 py-2.5 text-lg",
   };
 
-  // Button variant classes
   const variantClasses = {
     primary: "bg-blue-600 hover:bg-blue-700 text-white",
     secondary: "bg-gray-200 hover:bg-gray-300 text-gray-800",
@@ -43,16 +40,15 @@ const LogoutButton = ({
     text: "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
   };
 
-  // Determine the appropriate spinner color based on the button variant
   const getSpinnerColor = () => {
     switch (variant) {
       case "primary":
       case "danger":
-        return "white"; // Use white spinner for dark backgrounds
+        return "white";
       case "secondary":
       case "text":
       default:
-        return "gray"; // Use gray spinner for light backgrounds
+        return "gray";
     }
   };
 
@@ -60,19 +56,13 @@ const LogoutButton = ({
     "rounded-lg font-medium inline-flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500";
   const buttonClasses = `${baseClasses} ${sizeClasses[size] || sizeClasses.md} ${variantClasses[variant] || variantClasses.primary} ${className}`;
 
-  /**
-   * Handle logout click with confirmation option
-   */
   const handleLogout = async () => {
-    if (confirmLogout) {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-      if (!confirmed) return;
-    }
+    if (confirmLogout && !window.confirm("Are you sure you want to log out?"))
+      return;
 
     try {
       setLoading(true);
 
-      // Show notification first before redirect
       dispatch(
         addNotification({
           type: "info",
@@ -81,12 +71,10 @@ const LogoutButton = ({
         })
       );
 
-      // Clear Redux state before redirecting
       dispatch(clearWalletConnection());
       dispatch(clearRole());
       dispatch(clearUserProfile());
 
-      // Use our enhanced logout function with all options enabled
       await performLogout({
         redirectToLogin: true,
         clearLocalStorage: true,
@@ -94,14 +82,10 @@ const LogoutButton = ({
         useHardRedirect: true,
       });
 
-      // We won't reach this point because performLogout redirects,
-      // but we'll include it for completeness
-      setLoading(false);
+      setLoading(false); // Will not be hit if performLogout redirects
     } catch (error) {
       console.error("Logout error:", error);
-
-      // If there's an error, force the logout anyway
-      performLogout();
+      performLogout(); // fallback
     }
   };
 
@@ -112,7 +96,7 @@ const LogoutButton = ({
       onClick={handleLogout}
       disabled={loading}
       aria-busy={loading}
-      {...props}
+      {...rest}
     >
       {loading ? (
         <>

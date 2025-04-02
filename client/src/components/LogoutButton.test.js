@@ -1,54 +1,26 @@
-// src/components/LogoutButton.test.js
-import React from 'react';
-import { render, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import configureStore from 'redux-mock-store';
+import { createStore } from 'redux';
 import LogoutButton from './LogoutButton';
-import useLogout from '../hooks/useLogout';
+import { performLogout } from '../utils/authLoopPrevention';
 
-// Mock the useLogout hook
-jest.mock('../hooks/useLogout', () => ({
-  __esModule: true,
-  default: jest.fn(),
+jest.mock('../utils/authLoopPrevention', () => ({
+  performLogout: jest.fn(), // Mock the performLogout function
 }));
 
-// Configure mock store
-const mockStore = configureStore([]);
+const mockStore = createStore(() => ({}));
 
 describe('LogoutButton', () => {
-  let store;
-  const logoutMock = jest.fn().mockResolvedValue(true);
-  
-  beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Setup useLogout mock
-    useLogout.mockReturnValue({
-      logout: logoutMock,
-      loading: false,
-      error: null,
-    });
-    
-    // Create mock store
-    store = mockStore({
-      auth: { isAuthenticated: true },
-      role: { role: 'patient' },
-    });
-  });
-  
-  it('should call logout when clicked', async () => {
-    // Render the component
-    const { getByText } = render(
-      <Provider store={store}>
+  test('should call performLogout when clicked', () => {
+    render(
+      <Provider store={mockStore}>
         <LogoutButton />
       </Provider>
     );
-    
-    // Find and click logout button
-    const button = getByText('Logout');
+
+    const button = screen.getByRole('button', { name: /log out/i });
     fireEvent.click(button);
-    
-    // Verify logout was called
-    expect(logoutMock).toHaveBeenCalled();
+
+    expect(performLogout).toHaveBeenCalledTimes(1); // Check if performLogout was called
   });
 });
