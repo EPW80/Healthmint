@@ -7,28 +7,6 @@
 
 const generateMockHealthRecords = () => {
   // Categories matching those defined in your DataBrowser component
-  const categories = [
-    "General Health",
-    "Cardiology",
-    "Physical Exam",
-    "Laboratory",
-    "Immunization",
-    "Genetics",
-    "Psychology",
-    "Dental",
-    "Ophthalmology",
-    "Allergy",
-    "Neurology",
-    "Physical Therapy",
-    "Nutrition",
-    "Dermatology",
-    "Orthopedics",
-    "Pulmonology",
-    "Endocrinology",
-    "Obstetrics",
-    "Pediatrics",
-    "Sports Medicine",
-  ];
 
   // Data formats
   const formats = ["PDF", "CSV", "JSON", "DICOM", "HL7", "FHIR"];

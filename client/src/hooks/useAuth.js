@@ -208,43 +208,48 @@ const useAuth = (options = {}) => {
   /**
    * Login user with wallet address
    */
-  const login = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const login = useCallback(
+    async (manualAddress) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const walletAddress = localStorage.getItem("healthmint_wallet_address");
-      if (!walletAddress) {
-        throw new Error("No wallet address found");
-      }
-
-      const result = await authService.login(walletAddress);
-
-      if (result.success) {
-        setIsAuthenticated(true);
-        setIsRegistrationComplete(authService.isRegistrationComplete());
-        setIsNewUser(authService.isNewUser());
-
-        const user = authService.getCurrentUser();
-        if (user) {
-          dispatch(updateUserProfile(user));
+        const walletAddress =
+          manualAddress || localStorage.getItem("healthmint_wallet_address");
+        if (!walletAddress) {
+          throw new Error("No wallet address found");
         }
 
-        clearVerificationCache();
-        resetVerificationAttempts();
+        // FIX: Pass wallet address as an object with 'address' property
+        const result = await authService.login({ address: walletAddress });
 
-        return result;
-      } else {
-        throw new Error(result.message || "Login failed");
+        if (result.success) {
+          setIsAuthenticated(true);
+          setIsRegistrationComplete(authService.isRegistrationComplete());
+          setIsNewUser(authService.isNewUser());
+
+          const user = authService.getCurrentUser();
+          if (user) {
+            dispatch(updateUserProfile(user));
+          }
+
+          clearVerificationCache();
+          resetVerificationAttempts();
+
+          return result;
+        } else {
+          throw new Error(result.message || "Login failed");
+        }
+      } catch (err) {
+        console.error("Login error:", err);
+        setError(err.message || "Login failed");
+        return { success: false, message: err.message };
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError(err.message || "Login failed");
-      return { success: false, message: err.message };
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch, clearVerificationCache]);
+    },
+    [dispatch, clearVerificationCache]
+  );
 
   /**
    * Register a new user
