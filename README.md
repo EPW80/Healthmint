@@ -1,63 +1,58 @@
-Healthmint 🏥
-=============
+# Healthmint 🏥
 
 A blockchain-powered health data platform enabling secure and HIPAA-compliant health information exchange.
 
-Overview
---------
+## Overview
 
 Healthmint is a decentralized application (dApp) where patients and researchers can securely interact with health data:
 
--   **Patients** can upload, manage, and selectively share their health records
--   **Researchers** can discover, purchase, and analyze anonymized health datasets
--   All transactions are securely recorded on the blockchain with complete audit trails
--   HIPAA compliance is maintained throughout the entire platform
+- **Patients** can upload, manage, and selectively share their health records
+- **Researchers** can discover, purchase, and analyze anonymized health datasets
+- All transactions are securely recorded on the blockchain with complete audit trails
+- HIPAA compliance is maintained throughout the entire platform
 
-Key Features
-------------
+## Key Features
 
 ### User Roles & Management
 
--   **Dual-role system**: Users can register as either patients or researchers
--   **Wallet-based authentication**: Connect securely with MetaMask
--   **Personalized dashboards**: Role-specific interfaces and functionality
--   **Comprehensive profile management**: Control privacy settings and data sharing preferences
+- **Dual-role system**: Users can register as either patients or researchers
+- **Wallet-based authentication**: Connect securely with MetaMask
+- **Personalized dashboards**: Role-specific interfaces and functionality
+- **Comprehensive profile management**: Control privacy settings and data sharing preferences
 
 ### For Patients 👤
 
--   **Health record uploads**: Securely store medical documents and data
--   **Granular access control**: Choose what data is shared and with whom
--   **Data anonymization**: Share data while protecting personal information
--   **Monetization options**: Set pricing for researcher access to your data
--   **Complete audit trails**: See who accessed your data and when
+- **Health record uploads**: Securely store medical documents and data
+- **Granular access control**: Choose what data is shared and with whom
+- **Data anonymization**: Share data while protecting personal information
+- **Monetization options**: Set pricing for researcher access to your data
+- **Complete audit trails**: See who accessed your data and when
 
 ### For Researchers 🔬
 
--   **Dataset discovery**: Browse available health datasets
--   **Advanced filtering**: Find exactly the data you need
--   **Secure purchasing**: Buy access to datasets using ETH
--   **Research credentials**: Showcase your qualifications and publications
--   **Ethics compliance**: Built-in research ethics guidelines
+- **Dataset discovery**: Browse available health datasets
+- **Advanced filtering**: Find exactly the data you need
+- **Secure purchasing**: Buy access to datasets using ETH
+- **Research credentials**: Showcase your qualifications and publications
+- **Ethics compliance**: Built-in research ethics guidelines
 
 ### Security & Compliance 🔐
 
--   **HIPAA-compliant design**: Full regulatory compliance baked in
--   **Blockchain verification**: Immutable record of all data transactions
--   **Consent management**: Explicit patient consent tracking for all data access
--   **Privacy-preserving tools**: Data anonymization and access controls
--   **Comprehensive audit logging**: Track all system interactions
+- **HIPAA-compliant design**: Full regulatory compliance baked in
+- **Blockchain verification**: Immutable record of all data transactions
+- **Consent management**: Explicit patient consent tracking for all data access
+- **Privacy-preserving tools**: Data anonymization and access controls
+- **Comprehensive audit logging**: Track all system interactions
 
-Technology Stack
-----------------
+## Technology Stack
 
--   **Frontend**: React.js with Redux for state management
--   **UI**: Tailwind CSS with responsive design
--   **Blockchain**: Ethereum (Sepolia testnet) integration
--   **Wallet**: MetaMask integration for authentication and transactions
--   **Security**: HIPAA compliance layer for all data interactions
+- **Frontend**: React.js with Redux for state management
+- **UI**: Tailwind CSS with responsive design
+- **Blockchain**: Ethereum (Sepolia testnet) integration
+- **Wallet**: MetaMask integration for authentication and transactions
+- **Security**: HIPAA compliance layer for all data interactions
 
-Project Structure
------------------
+## Project Structure
 
 ```
 healthmint/
@@ -78,15 +73,14 @@ healthmint/
 
 ```
 
-Getting Started
----------------
+## Getting Started
 
 ### Prerequisites
 
--   Node.js (v16+)
--   npm or yarn
--   MetaMask browser extension
--   Ethereum on Sepolia testnet
+- Node.js (v16+)
+- npm or yarn
+- MetaMask browser extension
+- Ethereum on Sepolia testnet
 
 ### Installation
 
@@ -108,7 +102,7 @@ cd client && npm install
 
 1.  Set up environment variables
 
-Create a `.env` file in the client directory:
+Create a `.env` file in the client/server/root directory:
 
 ```
 REACT_APP_INFURA_PROJECT_ID=your_infura_project_id
@@ -124,8 +118,7 @@ npm start
 
 ```
 
-User Guide
-----------
+## User Guide
 
 ### Connecting Your Wallet
 
@@ -136,29 +129,27 @@ User Guide
 
 ### For Patients
 
--   **Upload health records**: Navigate to the Upload section and follow the prompts
--   **Manage privacy**: Use the Profile section to control data sharing preferences
--   **View access history**: Monitor who has accessed your data in the Dashboard
+- **Upload health records**: Navigate to the Upload section and follow the prompts
+- **Manage privacy**: Use the Profile section to control data sharing preferences
+- **View access history**: Monitor who has accessed your data in the Dashboard
 
 ### For Researchers
 
--   **Browse datasets**: Use the Browse section to discover available health data
--   **Purchase access**: Use ETH to purchase access to relevant datasets
--   **Manage studies**: Keep track of your research in the Dashboard
+- **Browse datasets**: Use the Browse section to discover available health data
+- **Purchase access**: Use ETH to purchase access to relevant datasets
+- **Manage studies**: Keep track of your research in the Dashboard
 
-Security Features
------------------
+## Security Features
 
 Healthmint takes security and HIPAA compliance seriously:
 
--   **Data encryption**: All sensitive information is encrypted
--   **Blockchain verification**: All transactions are recorded immutably
--   **Explicit consent**: Patient consent is required and tracked for all data access
--   **Comprehensive audit logs**: All system interactions are logged for compliance
--   **Role-based access control**: Different permissions for different user types
+- **Data encryption**: All sensitive information is encrypted
+- **Blockchain verification**: All transactions are recorded immutably
+- **Explicit consent**: Patient consent is required and tracked for all data access
+- **Comprehensive audit logs**: All system interactions are logged for compliance
+- **Role-based access control**: Different permissions for different user types
 
-Contributing
-------------
+## Contributing
 
 We welcome contributions to Healthmint! Please follow these steps:
 
@@ -168,18 +159,22 @@ We welcome contributions to Healthmint! Please follow these steps:
 4.  Push to the branch (`git push origin feature/amazing-feature`)
 5.  Open a Pull Request
 
-License
--------
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://claude.ai/chat/LICENSE) file for details.
+Copyright <2025> <EPW80>
 
-Contact
--------
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## Contact
 
 Erik Williams - erikpw009@gmail.com
 
 Project Link: <https://github.com/EPW80/Healthmint>
 
-* * * * *
+---
 
 Healthmint - Secure, Private, Compliant Health Data Exchange on the Blockchain
