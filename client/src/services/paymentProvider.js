@@ -7,7 +7,7 @@
  * Can switch between mock and real implementations based on configuration.
  */
 
-import { mockPaymentService } from "./mockPaymentService";
+import { mockPaymentService } from "./mockPaymentService.js";
 // In the future, this would be imported: import { realPaymentService } from './paymentService';
 
 // Configuration - can be set based on environment or feature flags

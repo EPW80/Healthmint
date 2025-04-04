@@ -1,13 +1,13 @@
 import React, { useState } from "react";
-import { DollarSign, Lock } from "lucide-react";
+import { DollarSign, Lock, AlertCircle } from "lucide-react";
 import PropTypes from "prop-types";
-import paymentProvider from "../services/paymentProvider";
+import mockPaymentService from "../services/mockPaymentService.js";
 
 /**
  * DatasetPurchaseButton Component
  *
- * A simple button component that handles dataset purchase interactions.
- * Shows appropriate states for the purchase process.
+ * A button component that handles dataset purchase interactions
+ * using the mock payment service.
  */
 const DatasetPurchaseButton = ({
   dataset,
@@ -18,6 +18,7 @@ const DatasetPurchaseButton = ({
 }) => {
   const [purchaseState, setPurchaseState] = useState("ready"); // ready, processing, success, error
   const [error, setError] = useState(null);
+  const [transactionDetails, setTransactionDetails] = useState(null);
 
   const handlePurchase = async () => {
     try {
@@ -29,17 +30,26 @@ const DatasetPurchaseButton = ({
       setPurchaseState("processing");
       setError(null);
 
-      // Initialize payment provider if needed
-      await paymentProvider.initializeProvider();
+      // Initialize mock payment provider if needed
+      if (!mockPaymentService.isInitialized) {
+        await mockPaymentService.initializeProvider();
+      }
 
-      // Process the payment
-      const result = await paymentProvider.purchaseDataset(
+      // Check balance before proceeding (optional)
+      const balance = await mockPaymentService.getBalance();
+      if (parseFloat(balance) < parseFloat(dataset.price)) {
+        throw new Error("Insufficient funds to complete this purchase");
+      }
+
+      // Process the payment with mock service
+      const result = await mockPaymentService.purchaseDataset(
         dataset.id,
         dataset.price
       );
 
       if (result.success) {
         setPurchaseState("success");
+        setTransactionDetails(result);
 
         // Notify parent component of successful purchase
         if (onPurchaseComplete) {
@@ -70,6 +80,7 @@ const DatasetPurchaseButton = ({
   const handleReset = () => {
     setPurchaseState("ready");
     setError(null);
+    setTransactionDetails(null);
   };
 
   // Different button states
@@ -94,7 +105,8 @@ const DatasetPurchaseButton = ({
       case "error":
         return (
           <>
-            <span className="text-sm">Failed - Try Again</span>
+            <AlertCircle className="w-4 h-4 mr-2" />
+            <span>Failed - Try Again</span>
           </>
         );
 
@@ -144,6 +156,16 @@ const DatasetPurchaseButton = ({
       </button>
 
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+
+      {purchaseState === "success" && transactionDetails && (
+        <div className="mt-2 text-xs text-green-700 bg-green-50 p-2 rounded">
+          <p>
+            Transaction Hash:{" "}
+            {transactionDetails.transactionHash.substring(0, 10)}...
+          </p>
+          <p>Block: {transactionDetails.blockNumber}</p>
+        </div>
+      )}
     </div>
   );
 };

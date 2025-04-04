@@ -12,17 +12,18 @@ import {
   Download,
   Filter,
   Calendar,
+  DollarSign,
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
-import useBlockchain from "../hooks/useBlockchain.js";
+import mockPaymentService from "../services/mockPaymentService.js"; // Import mock payment service
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
 /**
  * TransactionHistory Component
  *
  * Displays the user's transaction history for data uploads, purchases, and other blockchain
- * interactions with HIPAA-compliant logging
+ * interactions with HIPAA-compliant logging using the mock payment service
  */
 const TransactionHistory = ({
   limit = 10,
@@ -45,9 +46,6 @@ const TransactionHistory = ({
     dateRange: "all",
     status: "all",
   });
-
-  // Get blockchain functionality from custom hook
-  const { getTransactionHistory } = useBlockchain();
 
   // Format ETH value with appropriate precision
   const formatEth = (value) => {
@@ -102,12 +100,31 @@ const TransactionHistory = ({
         return <ArrowUpRight className="text-blue-500" size={18} />;
       case "purchase":
         return <ArrowDownLeft className="text-green-500" size={18} />;
+      case "payment":
+        return <DollarSign className="text-green-500" size={18} />;
       case "share":
         return <ExternalLink className="text-purple-500" size={18} />;
       default:
         return <Clock className="text-gray-500" size={18} />;
     }
   };
+
+  // Initialize mock payment service on component mount
+  useEffect(() => {
+    const initMockService = async () => {
+      if (!mockPaymentService.isInitialized) {
+        try {
+          await mockPaymentService.initializeProvider();
+          console.log("Mock payment service initialized for transaction history");
+        } catch (err) {
+          console.error("Failed to initialize mock payment service:", err);
+          setError("Failed to initialize payment service");
+        }
+      }
+    };
+    
+    initMockService();
+  }, []);
 
   // Fetch transaction history with HIPAA compliance
   const fetchTransactions = useCallback(async () => {
@@ -127,22 +144,39 @@ const TransactionHistory = ({
         }
       );
 
-      // Fetch the actual transaction history
-      const history = await getTransactionHistory(filters);
-
-      // Apply filters if needed
-      let filteredHistory = [...history];
-
-      if (filters.type !== "all") {
-        filteredHistory = filteredHistory.filter(
-          (tx) => tx.type === filters.type
-        );
+      // Make sure mock service is initialized
+      if (!mockPaymentService.isInitialized) {
+        await mockPaymentService.initializeProvider();
       }
 
-      if (filters.status !== "all") {
-        filteredHistory = filteredHistory.filter(
-          (tx) => tx.status === filters.status
-        );
+      // Fetch transaction history from mock payment service
+      const mockTransactions = await mockPaymentService.getPaymentHistory();
+
+      // Transform mock transactions to match our component's expected format
+      const transformedHistory = mockTransactions.map(tx => ({
+        id: tx.paymentId,
+        hash: tx.transactionHash,
+        type: "purchase", // Set all mock transactions as purchases for now
+        status: "success", // All mock transactions are successful
+        amount: tx.amount,
+        timestamp: tx.timestamp,
+        description: `Dataset Purchase: ${tx.datasetId}`,
+        blockNumber: tx.blockNumber,
+        gasUsed: tx.gasUsed,
+        dataRef: tx.datasetId
+      }));
+
+      // Apply filters if needed
+      let filteredHistory = [...transformedHistory];
+
+      if (filters.type !== "all" && filters.type !== "purchase") {
+        // Since our mock service only has purchase transactions, this would filter all out
+        filteredHistory = [];
+      }
+
+      if (filters.status !== "all" && filters.status !== "success") {
+        // Since our mock service transactions are all successful, this would filter all out
+        filteredHistory = [];
       }
 
       if (filters.dateRange !== "all") {
@@ -195,7 +229,7 @@ const TransactionHistory = ({
     } finally {
       setLoading(false);
     }
-  }, [getTransactionHistory, userRole, walletAddress, filters, limit]);
+  }, [userRole, walletAddress, filters, limit]);
 
   // Toggle transaction details
   const toggleTransactionDetails = (txId) => {
@@ -248,6 +282,8 @@ const TransactionHistory = ({
         "Amount",
         "Date",
         "Description",
+        "Block Number",
+        "Gas Used"
       ];
       const csvRows = [headers];
 
@@ -259,6 +295,8 @@ const TransactionHistory = ({
           tx.amount,
           new Date(tx.timestamp).toISOString(),
           tx.description || "",
+          tx.blockNumber || "",
+          tx.gasUsed || ""
         ]);
       });
 
@@ -276,6 +314,7 @@ const TransactionHistory = ({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Error exporting transaction history:", err);
       setError("Failed to export transaction history");
@@ -317,8 +356,8 @@ const TransactionHistory = ({
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Types</option>
-                  <option value="upload">Uploads</option>
                   <option value="purchase">Purchases</option>
+                  <option value="upload">Uploads</option>
                   <option value="share">Sharing</option>
                   <option value="other">Other</option>
                 </select>
@@ -562,12 +601,16 @@ const TransactionHistory = ({
                             Additional Information
                           </h4>
                           <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Related Data:</span>{" "}
+                            <span className="font-medium">Dataset ID:</span>{" "}
                             {tx.dataRef || "N/A"}
                           </p>
                           <p className="text-xs text-gray-500 mb-1">
                             <span className="font-medium">Timestamp:</span>{" "}
                             {new Date(tx.timestamp).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500 mb-1">
+                            <span className="font-medium">Payment Amount:</span>{" "}
+                            {formatEth(tx.amount)}
                           </p>
                           {tx.error && (
                             <p className="text-xs text-red-500 mb-1">
@@ -587,6 +630,29 @@ const TransactionHistory = ({
       </table>
     </div>
   );
+
+  // Display current wallet balance
+  const [currentBalance, setCurrentBalance] = useState(null);
+  
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        if (mockPaymentService.isInitialized) {
+          const balance = await mockPaymentService.getBalance();
+          setCurrentBalance(balance);
+        }
+      } catch (err) {
+        console.error("Error fetching balance:", err);
+      }
+    };
+    
+    fetchBalance();
+    
+    // Update balance periodically
+    const intervalId = setInterval(fetchBalance, 10000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // If loading, show spinner
   if (loading) {
@@ -612,33 +678,47 @@ const TransactionHistory = ({
     );
   }
 
-  // If no transactions, show empty state
-  if (transactions.length === 0) {
-    return (
-      <div className={`bg-gray-50 rounded-lg p-6 text-center ${className}`}>
-        <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-gray-900 mb-1">
-          No Transactions Found
-        </h3>
-        <p className="text-gray-500 mb-4">
-          You don't have any transactions in your history yet.
-        </p>
-        {showFilters && filtersOpen && (
-          <p className="text-sm text-gray-500">
-            Try changing your filter settings to see more results.
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // Render the component
   return (
     <div className={className}>
+      {/* Wallet Balance Display */}
+      {currentBalance !== null && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex justify-between items-center">
+          <div className="flex items-center">
+            <DollarSign className="text-blue-600 mr-2" size={18} />
+            <div>
+              <p className="text-sm text-blue-700">Current Wallet Balance</p>
+              <p className="text-lg font-semibold text-blue-800">{currentBalance} ETH</p>
+            </div>
+          </div>
+          <div className="text-xs text-blue-600">
+            Transactions: {transactions.length}
+          </div>
+        </div>
+      )}
+
       {renderFilters()}
-      <div className="bg-white rounded-lg border border-gray-200">
-        {compact ? renderCompactView() : renderDetailedView()}
-      </div>
+      
+      {/* If no transactions, show empty state */}
+      {transactions.length === 0 ? (
+        <div className={`bg-gray-50 rounded-lg p-6 text-center ${className}`}>
+          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">
+            No Transactions Found
+          </h3>
+          <p className="text-gray-500 mb-4">
+            You don't have any transactions in your history yet.
+          </p>
+          {showFilters && filtersOpen && (
+            <p className="text-sm text-gray-500">
+              Try changing your filter settings to see more results.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200">
+          {compact ? renderCompactView() : renderDetailedView()}
+        </div>
+      )}
     </div>
   );
 };

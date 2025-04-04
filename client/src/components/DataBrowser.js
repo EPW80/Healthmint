@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from "react-redux";
 import useHealthData from "../hooks/useHealthData.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
+import mockPaymentService from "../services/mockPaymentService.js"; // Added mock payment service
 import DataBrowserView from "./DataBrowserView.js";
 
 // Categories from backend
@@ -72,7 +73,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     totalCount,
     updateFilter,
     resetFilters,
-    purchaseData,
+    purchaseData, // We'll keep this but won't use it directly
     getHealthDataDetails,
   } = useHealthData({
     initialFilters: {
@@ -90,6 +91,21 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     },
     loadOnMount: true,
   });
+
+  // Initialize mock payment service on component mount
+  useEffect(() => {
+    // Initialize the mock payment service
+    const initializePaymentService = async () => {
+      try {
+        await mockPaymentService.initializeProvider();
+        console.log("Mock payment service initialized");
+      } catch (err) {
+        console.error("Failed to initialize mock payment service:", err);
+      }
+    };
+
+    initializePaymentService();
+  }, []);
 
   // Local state
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
@@ -109,6 +125,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   // Purchase state
   const [purchasingDataset, setPurchasingDataset] = useState(null);
   const [purchaseStep, setPurchaseStep] = useState("idle"); // 'idle', 'processing', 'confirming', 'complete', 'error'
+  const [lastTransactionDetails, setLastTransactionDetails] = useState(null); // To store transaction details
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -283,6 +300,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const handlePurchaseComplete = useCallback(
     (datasetId, transactionDetails) => {
       setPurchaseStep("complete");
+      setLastTransactionDetails(transactionDetails);
 
       // Log purchase completion for HIPAA compliance
       hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
@@ -351,10 +369,6 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [dispatch, userId, userRole]
   );
 
-  // ----------------------------------------
-  // Define the handleViewDataset and handlePurchase functions without dependencies on each other
-  // ----------------------------------------
-
   // First, create a viewDatasetImpl function that doesn't depend on requestAndVerifyConsent
   const viewDatasetImpl = useCallback(
     async (datasetId, consentVerified = false) => {
@@ -420,10 +434,16 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     ]
   );
 
-  // Similarly, create a purchaseDatasetImpl function
+  // Updated purchaseDatasetImpl function using mockPaymentService
   const purchaseDatasetImpl = useCallback(
     async (id, consentVerified = false) => {
       try {
+        // Find the dataset to get price information
+        const dataset = healthData.find((d) => d.id === id);
+        if (!dataset) {
+          throw new Error("Dataset not found");
+        }
+
         // Log action for HIPAA compliance with comprehensive details
         await hipaaComplianceService.logDataAccess(
           id,
@@ -436,11 +456,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             consentVerified: consentVerified,
             ipAddress: "client", // Server will log actual IP
             datasetInfo: {
-              category:
-                healthData.find((d) => d.id === id)?.category || "Unknown",
-              price: healthData.find((d) => d.id === id)?.price || "Unknown",
-              anonymized:
-                healthData.find((d) => d.id === id)?.anonymized || false,
+              category: dataset.category || "Unknown",
+              price: dataset.price || "Unknown",
+              anonymized: dataset.anonymized || false,
             },
             transactionId: `tx-${Date.now()}-${Math.floor(
               Math.random() * 1000
@@ -448,8 +466,28 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           }
         );
 
-        // Purchase data
-        await purchaseData(id);
+        // Initialize mock payment service if needed
+        if (!mockPaymentService.isInitialized) {
+          await mockPaymentService.initializeProvider();
+        }
+
+        // Check balance before proceeding (optional)
+        const balance = await mockPaymentService.getBalance();
+        console.log(`Current balance: ${balance} ETH`);
+
+        if (parseFloat(balance) < parseFloat(dataset.price)) {
+          throw new Error("Insufficient funds to complete this purchase");
+        }
+
+        // Use mock payment service to purchase the dataset
+        const result = await mockPaymentService.purchaseDataset(
+          id,
+          dataset.price
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || "Transaction failed");
+        }
 
         // Record this purchase in the consent history for future reference
         const updatedHistory = [
@@ -461,6 +499,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             purpose: "Dataset purchase confirmation",
             datasetId: id,
             actionType: "PURCHASE_COMPLETED",
+            transactionHash: result.transactionHash,
           },
         ];
         setConsentsHistory(updatedHistory);
@@ -469,6 +508,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           success: true,
           datasetId: id,
           timestamp: new Date().toISOString(),
+          transactionHash: result.transactionHash,
+          blockNumber: result.blockNumber,
+          gasUsed: result.gasUsed,
         };
       } catch (err) {
         console.error("Purchase error:", err);
@@ -485,7 +527,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         throw err; // Re-throw for handling in the calling function
       }
     },
-    [purchaseData, consentsHistory, healthData, userId, userRole]
+    [consentsHistory, healthData, userId, userRole]
   );
 
   // Request and verify consent for data access
@@ -617,7 +659,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [dispatch, requestAndVerifyConsent, viewDatasetImpl]
   );
 
-  // Updated handlePurchase function to use our new handlers
+  // Updated handlePurchase function to use our mock payment service
   const handlePurchase = useCallback(
     async (id) => {
       try {
@@ -644,13 +686,16 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
 
         // Proceed with the purchase
         try {
+          // Use our updated purchaseDatasetImpl that uses mockPaymentService
           const result = await purchaseDatasetImpl(id, true);
 
-          // If successful, call the completion handler
+          // If successful, call the completion handler with transaction details
           handlePurchaseComplete(id, {
             timestamp: result.timestamp,
             datasetId: id,
-            transactionId: `tx-${Date.now()}`,
+            transactionId: result.transactionHash,
+            blockNumber: result.blockNumber,
+            gasUsed: result.gasUsed,
           });
         } catch (err) {
           // If purchase implementation failed, handle the error
@@ -742,7 +787,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
               handlePurchaseComplete(datasetId, {
                 timestamp: result.timestamp,
                 datasetId,
-                transactionId: `tx-${Date.now()}`,
+                transactionId: result.transactionHash,
+                blockNumber: result.blockNumber,
+                gasUsed: result.gasUsed,
               });
             } catch (err) {
               handlePurchaseError(datasetId, err);
@@ -1025,9 +1072,47 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     );
   };
 
-  // Pass props to the view component (including new purchase handlers)
+  // Fetch current wallet balance to display
+  const [walletBalance, setWalletBalance] = useState(null);
+
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        if (mockPaymentService.isInitialized) {
+          const balance = await mockPaymentService.getBalance();
+          setWalletBalance(balance);
+        }
+      } catch (err) {
+        console.error("Error fetching wallet balance:", err);
+      }
+    };
+
+    fetchWalletBalance();
+
+    // Set up periodic balance updates
+    const intervalId = setInterval(fetchWalletBalance, 10000); // Check every 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [purchaseStep]); // Re-fetch when purchase state changes
+
+  // Pass props to the view component (including wallet balance)
   return (
     <>
+      {/* Optional wallet balance display */}
+      {walletBalance !== null && (
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 mb-4 flex justify-between items-center">
+          <span className="text-blue-700 font-medium">
+            Wallet Balance: {walletBalance} ETH
+          </span>
+          {lastTransactionDetails && (
+            <span className="text-xs text-blue-600">
+              Last transaction:{" "}
+              {lastTransactionDetails.transactionId?.substring(0, 10)}...
+            </span>
+          )}
+        </div>
+      )}
+
       <DataBrowserView
         userRole={userRole}
         loading={loading}
