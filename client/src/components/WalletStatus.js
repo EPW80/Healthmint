@@ -1,4 +1,4 @@
-// src/components/WalletStatus.js
+// Fixed src/components/WalletStatus.js
 import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 import useWalletConnect from "../hooks/useWalletConnect.js";
+import mockPaymentService from "../services/mockPaymentService.js"; // Properly import mockPaymentService
 
 /**
  * WalletStatus Component
@@ -34,9 +35,8 @@ const WalletStatus = ({
   const {
     isConnected,
     network,
-    getBalance,
+    getBalance: walletGetBalance, // Rename to avoid confusion
     disconnectWallet,
-    switchNetwork,
     loading: walletLoading,
   } = useWalletConnect({
     autoConnect: false, // Don't auto-connect when viewing wallet status
@@ -89,15 +89,28 @@ const WalletStatus = ({
       setLoadingBalance(true);
       setError(null);
 
-      const balanceResult = await getBalance(walletAddress);
-      setBalance(balanceResult);
+      // Use the getBalance function from the hook instead of mockPaymentService
+      if (walletGetBalance) {
+        const balanceResult = await walletGetBalance(walletAddress);
+        setBalance(balanceResult);
+      } else if (
+        mockPaymentService &&
+        mockPaymentService.isInitialized &&
+        mockPaymentService.getBalance
+      ) {
+        // Fallback to mockPaymentService if available and initialized
+        const balanceResult = await mockPaymentService.getBalance();
+        setBalance(balanceResult);
+      } else {
+        throw new Error("Balance fetching is not available");
+      }
     } catch (err) {
       console.error("Error fetching wallet balance:", err);
       setError("Failed to fetch balance");
     } finally {
       setLoadingBalance(false);
     }
-  }, [walletAddress, isConnected, getBalance]);
+  }, [walletAddress, isConnected, walletGetBalance]);
 
   // Copy address to clipboard
   const copyAddressToClipboard = () => {
