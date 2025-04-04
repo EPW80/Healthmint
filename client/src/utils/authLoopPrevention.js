@@ -179,6 +179,17 @@ export const clearAuthStorage = () => {
  * @param {Function} options.onComplete Callback function after logout is complete
  * @returns {Promise<boolean>} Promise resolving to true if logout was successful
  */
+/**
+ * Enhanced logout function that properly handles state cleanup and redirection
+ *
+ * @param {Object} options Configuration options for the logout process
+ * @param {boolean} options.redirectToLogin Whether to redirect to login page after logout
+ * @param {boolean} options.clearLocalStorage Whether to clear localStorage
+ * @param {boolean} options.clearSessionStorage Whether to clear sessionStorage
+ * @param {boolean} options.useHardRedirect Whether to use window.location.replace for redirect
+ * @param {Function} options.onComplete Callback function to call after logout completes
+ * @returns {Promise<void>}
+ */
 export const performLogout = async ({
   redirectToLogin = true,
   clearLocalStorage = true,
@@ -186,75 +197,112 @@ export const performLogout = async ({
   useHardRedirect = false,
   onComplete = null,
 } = {}) => {
+  console.log("Performing complete logout...");
+
   try {
-    // 1. Set the forced reconnect flag first - CRITICAL for correct auth flow
-    sessionStorage.setItem("force_wallet_reconnect", "true");
+    // Set logout flag to prevent rendering the role selector on redirect
     sessionStorage.setItem("logout_in_progress", "true");
 
-    // 2. Clear any bypass flags that interfere with routing
-    sessionStorage.removeItem("bypass_route_protection");
-    sessionStorage.removeItem("temp_selected_role");
-    sessionStorage.removeItem("bypass_role_check");
-    sessionStorage.removeItem("auth_verification_override");
+    // Force wallet reconnect on next login
+    sessionStorage.setItem("force_wallet_reconnect", "true");
 
-    // 3. Explicitly clear authentication and role-related state
+    // Clear role and wallet data
     if (clearLocalStorage) {
+      // Key wallet data
       localStorage.removeItem("healthmint_wallet_address");
       localStorage.removeItem("healthmint_wallet_connection");
+
+      // Key role data
       localStorage.removeItem("healthmint_user_role");
-      localStorage.removeItem("healthmint_user_profile");
-      localStorage.removeItem("healthmint_auth_token");
-      localStorage.removeItem("healthmint_refresh_token");
-      localStorage.removeItem("healthmint_token_expiry");
       localStorage.removeItem("healthmint_is_new_user");
-      localStorage.removeItem("healthmint_wallet_state");
+
+      // Additional cleanup
+      localStorage.removeItem("healthmint_auth_token");
+      localStorage.removeItem("healthmint_user_profile");
+      localStorage.removeItem("healthmint_last_login");
+
+      // Clean any other app-specific keys
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("healthmint_")) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
     }
 
-    // 4. Apply additional session cleanup
+    // Clear session data
     if (clearSessionStorage) {
-      // Only clear logout-related flags, keep other session data
+      // Clear any auth-related session flags
+      sessionStorage.removeItem("temp_selected_role");
+      sessionStorage.removeItem("bypass_route_protection");
+      sessionStorage.removeItem("auth_verification_override");
+      sessionStorage.removeItem("bypass_role_check");
+
+      // Keep the logout flags
+      const logoutFlag = sessionStorage.getItem("logout_in_progress");
       const forceReconnect = sessionStorage.getItem("force_wallet_reconnect");
-      const logoutInProgress = sessionStorage.getItem("logout_in_progress");
 
-      // sessionStorage.clear(); // Don't use clear() as it's too aggressive
+      // Clear all session storage
+      sessionStorage.clear();
 
-      // Restore critical flags
-      sessionStorage.setItem("force_wallet_reconnect", forceReconnect);
-      sessionStorage.setItem("logout_in_progress", logoutInProgress);
+      // Restore logout flags
+      if (logoutFlag) sessionStorage.setItem("logout_in_progress", logoutFlag);
+      if (forceReconnect)
+        sessionStorage.setItem("force_wallet_reconnect", forceReconnect);
     }
 
-    // 5. Redirect to login page if requested
+    // Redirect to login page after state cleanup
     if (redirectToLogin) {
       if (useHardRedirect) {
-        // Hard redirect to ensure clean state
-        window.location.href = "/login";
+        console.log("Performing hard redirect to login page");
+        // Use a small delay to ensure flags are properly set
+        setTimeout(() => {
+          window.location.replace("/login");
+        }, 50);
       } else {
-        // Using replace to prevent back-button issues
-        window.history.replaceState({}, "", "/login");
-
-        // Force a page reload to clear React component state
-        window.location.reload();
+        console.log("Navigating to login page via router");
+        // This is expected to be handled by the calling component
+        // using React Router's navigate function
       }
     }
 
-    // 6. Clean up flags after a delay to ensure they're used by the login page
-    setTimeout(() => {
-      sessionStorage.removeItem("logout_in_progress");
-    }, 1000);
-
-    // 7. Call the completion callback if provided
-    if (onComplete && typeof onComplete === "function") {
+    // Call onComplete callback if provided
+    if (typeof onComplete === "function") {
       onComplete();
     }
-
-    return true;
   } catch (error) {
-    console.error("Logout error in authLoopPrevention:", error);
+    console.error("Error during logout process:", error);
 
-    // Force redirect to login as emergency fallback
-    window.location.replace("/login");
-    return false;
+    // Set logout-failed flag to help with debugging
+    sessionStorage.setItem("logout_failed", "true");
+
+    // Even on error, try to redirect to login page
+    if (redirectToLogin && useHardRedirect) {
+      window.location.replace("/login");
+    }
+
+    throw error;
   }
+};
+
+/**
+ * Utility function to check if a logout is in progress
+ *
+ * @returns {boolean} Whether a logout is currently in progress
+ */
+export const isLogoutInProgress = () => {
+  return sessionStorage.getItem("logout_in_progress") === "true";
+};
+
+/**
+ * Clears the logout in progress flag
+ */
+export const clearLogoutFlag = () => {
+  sessionStorage.removeItem("logout_in_progress");
+  sessionStorage.removeItem("logout_failed");
 };
 
 /**

@@ -7,6 +7,8 @@ import useWalletConnection from "../hooks/useWalletConnect.js";
 import useAuth from "../hooks/useAuth.js";
 import { selectIsRoleSelected, selectRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
+import { isLogoutInProgress } from "../utils/authLoopPrevention.js";
+import LoadingSpinner from "./ui/LoadingSpinner.js";
 
 /**
  * RedirectTracker
@@ -58,6 +60,7 @@ const redirectTracker = {
 /**
  * ProtectedRoute
  * Ensures authentication and role-based access for protected routes
+ * with improved logout handling
  */
 const ProtectedRoute = ({
   children,
@@ -99,6 +102,19 @@ const ProtectedRoute = ({
     return false;
   }, [debugId]);
 
+  // Check for logout in progress - this is the most important check
+  useEffect(() => {
+    // If logout is in progress, immediately redirect to login
+    if (isLogoutInProgress()) {
+      console.log(
+        `[ProtectedRoute:${debugId}] Logout in progress, redirecting to login`
+      );
+      setRedirectPath("/login");
+      setIsLoading(false);
+      authCheckCompletedRef.current = true;
+    }
+  }, [debugId]);
+
   // Reset tracking on path change
   useEffect(() => {
     if (prevPath.current !== location.pathname) {
@@ -121,6 +137,17 @@ const ProtectedRoute = ({
   useEffect(() => {
     if (bypassAuth || authCheckCompletedRef.current) {
       setIsLoading(false);
+      return;
+    }
+
+    // Check for logout in progress first
+    if (isLogoutInProgress()) {
+      console.log(
+        `[ProtectedRoute:${debugId}] Logout in progress, redirecting to login`
+      );
+      setRedirectPath("/login");
+      setIsLoading(false);
+      authCheckCompletedRef.current = true;
       return;
     }
 
@@ -299,7 +326,11 @@ const ProtectedRoute = ({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <LoadingSpinner
+          size="large"
+          label="Verifying authentication..."
+          showLabel={true}
+        />
       </div>
     );
   }

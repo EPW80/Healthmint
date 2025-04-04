@@ -1,4 +1,4 @@
-// Modified version of AppContent.js to prevent initialization loops
+// src/components/AppContent.js
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -129,6 +129,7 @@ function AppContent() {
   const location = useLocation();
 
   // Get wallet connection state
+  const walletHook = useWalletConnect();
   const {
     isConnected,
     address,
@@ -136,7 +137,7 @@ function AppContent() {
     disconnectWallet,
     switchNetwork,
     getPendingTransactions,
-  } = useWalletConnect();
+  } = walletHook;
 
   // Get user information from Redux
   const userRole = useSelector(selectRole);
@@ -224,7 +225,7 @@ function AppContent() {
     }
   }, [location.pathname]);
 
-  // Verify authentication on first load with improved loop prevention
+  // Verify authentication on first load with improved loop prevention - FIXED to remove connectWallet dependency
   useEffect(() => {
     // Only run this once
     if (initializationAttempted) {

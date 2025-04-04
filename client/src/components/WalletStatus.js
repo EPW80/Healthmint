@@ -17,7 +17,7 @@ import useWalletConnect from "../hooks/useWalletConnect.js";
 
 /**
  * WalletStatus Component
- * 
+ *
  * Displays the current wallet connection status, balance, and network information
  * with options to copy address, view on explorer, and refresh balance
  */
@@ -31,15 +31,15 @@ const WalletStatus = ({
 }) => {
   // Get wallet information from Redux and hook
   const walletAddress = useSelector((state) => state.wallet.address);
-  const { 
-    isConnected, 
-    network, 
-    getBalance, 
-    disconnectWallet, 
+  const {
+    isConnected,
+    network,
+    getBalance,
+    disconnectWallet,
     switchNetwork,
-    loading: walletLoading 
+    loading: walletLoading,
   } = useWalletConnect({
-    autoConnect: false // Don't auto-connect when viewing wallet status
+    autoConnect: false, // Don't auto-connect when viewing wallet status
   });
 
   // Local state
@@ -57,10 +57,10 @@ const WalletStatus = ({
   // Format balance for display
   const formatBalance = (balanceInWei) => {
     if (balanceInWei === null || balanceInWei === undefined) return "Unknown";
-    
+
     // Convert from Wei to ETH (division by 10^18)
     const balanceInEth = parseFloat(balanceInWei) / 1e18;
-    
+
     // Format based on value
     if (balanceInEth === 0) return "0 ETH";
     if (balanceInEth < 0.001) return "< 0.001 ETH";
@@ -71,23 +71,30 @@ const WalletStatus = ({
   // Get etherscan link for address
   const getExplorerLink = (address) => {
     if (!address) return "#";
-    
+
     // Use the appropriate explorer based on network
-    const baseUrl = network && network.chainId === 1 
-      ? "https://etherscan.io/address/" 
-      : "https://sepolia.etherscan.io/address/";
-    
+    const baseUrl =
+      network && network.chainId === 1
+        ? "https://etherscan.io/address/"
+        : "https://sepolia.etherscan.io/address/";
+
     return `${baseUrl}${address}`;
   };
 
-  // Fetch the wallet balance
+  // Fetch the wallet balance - safely handle getBalance not being available
   const fetchBalance = useCallback(async () => {
     if (!walletAddress || !isConnected) return;
-    
+
     try {
       setLoadingBalance(true);
       setError(null);
-      
+
+      if (typeof getBalance !== "function") {
+        console.warn("getBalance function not available");
+        setError("Balance function unavailable");
+        return;
+      }
+
       const balanceResult = await getBalance(walletAddress);
       setBalance(balanceResult);
     } catch (err) {
@@ -101,13 +108,14 @@ const WalletStatus = ({
   // Copy address to clipboard
   const copyAddressToClipboard = () => {
     if (!walletAddress) return;
-    
-    navigator.clipboard.writeText(walletAddress)
+
+    navigator.clipboard
+      .writeText(walletAddress)
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Failed to copy address:", err);
         setError("Failed to copy address");
       });
@@ -115,20 +123,20 @@ const WalletStatus = ({
 
   // Fetch balance on component mount and when address changes
   useEffect(() => {
-    if (showBalance) {
+    if (showBalance && typeof getBalance === "function") {
       fetchBalance();
     }
-  }, [fetchBalance, showBalance, walletAddress]);
+  }, [fetchBalance, showBalance, walletAddress, getBalance]);
 
   // If the component is in minimal mode, render a compact version
   if (minimal) {
     return (
       <div className={`inline-flex items-center gap-2 ${className}`}>
-        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+        <div
+          className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
+        ></div>
         <span className="text-sm truncate max-w-[120px]">
-          {isConnected 
-            ? formatAddress(walletAddress) 
-            : "Wallet Disconnected"}
+          {isConnected ? formatAddress(walletAddress) : "Wallet Disconnected"}
         </span>
       </div>
     );
@@ -137,11 +145,15 @@ const WalletStatus = ({
   // If wallet is not connected, show disconnected state
   if (!isConnected || !walletAddress) {
     return (
-      <div className={`bg-red-50 border border-red-100 rounded-lg p-4 ${className}`}>
+      <div
+        className={`bg-red-50 border border-red-100 rounded-lg p-4 ${className}`}
+      >
         <div className="flex items-center">
           <XCircle className="text-red-500 mr-2" size={20} />
           <div>
-            <h3 className="text-sm font-medium text-red-800">Wallet Disconnected</h3>
+            <h3 className="text-sm font-medium text-red-800">
+              Wallet Disconnected
+            </h3>
             <p className="text-xs text-red-700 mt-1">
               Connect your wallet to access the application.
             </p>
@@ -154,7 +166,7 @@ const WalletStatus = ({
   // Network warning for unsupported networks
   const renderNetworkWarning = () => {
     if (!showNetwork || !network || network.isSupported) return null;
-    
+
     return (
       <div className="mt-3 bg-yellow-50 border border-yellow-100 rounded-md p-2">
         <div className="flex items-center">
@@ -178,7 +190,9 @@ const WalletStatus = ({
 
   // Primary component render
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}>
+    <div
+      className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}
+    >
       <div className="flex justify-between items-center">
         <div className="flex items-center">
           <div className="bg-green-100 rounded-full p-2 mr-3">
@@ -187,8 +201,10 @@ const WalletStatus = ({
           <div>
             <h3 className="font-medium">Connected Wallet</h3>
             <div className="flex items-center mt-1">
-              <span className="text-gray-500 text-sm">{formatAddress(walletAddress)}</span>
-              
+              <span className="text-gray-500 text-sm">
+                {formatAddress(walletAddress)}
+              </span>
+
               {/* Copy button */}
               {showCopy && (
                 <button
@@ -204,7 +220,7 @@ const WalletStatus = ({
                   )}
                 </button>
               )}
-              
+
               {/* Explorer link */}
               {showExplorer && (
                 <a
@@ -221,7 +237,7 @@ const WalletStatus = ({
             </div>
           </div>
         </div>
-        
+
         {/* Balance information */}
         {showBalance && (
           <div className="text-right">
@@ -238,6 +254,7 @@ const WalletStatus = ({
                   className="ml-2 text-gray-400 hover:text-gray-600 p-1"
                   title="Refresh balance"
                   aria-label="Refresh wallet balance"
+                  disabled={typeof getBalance !== "function"}
                 >
                   <RefreshCw size={14} />
                 </button>
@@ -246,39 +263,39 @@ const WalletStatus = ({
           </div>
         )}
       </div>
-      
+
       {/* Network information */}
       {showNetwork && network && (
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center">
-            <div className={`w-2 h-2 rounded-full ${network.isSupported ? 'bg-green-500' : 'bg-yellow-500'} mr-2`}></div>
+            <div
+              className={`w-2 h-2 rounded-full ${network.isSupported ? "bg-green-500" : "bg-yellow-500"} mr-2`}
+            ></div>
             <span className="text-sm text-gray-600">
               Network: <span className="font-medium">{network.name}</span>
             </span>
           </div>
-          
+
           <div className="text-xs text-gray-500">
             Chain ID: {network.chainId}
           </div>
         </div>
       )}
-      
+
       {/* Network warning */}
       {renderNetworkWarning()}
-      
+
       {/* Disconnect option */}
       <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
         <div className="flex items-center text-xs text-gray-500">
           <Info size={12} className="mr-1" />
-          <span>
-            Connected via MetaMask
-          </span>
+          <span>Connected via MetaMask</span>
         </div>
-        
+
         <button
           onClick={disconnectWallet}
           className="text-xs text-red-500 hover:text-red-700"
-          disabled={walletLoading}
+          disabled={walletLoading || typeof disconnectWallet !== "function"}
         >
           {walletLoading ? "Disconnecting..." : "Disconnect"}
         </button>

@@ -11,9 +11,10 @@ import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
 import WalletErrorNotification from "../WalletErrorNotification.js";
+import { isLogoutInProgress } from "../../utils/authLoopPrevention.js";
 
 /**
- * Role Selector Component with improved navigation
+ * Role Selector Component with improved navigation and logout handling
  */
 const RoleSelector = () => {
   const dispatch = useDispatch();
@@ -30,10 +31,10 @@ const RoleSelector = () => {
   const [redirecting, setRedirecting] = useState(false);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
-  // Add this effect at the top of the component
+  // Add this effect at the top of the component to check logout status
   useEffect(() => {
-    // If logout is in progress, redirect to login
-    if (sessionStorage.getItem("logout_in_progress") === "true") {
+    // Check if logout is in progress - if so, redirect to login immediately
+    if (isLogoutInProgress()) {
       console.log("RoleSelector: Logout in progress, redirecting to login");
       navigate("/login", { replace: true });
       return;

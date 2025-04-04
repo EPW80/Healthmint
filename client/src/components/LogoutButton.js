@@ -76,7 +76,10 @@ const LogoutButton = ({
         })
       );
 
-      // Clear Redux state first
+      // Critical: Set logout in progress flag first to prevent role selector from showing
+      sessionStorage.setItem("logout_in_progress", "true");
+
+      // Clear Redux state first to prevent flash of authenticated content
       dispatch(clearWalletConnection());
       dispatch(clearRole());
       dispatch(clearUserProfile());
@@ -104,8 +107,10 @@ const LogoutButton = ({
         },
       });
 
-      // If we get here, the redirect didn't work, so try again
-      window.location.replace("/login");
+      // If we get here, the redirect didn't work, so try again with a delay
+      setTimeout(() => {
+        window.location.replace("/login");
+      }, 100);
     } catch (error) {
       console.error("Logout error:", error);
 
