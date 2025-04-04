@@ -81,19 +81,13 @@ const WalletStatus = ({
     return `${baseUrl}${address}`;
   };
 
-  // Fetch the wallet balance - safely handle getBalance not being available
+  // Fetch the wallet balance
   const fetchBalance = useCallback(async () => {
     if (!walletAddress || !isConnected) return;
 
     try {
       setLoadingBalance(true);
       setError(null);
-
-      if (typeof getBalance !== "function") {
-        console.warn("getBalance function not available");
-        setError("Balance function unavailable");
-        return;
-      }
 
       const balanceResult = await getBalance(walletAddress);
       setBalance(balanceResult);
@@ -123,10 +117,10 @@ const WalletStatus = ({
 
   // Fetch balance on component mount and when address changes
   useEffect(() => {
-    if (showBalance && typeof getBalance === "function") {
+    if (showBalance) {
       fetchBalance();
     }
-  }, [fetchBalance, showBalance, walletAddress, getBalance]);
+  }, [fetchBalance, showBalance, walletAddress]);
 
   // If the component is in minimal mode, render a compact version
   if (minimal) {
@@ -254,7 +248,6 @@ const WalletStatus = ({
                   className="ml-2 text-gray-400 hover:text-gray-600 p-1"
                   title="Refresh balance"
                   aria-label="Refresh wallet balance"
-                  disabled={typeof getBalance !== "function"}
                 >
                   <RefreshCw size={14} />
                 </button>
@@ -295,7 +288,7 @@ const WalletStatus = ({
         <button
           onClick={disconnectWallet}
           className="text-xs text-red-500 hover:text-red-700"
-          disabled={walletLoading || typeof disconnectWallet !== "function"}
+          disabled={walletLoading}
         >
           {walletLoading ? "Disconnecting..." : "Disconnect"}
         </button>

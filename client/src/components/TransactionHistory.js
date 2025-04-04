@@ -18,32 +18,6 @@ import ErrorDisplay from "./ui/ErrorDisplay.js";
 import useBlockchain from "../hooks/useBlockchain.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-// Mock data for when getTransactionHistory is not available
-const MOCK_TRANSACTIONS = [
-  {
-    id: "tx-1",
-    type: "upload",
-    status: "success",
-    amount: "0",
-    timestamp: new Date().toISOString(),
-    description: "Health record upload",
-    blockNumber: "123456",
-    gasUsed: "21000",
-    hash: "0x123456789abcdef",
-  },
-  {
-    id: "tx-2",
-    type: "purchase",
-    status: "success",
-    amount: "0.05",
-    timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    description: "Purchased dataset",
-    blockNumber: "123455",
-    gasUsed: "42000",
-    hash: "0xabcdef123456789",
-  },
-];
-
 /**
  * TransactionHistory Component
  *
@@ -73,7 +47,7 @@ const TransactionHistory = ({
   });
 
   // Get blockchain functionality from custom hook
-  const { getTransactionHistory } = useBlockchain() || {};
+  const { getTransactionHistory } = useBlockchain();
 
   // Format ETH value with appropriate precision
   const formatEth = (value) => {
@@ -153,31 +127,8 @@ const TransactionHistory = ({
         }
       );
 
-      let history;
-
-      // Check if getTransactionHistory is available
-      if (typeof getTransactionHistory === "function") {
-        // Fetch the actual transaction history
-        history = await getTransactionHistory(filters);
-      } else {
-        console.warn(
-          "getTransactionHistory function not available, using mock data"
-        );
-        // Use mock data as fallback
-        history = [...MOCK_TRANSACTIONS];
-
-        // Log this as a fallback for compliance
-        await hipaaComplianceService.createAuditLog(
-          "MOCK_TRANSACTION_HISTORY",
-          {
-            action: "VIEW",
-            userRole,
-            walletAddress,
-            timestamp: new Date().toISOString(),
-            reason: "getTransactionHistory not available",
-          }
-        );
-      }
+      // Fetch the actual transaction history
+      const history = await getTransactionHistory(filters);
 
       // Apply filters if needed
       let filteredHistory = [...history];
@@ -241,9 +192,6 @@ const TransactionHistory = ({
         errorMessage:
           err.message || "Unknown error during transaction history load",
       });
-
-      // Use mock data in case of error
-      setTransactions([...MOCK_TRANSACTIONS]);
     } finally {
       setLoading(false);
     }

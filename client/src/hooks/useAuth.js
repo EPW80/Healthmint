@@ -1,5 +1,5 @@
 // src/hooks/useAuth.js
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { setRole } from "../redux/slices/roleSlice.js";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
@@ -160,7 +160,7 @@ const useAuth = () => {
 
       try {
         // Call authentication service to verify the wallet address
-        const result = await authService.login(walletAddress);
+        const result = await authService.login({ address: walletAddress });
 
         // Update authentication state based on login result
         setIsAuthenticated(result.isAuthenticated);
@@ -223,8 +223,6 @@ const useAuth = () => {
       setError(null);
 
       try {
-        // Call authentication service to complete registration
-        const result = await authService.completeRegistration(userData);
 
         // Update authentication state
         setIsAuthenticated(true);
@@ -281,7 +279,6 @@ const useAuth = () => {
 
       try {
         // Call authentication service to register user
-        const result = await authService.register(userData);
 
         // Update authentication state
         setIsAuthenticated(true);
