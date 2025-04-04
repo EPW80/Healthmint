@@ -982,6 +982,12 @@ DataBrowserView.propTypes = {
   studyTypes: PropTypes.array.isRequired,
   dataFormats: PropTypes.array.isRequired,
   consentVerified: PropTypes.bool,
+  // New purchase-related props
+  purchasingDataset: PropTypes.string,
+  purchaseStep: PropTypes.string,
+  handlePurchaseStart: PropTypes.func,
+  handlePurchaseComplete: PropTypes.func,
+  handlePurchaseError: PropTypes.func,
 };
 
 export default DataBrowserView;

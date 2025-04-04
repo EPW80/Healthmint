@@ -58,12 +58,6 @@ const DATA_FORMATS = [
   "Imaging",
 ];
 
-/**
- * DataBrowser Container Component
- *
- * Manages state and data operations for browsing health datasets
- * with enhanced HIPAA compliance and consent verification
- */
 const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const dispatch = useDispatch();
   const userRole = useSelector((state) => state.role.role);
@@ -111,6 +105,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [consentsHistory, setConsentsHistory] = useState([]);
+
+  // Purchase state
+  const [purchasingDataset, setPurchasingDataset] = useState(null);
+  const [purchaseStep, setPurchaseStep] = useState("idle"); // 'idle', 'processing', 'confirming', 'complete', 'error'
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -254,7 +252,108 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [userRole, userId]
   );
 
+  // Handle purchase start
+  const handlePurchaseStart = useCallback(
+    (datasetId) => {
+      setPurchasingDataset(datasetId);
+      setPurchaseStep("processing");
+
+      // Log purchase initiation for HIPAA compliance
+      hipaaComplianceService.createAuditLog("PURCHASE_INITIATED", {
+        datasetId,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
+        action: "PURCHASE_START",
+      });
+
+      // Show user notification
+      dispatch(
+        addNotification({
+          type: "info",
+          message: "Processing purchase request...",
+          duration: 3000,
+        })
+      );
+    },
+    [dispatch, userId, userRole]
+  );
+
+  // Handle purchase completion
+  const handlePurchaseComplete = useCallback(
+    (datasetId, transactionDetails) => {
+      setPurchaseStep("complete");
+
+      // Log purchase completion for HIPAA compliance
+      hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
+        datasetId,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
+        action: "PURCHASE_COMPLETE",
+        transactionDetails,
+      });
+
+      // Show success notification
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Purchase completed successfully!",
+          duration: 5000,
+        })
+      );
+
+      // Reset purchase state after delay
+      setTimeout(() => {
+        setPurchasingDataset(null);
+        setPurchaseStep("idle");
+      }, 2000);
+
+      // Call original onPurchase callback if provided
+      if (onPurchase) {
+        onPurchase(datasetId, transactionDetails);
+      }
+    },
+    [dispatch, onPurchase, userId, userRole]
+  );
+
+  // Handle purchase error
+  const handlePurchaseError = useCallback(
+    (datasetId, error) => {
+      setPurchaseStep("error");
+
+      // Log purchase error for HIPAA compliance
+      hipaaComplianceService.createAuditLog("PURCHASE_ERROR", {
+        datasetId,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
+        action: "PURCHASE_ERROR",
+        errorMessage: error?.message || "Unknown purchase error",
+      });
+
+      // Show error notification
+      dispatch(
+        addNotification({
+          type: "error",
+          message:
+            error?.message || "Failed to complete purchase. Please try again.",
+          duration: 7000,
+        })
+      );
+
+      // Reset purchase state after delay
+      setTimeout(() => {
+        setPurchasingDataset(null);
+        setPurchaseStep("idle");
+      }, 3000);
+    },
+    [dispatch, userId, userRole]
+  );
+
+  // ----------------------------------------
   // Define the handleViewDataset and handlePurchase functions without dependencies on each other
+  // ----------------------------------------
 
   // First, create a viewDatasetImpl function that doesn't depend on requestAndVerifyConsent
   const viewDatasetImpl = useCallback(
@@ -366,16 +465,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         ];
         setConsentsHistory(updatedHistory);
 
-        dispatch(
-          addNotification({
-            type: "success",
-            message: "Dataset purchased successfully!",
-          })
-        );
-
-        if (onPurchase) {
-          onPurchase(id);
-        }
+        return {
+          success: true,
+          datasetId: id,
+          timestamp: new Date().toISOString(),
+        };
       } catch (err) {
         console.error("Purchase error:", err);
 
@@ -388,23 +482,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           errorMessage: err.message || "Unknown purchase error",
         });
 
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to purchase dataset. Please try again.",
-          })
-        );
+        throw err; // Re-throw for handling in the calling function
       }
     },
-    [
-      purchaseData,
-      dispatch,
-      onPurchase,
-      consentsHistory,
-      healthData,
-      userId,
-      userRole,
-    ]
+    [purchaseData, consentsHistory, healthData, userId, userRole]
   );
 
   // Request and verify consent for data access
@@ -536,37 +617,62 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [dispatch, requestAndVerifyConsent, viewDatasetImpl]
   );
 
-  // Similarly, define the public handlePurchase function
+  // Updated handlePurchase function to use our new handlers
   const handlePurchase = useCallback(
     async (id) => {
       try {
+        // Start the purchase process
+        handlePurchaseStart(id);
+
         // Define the purpose for this action
         const purpose =
           "Purchasing dataset for research/personal health records";
 
-        // Verify consent before proceeding - this requires more explicit consent
+        // Verify consent before proceeding
         const hasConsent = await requestAndVerifyConsent(
           purpose,
           id,
           "PURCHASE"
         );
+
         if (!hasConsent) {
+          // Reset purchase state if consent was denied
+          setPurchasingDataset(null);
+          setPurchaseStep("idle");
           return; // Consent modal will be shown or action was denied
         }
 
-        // Call the implementation function with consent verified
-        await purchaseDatasetImpl(id, true);
+        // Proceed with the purchase
+        try {
+          const result = await purchaseDatasetImpl(id, true);
+
+          // If successful, call the completion handler
+          handlePurchaseComplete(id, {
+            timestamp: result.timestamp,
+            datasetId: id,
+            transactionId: `tx-${Date.now()}`,
+          });
+        } catch (err) {
+          // If purchase implementation failed, handle the error
+          handlePurchaseError(id, err);
+        }
       } catch (err) {
         console.error("Error in handlePurchase:", err);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to process dataset purchase",
-          })
-        );
+
+        // Handle any errors not caught by purchaseDatasetImpl
+        if (purchaseStep !== "error") {
+          handlePurchaseError(id, err);
+        }
       }
     },
-    [dispatch, requestAndVerifyConsent, purchaseDatasetImpl]
+    [
+      handlePurchaseStart,
+      handlePurchaseComplete,
+      handlePurchaseError,
+      requestAndVerifyConsent,
+      purchaseDatasetImpl,
+      purchaseStep,
+    ]
   );
 
   // Handle consent approval from modal
@@ -628,8 +734,19 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             // Use viewDatasetImpl directly, since consent is already verified
             await viewDatasetImpl(datasetId, true);
           } else if (actionType === "PURCHASE" && datasetId) {
-            // Use purchaseDatasetImpl directly, since consent is already verified
-            await purchaseDatasetImpl(datasetId, true);
+            // For purchase, start with handlePurchaseStart
+            handlePurchaseStart(datasetId);
+            try {
+              // Use purchaseDatasetImpl directly, since consent is already verified
+              const result = await purchaseDatasetImpl(datasetId, true);
+              handlePurchaseComplete(datasetId, {
+                timestamp: result.timestamp,
+                datasetId,
+                transactionId: `tx-${Date.now()}`,
+              });
+            } catch (err) {
+              handlePurchaseError(datasetId, err);
+            }
           } else if (actionType === "DOWNLOAD" && datasetId) {
             // Handle download logic here if applicable
           }
@@ -665,6 +782,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       dispatch,
       viewDatasetImpl,
       purchaseDatasetImpl,
+      handlePurchaseStart,
+      handlePurchaseComplete,
+      handlePurchaseError,
       userId,
       userRole,
     ]
@@ -905,7 +1025,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     );
   };
 
-  // Pass props to the view component
+  // Pass props to the view component (including new purchase handlers)
   return (
     <>
       <DataBrowserView
@@ -940,6 +1060,12 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         studyTypes={STUDY_TYPES}
         dataFormats={DATA_FORMATS}
         consentVerified={consentVerified}
+        // Add new purchase-related props
+        purchasingDataset={purchasingDataset}
+        purchaseStep={purchaseStep}
+        handlePurchaseStart={handlePurchaseStart}
+        handlePurchaseComplete={handlePurchaseComplete}
+        handlePurchaseError={handlePurchaseError}
       />
 
       {/* Render consent modal when needed */}
