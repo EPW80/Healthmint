@@ -31,6 +31,8 @@ import {
 } from "../redux/slices/userSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { clearWalletConnection } from "../redux/slices/walletSlice.js";
+import { performLogout } from "../utils/authLoopPrevention.js";
+import TransactionsPage from "../pages/TransactionPage.js";
 
 /**
  * Logout confirmation dialog component
@@ -141,7 +143,7 @@ function AppContent() {
   const isRoleSelected = useSelector(selectIsRoleSelected);
 
   // Get auth state
-  const { isNewUser, verifyAuth, logout, clearVerificationCache } = useAuth();
+  const { isNewUser, verifyAuth, clearVerificationCache } = useAuth();
 
   // Track initialization state
   const [isInitialized, setIsInitialized] = useState(false);
@@ -335,19 +337,12 @@ function AppContent() {
         })
       );
 
-      // IMPORTANT: Set the force reconnect flag BEFORE disconnecting the wallet
-      // This ensures the flag will be checked on next page load
-      sessionStorage.setItem("force_wallet_reconnect", "true");
+      // Clear Redux states first
+      dispatch(clearWalletConnection());
+      dispatch(clearRole());
+      dispatch(clearUserProfile());
 
-      // Logout and disconnect - with error handling for each step
-      try {
-        await logout();
-        console.log("Logout successful");
-      } catch (error) {
-        console.error("Error during logout:", error);
-        // Continue with the process anyway
-      }
-
+      // Try to disconnect the wallet
       try {
         await disconnectWallet();
         console.log("Wallet disconnected successfully");
@@ -356,38 +351,18 @@ function AppContent() {
         // Continue with the process anyway
       }
 
-      // Clear Redux states
-      dispatch(clearWalletConnection());
-      dispatch(clearRole());
-      dispatch(clearUserProfile());
+      // Use the enhanced performLogout function with all required flags
+      await performLogout({
+        redirectToLogin: true,
+        clearLocalStorage: true,
+        clearSessionStorage: true,
+        useHardRedirect: true,
+        onComplete: () => {
+          pendingLogoutRef.current = false;
+        },
+      });
 
-      // Clear all related localStorage items directly
-      localStorage.removeItem("healthmint_wallet_address");
-      localStorage.removeItem("healthmint_wallet_connection");
-      localStorage.removeItem("healthmint_user_role");
-      localStorage.removeItem("healthmint_user_profile");
-      localStorage.removeItem("healthmint_auth_token");
-      localStorage.removeItem("healthmint_wallet_state");
-      localStorage.removeItem("healthmint_refresh_token");
-      localStorage.removeItem("healthmint_token_expiry");
-      localStorage.removeItem("healthmint_is_new_user");
-
-      // Clear any sessionStorage flags we might have set
-      sessionStorage.removeItem("bypass_route_protection");
-      sessionStorage.removeItem("bypass_role_check");
-      sessionStorage.removeItem("temp_selected_role");
-      sessionStorage.removeItem("auth_verification_override");
-
-      // Notification of success
-      dispatch(
-        addNotification({
-          type: "success",
-          message: "Logged out successfully",
-          duration: 3000,
-        })
-      );
-
-      // Hard redirect to login page
+      // The page should be redirected by now, but just in case:
       window.location.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
@@ -404,19 +379,11 @@ function AppContent() {
 
       // Even on error, try to clear everything and redirect
       setTimeout(() => {
-        // Set the reconnect flag again as a failsafe
-        sessionStorage.setItem("force_wallet_reconnect", "true");
-
-        // Clear as much state as possible
-        dispatch(clearWalletConnection());
-        dispatch(clearRole());
-        dispatch(clearUserProfile());
-
         // Force redirect to login
         window.location.replace("/login");
       }, 1000);
     }
-  }, [disconnectWallet, dispatch, logout, checkPendingTransactions]);
+  }, [disconnectWallet, dispatch, checkPendingTransactions]);
 
   // Cancel logout
   const handleLogoutCancel = useCallback(() => {
@@ -579,6 +546,20 @@ function AppContent() {
                   <Navigate to="/select-role" replace />
                 ) : (
                   <DataBrowser />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <ProtectedRoute>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <TransactionsPage />
                 )}
               </ProtectedRoute>
             }

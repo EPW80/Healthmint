@@ -12,7 +12,6 @@ import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
 import WalletErrorNotification from "../WalletErrorNotification.js";
 
-
 /**
  * Role Selector Component with improved navigation
  */
@@ -30,6 +29,28 @@ const RoleSelector = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [redirecting, setRedirecting] = useState(false);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+
+  // Add this effect at the top of the component
+  useEffect(() => {
+    // If logout is in progress, redirect to login
+    if (sessionStorage.getItem("logout_in_progress") === "true") {
+      console.log("RoleSelector: Logout in progress, redirecting to login");
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    // Check if wallet is actually connected, otherwise redirect to login
+    const isWalletConnected =
+      localStorage.getItem("healthmint_wallet_connection") === "true";
+    const hasWalletAddress = !!localStorage.getItem(
+      "healthmint_wallet_address"
+    );
+
+    if (!isWalletConnected || !hasWalletAddress) {
+      console.log("RoleSelector: No wallet connection, redirecting to login");
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 
   // Check for an existing role in localStorage or user profile
   useEffect(() => {
@@ -230,10 +251,10 @@ const RoleSelector = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       {/* Add Logout Button in the header area */}
       <div className="absolute top-4 right-4">
-        <LogoutButton 
-          variant="text" 
-          size="sm" 
-          className="text-gray-600 hover:text-gray-800" 
+        <LogoutButton
+          variant="text"
+          size="sm"
+          className="text-gray-600 hover:text-gray-800"
         />
       </div>
       {/* Error notification popup */}

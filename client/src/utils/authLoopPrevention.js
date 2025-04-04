@@ -1,9 +1,4 @@
 /**
- * This utility helps prevent authentication loops and ensures
- * proper logout functionality with direct redirection to login page.
- */
-
-/**
  * Tracks authentication verification attempts to prevent infinite loops
  */
 let verificationAttempts = 0;
@@ -169,84 +164,183 @@ export const clearAuthStorage = () => {
 };
 
 /**
- * Complete logout process with reliable redirection to login
- * @param {Object} options - Optional settings
- * @param {Function} onStateClear - Callback to clear application state
- * @returns {Promise<boolean>} - Whether logout was successful
+ * This utility provides functions to prevent authentication and routing loops
+ * by properly handling application state during authentication flows
  */
-export const performLogout = async (options = {}, onStateClear) => {
+
+/**
+ * Performs a complete logout with enhanced cleanup to prevent auth loops
+ *
+ * @param {Object} options Configuration options
+ * @param {boolean} options.redirectToLogin Whether to redirect to the login page after logout
+ * @param {boolean} options.clearLocalStorage Whether to clear localStorage
+ * @param {boolean} options.clearSessionStorage Whether to clear sessionStorage
+ * @param {boolean} options.useHardRedirect Whether to use hard page reload for redirect
+ * @param {Function} options.onComplete Callback function after logout is complete
+ * @returns {Promise<boolean>} Promise resolving to true if logout was successful
+ */
+export const performLogout = async ({
+  redirectToLogin = true,
+  clearLocalStorage = true,
+  clearSessionStorage = true,
+  useHardRedirect = false,
+  onComplete = null,
+} = {}) => {
   try {
-    const { useHardRedirect = true, clearTimeout: shouldClearTimeout = true } =
-      options;
+    // 1. Set the forced reconnect flag first - CRITICAL for correct auth flow
+    sessionStorage.setItem("force_wallet_reconnect", "true");
+    sessionStorage.setItem("logout_in_progress", "true");
 
-    console.log("Performing complete logout...");
+    // 2. Clear any bypass flags that interfere with routing
+    sessionStorage.removeItem("bypass_route_protection");
+    sessionStorage.removeItem("temp_selected_role");
+    sessionStorage.removeItem("bypass_role_check");
+    sessionStorage.removeItem("auth_verification_override");
 
-    // Clear timeout to avoid interference
-    if (shouldClearTimeout && loopTimeoutId) {
-      clearTimeout(loopTimeoutId);
-      loopTimeoutId = null;
+    // 3. Explicitly clear authentication and role-related state
+    if (clearLocalStorage) {
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
+      localStorage.removeItem("healthmint_user_role");
+      localStorage.removeItem("healthmint_user_profile");
+      localStorage.removeItem("healthmint_auth_token");
+      localStorage.removeItem("healthmint_refresh_token");
+      localStorage.removeItem("healthmint_token_expiry");
+      localStorage.removeItem("healthmint_is_new_user");
+      localStorage.removeItem("healthmint_wallet_state");
     }
 
-    // Clear all authentication storage
-    clearAuthStorage();
+    // 4. Apply additional session cleanup
+    if (clearSessionStorage) {
+      // Only clear logout-related flags, keep other session data
+      const forceReconnect = sessionStorage.getItem("force_wallet_reconnect");
+      const logoutInProgress = sessionStorage.getItem("logout_in_progress");
 
-    // Reset verification counter
-    resetVerificationAttempts();
+      // sessionStorage.clear(); // Don't use clear() as it's too aggressive
 
-    // Call the state clear callback if provided
-    if (onStateClear && typeof onStateClear === "function") {
-      try {
-        onStateClear();
-      } catch (e) {
-        console.error("Error during state clearing:", e);
+      // Restore critical flags
+      sessionStorage.setItem("force_wallet_reconnect", forceReconnect);
+      sessionStorage.setItem("logout_in_progress", logoutInProgress);
+    }
+
+    // 5. Redirect to login page if requested
+    if (redirectToLogin) {
+      if (useHardRedirect) {
+        // Hard redirect to ensure clean state
+        window.location.href = "/login";
+      } else {
+        // Using replace to prevent back-button issues
+        window.history.replaceState({}, "", "/login");
+
+        // Force a page reload to clear React component state
+        window.location.reload();
       }
     }
 
-    // Double-check that the role is cleared
-    try {
-      localStorage.removeItem("healthmint_user_role");
-    } catch (e) {
-      console.error("Additional error removing role from localStorage:", e);
-    }
+    // 6. Clean up flags after a delay to ensure they're used by the login page
+    setTimeout(() => {
+      sessionStorage.removeItem("logout_in_progress");
+    }, 1000);
 
-    // Add a small delay to ensure state clearing completes
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Log the redirection
-    console.log("Redirecting to login page after logout...");
-
-    // Redirect to login page
-    if (useHardRedirect) {
-      window.location.href = "/login";
-      // Fallback in case the above doesn't trigger immediately
-      setTimeout(() => {
-        console.log("Executing fallback redirect");
-        window.location.replace("/login");
-      }, 150);
-    } else {
-      window.location.href = "/login";
+    // 7. Call the completion callback if provided
+    if (onComplete && typeof onComplete === "function") {
+      onComplete();
     }
 
     return true;
   } catch (error) {
-    console.error("Error during logout:", error);
+    console.error("Logout error in authLoopPrevention:", error);
 
-    // Fallback: force redirect even if there was an error
-    try {
-      console.log("Error during logout - executing emergency cleanup");
-      localStorage.clear();
-      sessionStorage.clear();
-      localStorage.removeItem("healthmint_user_role");
-
-      console.log("Emergency redirect to login page");
-      forceRedirectToLogin();
-    } catch (e) {
-      console.error("Error in force redirect:", e);
-      // Absolutely last resort
-      window.location.href = "/login";
-    }
+    // Force redirect to login as emergency fallback
+    window.location.replace("/login");
     return false;
   }
+};
+
+/**
+ * Checks if a navigation operation would cause an auth loop
+ * and performs corrective action if needed
+ *
+ * @param {string} targetPath The path being navigated to
+ * @param {string} currentPath The current path
+ * @param {Object} authState Current auth state for context
+ * @returns {boolean} True if navigation should proceed, false if it was blocked
+ */
+export const preventAuthLoop = (targetPath, currentPath, authState = {}) => {
+  // If logout is in progress, always force redirect to login
+  if (sessionStorage.getItem("logout_in_progress") === "true") {
+    console.warn("Logout in progress - forcing redirect to login page");
+    window.location.replace("/login");
+    return false;
+  }
+
+  // If we're already on the login page and trying to go to role selection
+  // without being properly authenticated, prevent the loop
+  if (
+    currentPath === "/login" &&
+    targetPath === "/select-role" &&
+    !authState.isAuthenticated &&
+    !localStorage.getItem("healthmint_auth_token")
+  ) {
+    console.warn("Prevented auth loop: login → select-role without auth");
+    return false;
+  }
+
+  // If we detect a loop between role selection and dashboard
+  if (
+    (currentPath === "/select-role" && targetPath === "/dashboard") ||
+    (currentPath === "/dashboard" && targetPath === "/select-role")
+  ) {
+    // Check how many times we've gone back and forth
+    const loopCount = parseInt(
+      sessionStorage.getItem("auth_loop_count") || "0"
+    );
+    sessionStorage.setItem("auth_loop_count", (loopCount + 1).toString());
+
+    // If we've looped too many times, break the cycle
+    if (loopCount >= 2) {
+      console.warn("Detected auth loop: forcing redirect to login");
+      performLogout({ redirectToLogin: true, useHardRedirect: true });
+      return false;
+    }
+  } else {
+    // Reset the counter when navigating to other routes
+    sessionStorage.removeItem("auth_loop_count");
+  }
+
+  return true;
+};
+
+/**
+ * Cleans up auth state after successful login to prevent future loops
+ */
+export const cleanupAfterLogin = () => {
+  sessionStorage.removeItem("force_wallet_reconnect");
+  sessionStorage.removeItem("logout_in_progress");
+  sessionStorage.removeItem("auth_loop_count");
+  sessionStorage.removeItem("auth_verification_override");
+};
+
+/**
+ * Checks if the auth state might be stuck or invalid
+ * @returns {boolean} True if auth state appears corrupt
+ */
+export const isAuthStateCorrupt = () => {
+  const hasWalletConnection =
+    localStorage.getItem("healthmint_wallet_connection") === "true";
+  const hasWalletAddress = !!localStorage.getItem("healthmint_wallet_address");
+  const hasRole = !!localStorage.getItem("healthmint_user_role");
+  const hasAuthToken = !!localStorage.getItem("healthmint_auth_token");
+
+  // Detect inconsistent state: claims to be connected but missing critical data
+  if (
+    hasWalletConnection &&
+    (!hasWalletAddress || (!hasRole && hasAuthToken))
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 /**

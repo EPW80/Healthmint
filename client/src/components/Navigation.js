@@ -8,11 +8,12 @@ import {
   Search,
   Settings,
   LogOut,
+  Clock,
   Menu as MenuIcon,
   User,
   X,
   ChevronDown,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 import useNavigation from "../hooks/useNavigation.js";
 
@@ -66,14 +67,7 @@ NavLink.propTypes = {
   mobile: PropTypes.bool,
 };
 
-const Navigation = ({
-  account,
-  onLogout,
-  userName,
-  role,
-  network,
-  onSwitchNetwork,
-}) => {
+const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
   const { navigateTo } = useNavigation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -99,6 +93,7 @@ const Navigation = ({
     { to: "/", label: "Home", icon: Home },
     { to: "/upload", label: "Upload Data", icon: Upload },
     { to: "/browse", label: "Browse Data", icon: Search },
+    { to: "/transactions", label: "Transactions", icon: Clock },
     { to: "/profile", label: "Profile Settings", icon: Settings },
   ];
 
