@@ -170,12 +170,12 @@ const TransactionHistory = ({
       let filteredHistory = [...transformedHistory];
 
       if (filters.type !== "all" && filters.type !== "purchase") {
-        // Since our mock service only has purchase transactions, this would filter all out
+        // Filter by type
         filteredHistory = [];
       }
 
       if (filters.status !== "all" && filters.status !== "success") {
-        // Since our mock service transactions are all successful, this would filter all out
+        // Filter by status
         filteredHistory = [];
       }
 

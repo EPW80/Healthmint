@@ -9,7 +9,7 @@ import {
   Clock,
   Shield,
   AlertCircle,
-  CheckCircle,
+  CheckCircle, // This is imported correctly
   Bell,
   Database,
   Download,
@@ -65,17 +65,18 @@ const Dashboard = ({ onNavigate }) => {
       "unknown"
   );
 
-  // Get user metrics based on role
+  // Get user metrics based on role - removing unused variables to fix warnings
   const {
     pendingRequests = 0,
     activeStudies = 0,
-    appliedFilters = 0,
     securityScore = 85,
-    totalUploads = 0,
-    totalShared = 0,
-    earnings = "0",
-    datasetsAccessed = 0,
-    totalSpent = "0",
+    // Removing unused variables from destructuring
+    // appliedFilters = 0,
+    // totalUploads = 0,
+    // totalShared = 0,
+    // earnings = "0",
+    // datasetsAccessed = 0,
+    // totalSpent = "0",
   } = userProfile || {};
 
   // Get health data state from hook
@@ -349,7 +350,7 @@ const Dashboard = ({ onNavigate }) => {
       case "upload":
         return <Upload className="w-5 h-5 text-blue-500" />;
       case "access":
-        return <Check className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-5 h-5 text-green-500" />; // Fixed: Changed 'Check' to 'CheckCircle'
       case "request":
         return <Bell className="w-5 h-5 text-yellow-500" />;
       case "download":
@@ -840,9 +841,13 @@ const Dashboard = ({ onNavigate }) => {
                 Understand your rights under HIPAA and how your data is
                 protected.
               </p>
-              <a href="#" className="text-blue-600 text-sm hover:underline">
+              {/* Fix for anchor href warning */}
+              <button
+                onClick={() => handleNavigateTo("/resources/hipaa-guide")}
+                className="text-blue-600 text-sm hover:underline"
+              >
                 Learn more →
-              </a>
+              </button>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
@@ -851,9 +856,13 @@ const Dashboard = ({ onNavigate }) => {
               <p className="text-sm text-gray-600 mb-3">
                 How sharing your health data can contribute to medical advances.
               </p>
-              <a href="#" className="text-green-600 text-sm hover:underline">
+              {/* Fix for anchor href warning */}
+              <button
+                onClick={() => handleNavigateTo("/resources/sharing-benefits")}
+                className="text-green-600 text-sm hover:underline"
+              >
                 Learn more →
-              </a>
+              </button>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
@@ -862,9 +871,13 @@ const Dashboard = ({ onNavigate }) => {
               <p className="text-sm text-gray-600 mb-3">
                 Tips for maintaining privacy while sharing health information.
               </p>
-              <a href="#" className="text-purple-600 text-sm hover:underline">
+              {/* Fix for anchor href warning */}
+              <button
+                onClick={() => handleNavigateTo("/resources/privacy-practices")}
+                className="text-purple-600 text-sm hover:underline"
+              >
                 Learn more →
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -1348,9 +1361,13 @@ const Dashboard = ({ onNavigate }) => {
             <p className="text-sm text-gray-600 mb-3">
               How to properly cite Healthmint datasets in your publications.
             </p>
-            <a href="#" className="text-purple-600 text-sm hover:underline">
+            {/* Fix for anchor href warning */}
+            <button
+              onClick={() => handleNavigateTo("/resources/citation-guidelines")}
+              className="text-purple-600 text-sm hover:underline"
+            >
               Learn more →
-            </a>
+            </button>
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
@@ -1359,9 +1376,13 @@ const Dashboard = ({ onNavigate }) => {
             <p className="text-sm text-gray-600 mb-3">
               Guidelines for ethical research using anonymized health data.
             </p>
-            <a href="#" className="text-indigo-600 text-sm hover:underline">
+            {/* Fix for anchor href warning */}
+            <button
+              onClick={() => handleNavigateTo("/resources/research-ethics")}
+              className="text-indigo-600 text-sm hover:underline"
+            >
               Learn more →
-            </a>
+            </button>
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
@@ -1370,9 +1391,13 @@ const Dashboard = ({ onNavigate }) => {
             <p className="text-sm text-gray-600 mb-3">
               Connect with other researchers working on similar health topics.
             </p>
-            <a href="#" className="text-blue-600 text-sm hover:underline">
+            {/* Fix for anchor href warning */}
+            <button
+              onClick={() => handleNavigateTo("/network/join")}
+              className="text-blue-600 text-sm hover:underline"
+            >
               Join network →
-            </a>
+            </button>
           </div>
         </div>
       </div>
