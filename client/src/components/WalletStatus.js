@@ -1,4 +1,4 @@
-// Fixed src/components/WalletStatus.js
+// src/components/WalletStatus.js
 import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 import useWalletConnect from "../hooks/useWalletConnect.js";
-import mockPaymentService from "../services/mockPaymentService.js"; // Properly import mockPaymentService
+import mockPaymentService from "../services/mockPaymentService.js";
 
 /**
  * WalletStatus Component
@@ -37,6 +37,7 @@ const WalletStatus = ({
     network,
     getBalance: walletGetBalance, // Rename to avoid confusion
     disconnectWallet,
+    switchNetwork, // Add switchNetwork to destructuring
     loading: walletLoading,
   } = useWalletConnect({
     autoConnect: false, // Don't auto-connect when viewing wallet status
@@ -184,7 +185,7 @@ const WalletStatus = ({
               Please switch to Sepolia Testnet.
             </p>
             <button
-              onClick={switchNetwork}
+              onClick={switchNetwork} // Now this properly references the function from useWalletConnect
               className="text-xs text-yellow-600 hover:text-yellow-800 font-medium mt-1"
             >
               Switch Network

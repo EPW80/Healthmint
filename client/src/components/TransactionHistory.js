@@ -686,7 +686,7 @@ const TransactionHistory = ({
           <div className="flex items-center">
             <DollarSign className="text-blue-600 mr-2" size={18} />
             <div>
-              <p className="text-sm text-blue-700">Current Wallet Balance</p>
+              <p className="text-sm text-blue-700">Current Estimated Earnings</p>
               <p className="text-lg font-semibold text-blue-800">{currentBalance} ETH</p>
             </div>
           </div>
