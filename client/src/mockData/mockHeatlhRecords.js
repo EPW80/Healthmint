@@ -2,12 +2,10 @@
 
 /**
  * Mock health records to use when API fails or for development
- * Provides 25 diverse health records for testing the UI
+ * Provides 25 diverse health records with controlled verification status
  */
 
 const generateMockHealthRecords = () => {
-  // Categories matching those defined in your DataBrowser component
-
   // Data formats
   const formats = ["PDF", "CSV", "JSON", "DICOM", "HL7", "FHIR"];
 
@@ -42,7 +40,8 @@ const generateMockHealthRecords = () => {
     return (Math.floor(Math.random() * 49) + 1) * 10;
   };
 
-  // Record template data
+  // Record template data with explicit verification status
+  // Use true, false, or null (for random determination)
   const recordTemplates = [
     {
       title: "Annual Physical Examination",
@@ -50,6 +49,7 @@ const generateMockHealthRecords = () => {
       description:
         "Comprehensive annual physical examination including vitals, general assessment, and preventative screening recommendations.",
       tags: ["annual", "physical", "screening", "preventative"],
+      verified: true, // Always verified
     },
     {
       title: "Complete Blood Count (CBC)",
@@ -57,6 +57,7 @@ const generateMockHealthRecords = () => {
       description:
         "Analysis of red blood cells, white blood cells, and platelets to assess overall health and detect a wide range of disorders.",
       tags: ["blood", "test", "CBC", "hematology"],
+      verified: true, // Always verified
     },
     {
       title: "Lipid Panel Results",
@@ -64,6 +65,7 @@ const generateMockHealthRecords = () => {
       description:
         "Measurement of cholesterol levels including HDL, LDL, and triglycerides to assess cardiovascular health.",
       tags: ["cholesterol", "lipids", "heart", "cardiovascular"],
+      verified: true, // Always verified
     },
     {
       title: "Blood Pressure Monitoring",
@@ -71,6 +73,7 @@ const generateMockHealthRecords = () => {
       description:
         "Periodic measurements of blood pressure readings over a 24-hour period to detect hypertension patterns.",
       tags: ["blood pressure", "hypertension", "monitoring"],
+      verified: null, // Random determination
     },
     {
       title: "Electrocardiogram (ECG)",
@@ -78,6 +81,7 @@ const generateMockHealthRecords = () => {
       description:
         "Recording of the electrical activity of the heart to detect cardiac abnormalities and assess heart function.",
       tags: ["ECG", "heart", "electrical", "cardiac"],
+      verified: true, // Always verified
     },
     {
       title: "COVID-19 Vaccination",
@@ -85,6 +89,7 @@ const generateMockHealthRecords = () => {
       description:
         "Record of COVID-19 vaccination including date, manufacturer, lot number, and administration site.",
       tags: ["COVID-19", "vaccine", "immunization", "pandemic"],
+      verified: true, // Always verified
     },
     {
       title: "Influenza Vaccination",
@@ -92,6 +97,7 @@ const generateMockHealthRecords = () => {
       description:
         "Annual influenza vaccination record with batch number and administration details.",
       tags: ["flu", "vaccine", "seasonal", "influenza"],
+      verified: true, // Always verified
     },
     {
       title: "Allergy Skin Test Results",
@@ -99,6 +105,7 @@ const generateMockHealthRecords = () => {
       description:
         "Comprehensive skin test results for environmental and food allergens with reaction severity measurements.",
       tags: ["allergy", "skin test", "allergens", "reactivity"],
+      verified: null, // Random determination
     },
     {
       title: "Dental X-Rays",
@@ -106,6 +113,7 @@ const generateMockHealthRecords = () => {
       description:
         "Full set of dental radiographs including bitewing and panoramic images for comprehensive dental assessment.",
       tags: ["dental", "x-ray", "radiographs", "teeth"],
+      verified: true, // Always verified
     },
     {
       title: "Eye Examination",
@@ -113,6 +121,7 @@ const generateMockHealthRecords = () => {
       description:
         "Comprehensive eye examination including visual acuity, refraction assessment, and ocular health evaluation.",
       tags: ["vision", "eye", "refraction", "acuity"],
+      verified: null, // Random determination
     },
     {
       title: "Genetic Risk Assessment",
@@ -120,6 +129,7 @@ const generateMockHealthRecords = () => {
       description:
         "Analysis of genetic markers associated with disease risk factors and pharmaceutical response variations.",
       tags: ["genetics", "DNA", "risk", "hereditary"],
+      verified: true, // Always verified
     },
     {
       title: "Mental Health Assessment",
@@ -127,6 +137,7 @@ const generateMockHealthRecords = () => {
       description:
         "Standardized psychological evaluation using validated assessment tools to measure mood, anxiety, and cognitive function.",
       tags: ["mental health", "psychology", "assessment", "cognitive"],
+      verified: false, // Never verified
     },
     {
       title: "Nutrition Consultation",
@@ -134,6 +145,7 @@ const generateMockHealthRecords = () => {
       description:
         "Dietary assessment and personalized nutrition recommendations based on health goals and medical conditions.",
       tags: ["diet", "nutrition", "consultation", "dietary"],
+      verified: false, // Never verified
     },
     {
       title: "Bone Density Scan",
@@ -141,6 +153,7 @@ const generateMockHealthRecords = () => {
       description:
         "DEXA scan results measuring bone mineral density to assess osteoporosis risk and bone health.",
       tags: ["bone", "density", "DEXA", "osteoporosis"],
+      verified: true, // Always verified
     },
     {
       title: "MRI - Lumbar Spine",
@@ -148,6 +161,7 @@ const generateMockHealthRecords = () => {
       description:
         "Magnetic resonance imaging of the lumbar spine with radiologist interpretation and findings.",
       tags: ["MRI", "spine", "lumbar", "imaging"],
+      verified: true, // Always verified
     },
     {
       title: "Pulmonary Function Test",
@@ -155,6 +169,7 @@ const generateMockHealthRecords = () => {
       description:
         "Comprehensive assessment of lung function including spirometry, lung volumes, and diffusion capacity.",
       tags: ["pulmonary", "lungs", "spirometry", "breathing"],
+      verified: null, // Random determination
     },
     {
       title: "Thyroid Function Panel",
@@ -162,6 +177,7 @@ const generateMockHealthRecords = () => {
       description:
         "Measurement of thyroid hormones (TSH, T3, T4) to assess thyroid function and detect disorders.",
       tags: ["thyroid", "hormones", "endocrine", "TSH"],
+      verified: true, // Always verified
     },
     {
       title: "Skin Cancer Screening",
@@ -169,6 +185,7 @@ const generateMockHealthRecords = () => {
       description:
         "Full-body skin examination to detect suspicious lesions and assess skin cancer risk.",
       tags: ["skin", "cancer", "screening", "dermatology"],
+      verified: false, // Never verified
     },
     {
       title: "Neurological Examination",
@@ -176,6 +193,7 @@ const generateMockHealthRecords = () => {
       description:
         "Comprehensive assessment of neurological function including reflexes, sensation, and cognitive status.",
       tags: ["neurological", "brain", "nervous system", "cognitive"],
+      verified: null, // Random determination
     },
     {
       title: "Physical Therapy Evaluation",
@@ -183,6 +201,7 @@ const generateMockHealthRecords = () => {
       description:
         "Initial assessment of functional mobility, strength, and rehabilitation needs with treatment recommendations.",
       tags: ["PT", "rehabilitation", "mobility", "therapy"],
+      verified: false, // Never verified
     },
     {
       title: "Dietary Log Analysis",
@@ -190,6 +209,7 @@ const generateMockHealthRecords = () => {
       description:
         "Two-week food diary analysis with macronutrient breakdown and dietary pattern observations.",
       tags: ["diet", "food log", "nutrition", "macronutrients"],
+      verified: false, // Never verified
     },
     {
       title: "Hemoglobin A1C Test",
@@ -197,6 +217,7 @@ const generateMockHealthRecords = () => {
       description:
         "Measurement of average blood glucose levels over the past three months to monitor diabetes management.",
       tags: ["diabetes", "glucose", "A1C", "blood sugar"],
+      verified: true, // Always verified
     },
     {
       title: "Sports Injury Assessment",
@@ -204,6 +225,7 @@ const generateMockHealthRecords = () => {
       description:
         "Evaluation of sports-related injury including mechanism, severity, and rehabilitation protocol.",
       tags: ["sports", "injury", "athletic", "rehabilitation"],
+      verified: null, // Random determination
     },
     {
       title: "Vitamin D Level Test",
@@ -211,6 +233,7 @@ const generateMockHealthRecords = () => {
       description:
         "Measurement of serum vitamin D levels to assess deficiency and bone health status.",
       tags: ["vitamin D", "supplement", "deficiency", "blood test"],
+      verified: true, // Always verified
     },
     {
       title: "Sleep Study Results",
@@ -218,6 +241,7 @@ const generateMockHealthRecords = () => {
       description:
         "Polysomnography results showing sleep patterns, oxygen levels, and potential sleep disorders.",
       tags: ["sleep", "apnea", "polysomnography", "rest"],
+      verified: null, // Random determination
     },
   ];
 
@@ -226,8 +250,9 @@ const generateMockHealthRecords = () => {
     // Determine if record is anonymized (80% chance)
     const anonymized = Math.random() > 0.2;
 
-    // Determine if record is verified (70% chance)
-    const verified = Math.random() > 0.3;
+    // Determine if record is verified - respect explicit settings if provided
+    const verified =
+      template.verified !== null ? template.verified : Math.random() > 0.3; // 70% chance if not explicitly set
 
     // Create the final record
     return {

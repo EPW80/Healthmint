@@ -3,7 +3,6 @@ import * as pkg from "@reduxjs/toolkit";
 
 const { createSlice } = pkg;
 
-
 const initialState = {
   healthRecords: [],
   userRecords: [], // Records owned by the current user

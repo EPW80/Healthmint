@@ -223,7 +223,6 @@ const useAuth = () => {
       setError(null);
 
       try {
-
         // Update authentication state
         setIsAuthenticated(true);
         setIsNewUser(false);

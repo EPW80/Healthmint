@@ -152,14 +152,6 @@ const useWalletConnect = (options = {}) => {
       }
     }
   }, [dispatch, getNetworkFromChainId]);
-
-  /**
-   * Disconnect wallet
-   */
-  /**
-   * Disconnect from wallet with enhanced cleanup
-   * @returns {Promise<boolean>} Promise that resolves to true if disconnect was successful
-   */
   /**
    * Disconnect from wallet with enhanced cleanup
    * @returns {Promise<boolean>} Promise that resolves to true if disconnect was successful
@@ -187,8 +179,7 @@ const useWalletConnect = (options = {}) => {
 
           // For MetaMask specifically
           if (window.ethereum.isMetaMask) {
-            // We can't truly disconnect from MetaMask programmatically,
-            // but we can clear our connection state
+            // Clear the connection state
             console.log("Clearing MetaMask connection state");
           }
         } catch (err) {

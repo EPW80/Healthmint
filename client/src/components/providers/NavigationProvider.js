@@ -66,5 +66,4 @@ NavigationProvider.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-// Only export the provider component - the hook will be in useNavigation.js
 export default NavigationProvider;

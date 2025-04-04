@@ -1,4 +1,4 @@
-// src/components/DataBrowserView.js with improved accessibility and standardized loading
+// src/components/DataBrowserView.js
 import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
@@ -54,7 +54,6 @@ const DataBrowserView = ({
   categories,
   studyTypes,
   dataFormats,
-  consentVerified,
 }) => {
   // Refs for managing focus and modal accessibility
   const modalRef = useRef(null);
@@ -982,7 +981,6 @@ DataBrowserView.propTypes = {
   studyTypes: PropTypes.array.isRequired,
   dataFormats: PropTypes.array.isRequired,
   consentVerified: PropTypes.bool,
-  // New purchase-related props
   purchasingDataset: PropTypes.string,
   purchaseStep: PropTypes.string,
   handlePurchaseStart: PropTypes.func,

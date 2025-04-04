@@ -140,6 +140,62 @@ const useBlockchain = (options = {}) => {
           hash: null,
           error: "Out of gas",
         },
+        {
+          id: "tx-5",
+          type: "access",
+          status: "success",
+          amount: "0",
+          timestamp: new Date(Date.now() - 3 * 86400000).toISOString(), // 3 days ago
+          description: "Accessed shared data",
+          blockNumber: "123454",
+          gasUsed: "18000",
+          hash: "0xa1b2c3d4e5f6g7h8i9j0",
+        },
+        {
+          id: "tx-6",
+          type: "upload",
+          status: "success",
+          amount: "0",
+          timestamp: new Date(Date.now() - 4 * 86400000).toISOString(), // 4 days ago
+          description: "Uploaded genetic report",
+          blockNumber: "123453",
+          gasUsed: "30000",
+          hash: "0x99887766554433221100",
+        },
+        {
+          id: "tx-7",
+          type: "purchase",
+          status: "failed",
+          amount: "0.03",
+          timestamp: new Date(Date.now() - 5 * 86400000).toISOString(), // 5 days ago
+          description: "Failed dataset purchase",
+          blockNumber: null,
+          gasUsed: null,
+          hash: null,
+          error: "Insufficient balance",
+        },
+        {
+          id: "tx-8",
+          type: "share",
+          status: "success",
+          amount: "0.005",
+          timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), // 2 hours ago
+          description: "Shared lab results",
+          blockNumber: "123457",
+          gasUsed: "25000",
+          hash: "0x3344abcdeffedcba9988",
+        },
+        {
+          id: "tx-9",
+          type: "revoke",
+          status: "success",
+          amount: "0",
+          timestamp: new Date(Date.now() - 6 * 3600000).toISOString(), // 6 hours ago
+          description: "Revoked data access",
+          blockNumber: "123452",
+          gasUsed: "21000",
+          hash: "0xdeadbeef12345678face",
+        },
       ];
 
       // Simulate network delay

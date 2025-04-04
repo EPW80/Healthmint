@@ -1060,7 +1060,6 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         studyTypes={STUDY_TYPES}
         dataFormats={DATA_FORMATS}
         consentVerified={consentVerified}
-        // Add new purchase-related props
         purchasingDataset={purchasingDataset}
         purchaseStep={purchaseStep}
         handlePurchaseStart={handlePurchaseStart}
