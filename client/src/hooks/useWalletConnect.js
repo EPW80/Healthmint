@@ -7,6 +7,7 @@ import { ethers } from "ethers";
 import {
   updateWalletConnection,
   clearWalletConnection,
+  setWalletConnection,
   selectIsConnected,
   selectAddress,
   selectChainId,
@@ -151,29 +152,84 @@ const useWalletConnect = (options = {}) => {
       }
     }
   }, [dispatch, getNetworkFromChainId]);
-
   /**
-   * Disconnect wallet
+   * Disconnect from wallet with enhanced cleanup
+   * @returns {Promise<boolean>} Promise that resolves to true if disconnect was successful
    */
   const disconnectWallet = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Clear wallet data from localStorage
+      // Set logout flag first
+      sessionStorage.setItem("logout_in_progress", "true");
+
+      // Also clear any auth verification bypass flags
+      sessionStorage.removeItem("auth_verification_override");
+      sessionStorage.removeItem("bypass_route_protection");
+      sessionStorage.removeItem("bypass_role_check");
+
+      // If MetaMask is available, attempt to disconnect
+      if (typeof window.ethereum !== "undefined") {
+        try {
+          // Some wallets support formal disconnect
+          if (typeof window.ethereum.disconnect === "function") {
+            await window.ethereum.disconnect();
+          }
+
+          // For MetaMask specifically
+          if (window.ethereum.isMetaMask) {
+            // Clear the connection state
+            console.log("Clearing MetaMask connection state");
+          }
+        } catch (err) {
+          console.warn("Non-critical error during wallet disconnect:", err);
+          // Continue despite errors
+        }
+      }
+
+      // Clear wallet state in Redux
+      dispatch(
+        setWalletConnection({
+          address: null,
+          isConnected: false,
+          network: null,
+        })
+      );
+
+      // Clean localStorage
       localStorage.removeItem("healthmint_wallet_address");
       localStorage.removeItem("healthmint_wallet_connection");
 
-      // Clear Redux state
-      dispatch(clearWalletConnection());
+      // Set the reconnect flag
+      sessionStorage.setItem("force_wallet_reconnect", "true");
 
-      return { success: true };
-    } catch (error) {
-      console.error("Wallet disconnect error:", error);
-      return { success: false, error: error.message };
-    } finally {
-      if (isActive.current) {
-        setLoading(false);
-      }
+      // Success notification
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Wallet disconnected successfully",
+          duration: 3000,
+        })
+      );
+
+      setLoading(false);
+      return true;
+    } catch (err) {
+      console.error("Error disconnecting wallet:", err);
+      setError(err.message || "Failed to disconnect wallet");
+
+      // Add notification
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Failed to disconnect wallet",
+          duration: 5000,
+        })
+      );
+
+      setLoading(false);
+      return false;
     }
   }, [dispatch]);
 

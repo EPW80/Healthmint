@@ -1,5 +1,6 @@
 // client/src/components/ui/index.js
-// Export all UI components to make imports cleaner
+// This file exports various UI components and styled components for use in the application.
+// It serves as a central point for importing and exporting components, making it easier to manage and maintain the codebase.
 
 export { default as LoadingSpinner } from "./LoadingSpinner.js";
 export { default as FocusTrap } from "./FocusTrap.js";

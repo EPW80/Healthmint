@@ -43,7 +43,7 @@ const useHipaaData = (options) => {
   // Track previous dependencies for comparison
   const prevDepsRef = useRef(dependencies);
 
-  // Use our async operation hook for consistent error handling
+  // Function to clear previous dependencies
   const { loading, execute, clearError } = useAsyncOperation({
     componentId: "HipaaData",
     userId,

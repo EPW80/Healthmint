@@ -1,8 +1,6 @@
 // src/redux/store.js
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { hipaaAuditMiddleware } from "./middleware/hipaaAuditMiddleware";
-
-// Import all reducers
 import authReducer from "./slices/authSlice.js";
 import dataReducer from "./slices/dataSlice.js";
 import uiReducer from "./slices/uiSlice.js";
@@ -31,14 +29,14 @@ const IGNORED_ACTIONS = [
   "wallet/switchNetworkAsync",
   "wallet/switchNetworkAsync/fulfilled",
 
-  // Auth-related actions that might contain non-serializable data
+  // Auth-related actions
   "auth/loginAsync",
   "auth/loginAsync/fulfilled",
   "auth/refreshTokenAsync/fulfilled",
 ];
 
 const IGNORED_PATHS = [
-  // These paths may contain non-serializable objects like providers or signers
+  // Wallet-related paths
   "wallet.provider",
   "wallet.signer",
   "wallet.network.blockExplorer",
@@ -99,7 +97,9 @@ const store = configureStore({
       },
       thunk: {
         extraArgument: {
-          // Add extra arguments for API calls if needed
+          // Add any extra arguments for thunks here
+          // For example, you could add an API client or a logger
+          apiClient: null,
         },
       },
     }).concat(hipaaAuditMiddleware),

@@ -49,6 +49,21 @@ const WalletConnect = ({ onConnect }) => {
   // If auto-connect fails, we want to make it easy for the user to initiate the connection
   const showNetworkWarning = isConnected && network && !network.isSupported;
 
+  // Also, at the very beginning of the component, add a check for logout state:
+  useEffect(() => {
+    // Check for and clear any lingering logout flags when mounting the login component
+    const isLogoutInProgress =
+      sessionStorage.getItem("logout_in_progress") === "true";
+    if (isLogoutInProgress) {
+      console.log("WalletConnect: Clearing logout in progress flag");
+      sessionStorage.removeItem("logout_in_progress");
+
+      // Clear any wallet connection state as well
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
+    }
+  }, []);
+
   // Clear reconnection flags and clean up wallet state
   useEffect(() => {
     // Clear any forced reconnect flags when we reach this component
@@ -74,7 +89,7 @@ const WalletConnect = ({ onConnect }) => {
     });
   }, [isConnected, address, isNewUser, isRegistrationComplete]);
 
-  // Handle redirection after successful connection
+  // useEffect that handles redirection after successful connection
   useEffect(() => {
     if (isConnected && !loading) {
       console.log("WalletConnect: Connection successful, preparing redirect", {
@@ -82,11 +97,26 @@ const WalletConnect = ({ onConnect }) => {
         isNewUser,
       });
 
+      // Clear the logout in progress flag if present
+      sessionStorage.removeItem("logout_in_progress");
+
       const redirectUser = async () => {
+        // Wait a moment for auth state to be fully established
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         if (isRegistrationComplete) {
-          // If registration is complete, go to role selection or dashboard
-          console.log("WalletConnect: Redirecting to role selection");
-          navigate("/select-role", { replace: true });
+          // If user has a role already set, send them to dashboard instead of role selection
+          const userRole = localStorage.getItem("healthmint_user_role");
+          if (userRole) {
+            console.log(
+              "WalletConnect: User has role, redirecting to dashboard"
+            );
+            navigate("/dashboard", { replace: true });
+          } else {
+            // If registration is complete but no role, go to role selection
+            console.log("WalletConnect: Redirecting to role selection");
+            navigate("/select-role", { replace: true });
+          }
         } else if (isNewUser) {
           // If new user, go to registration
           console.log("WalletConnect: Redirecting to registration");

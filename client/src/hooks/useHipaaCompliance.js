@@ -25,6 +25,8 @@ const useHipaaCompliance = (options = {}) => {
    * @param {string} purpose - Purpose of the consent request
    * @returns {Promise<boolean>} Whether consent was granted
    */
+
+  // Function to request consent from the user
   const requestConsent = useCallback(
     async (consentType, purpose) => {
       try {
@@ -39,9 +41,8 @@ const useHipaaCompliance = (options = {}) => {
           userRole,
         });
 
-        // This would typically show a consent UI
-        // For this implementation, we'll use confirm() as a simple placeholder
-        // In a real app, you'd want a proper modal with detailed information
+        // Prompt the user for consent
+        // This is a placeholder for the actual consent request logic
         const granted = window.confirm(
           `HIPAA Consent Required: ${purpose}\n\n` +
             `Do you consent to this operation? This consent will be recorded and audited.`

@@ -1,179 +1,180 @@
 # Healthmint 🏥
 
-A decentralized health data marketplace built on Ethereum, enabling secure and private health data transactions.
+A blockchain-powered health data platform enabling secure and HIPAA-compliant health information exchange.
 
 ## Overview
 
-Healthmint is a blockchain-based platform where users can securely:
+Healthmint is a decentralized application (dApp) where patients and researchers can securely interact with health data:
 
-- Connect their Ethereum wallets
-- Upload and manage health records
-- Share data with healthcare providers
-- Participate in a secure data marketplace
+- **Patients** can upload, manage, and selectively share their health records
+- **Researchers** can discover, purchase, and analyze anonymized health datasets
+- All transactions are securely recorded on the blockchain with complete audit trails
+- HIPAA compliance is maintained throughout the entire platform
 
-## Features
+## Key Features
 
-### Authentication & Security 🔐
+### User Roles & Management
 
-- MetaMask wallet integration
-- Ethereum-based identity verification
-- Role-based access control
-- HIPAA-compliant data handling
+- **Dual-role system**: Users can register as either patients or researchers
+- **Wallet-based authentication**: Connect securely with MetaMask
+- **Personalized dashboards**: Role-specific interfaces and functionality
+- **Comprehensive profile management**: Control privacy settings and data sharing preferences
 
-### Data Management 📊
+### For Patients 👤
 
-- Encrypted health record storage
-- Granular access controls
-- Complete audit trails
-- Blockchain-verified ownership
+- **Health record uploads**: Securely store medical documents and data
+- **Granular access control**: Choose what data is shared and with whom
+- **Data anonymization**: Share data while protecting personal information
+- **Monetization options**: Set pricing for researcher access to your data
+- **Complete audit trails**: See who accessed your data and when
 
-### Marketplace 🛒
+### For Researchers 🔬
 
-- Set custom data pricing
-- Purchase records with ETH
-- Verified provider status
-- Advanced search & filtering
+- **Dataset discovery**: Browse available health datasets
+- **Advanced filtering**: Find exactly the data you need
+- **Secure purchasing**: Buy access to datasets using ETH
+- **Research credentials**: Showcase your qualifications and publications
+- **Ethics compliance**: Built-in research ethics guidelines
 
-## Tech Stack
+### Security & Compliance 🔐
 
-### Frontend
+- **HIPAA-compliant design**: Full regulatory compliance baked in
+- **Blockchain verification**: Immutable record of all data transactions
+- **Consent management**: Explicit patient consent tracking for all data access
+- **Privacy-preserving tools**: Data anonymization and access controls
+- **Comprehensive audit logging**: Track all system interactions
 
-- React.js + Redux
-- Material-UI components
-- Ethers.js for blockchain
-- Web3 wallet integration
+## Technology Stack
 
-### Backend
-
-- Node.js & Express
-- MongoDB database
-- JWT authentication
-- HIPAA compliance layer
-
-### Blockchain
-
-- Ethereum (Sepolia Testnet)
-- Solidity smart contracts
-- Truffle development suite
-- IPFS for data storage
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js v16+
-- MongoDB v6.0+
-- MetaMask browser extension
-- Sepolia testnet ETH
-
-### Installation
-
-1. Clone the repository
-
-```bash
-git clone https://github.com/EPW80/Healthmint.git
-cd Healthmint
-```
-
-2. Install dependencies
-
-```bash
-# Install root dependencies
-npm install
-
-# Install client dependencies
-cd client && npm install
-
-# Install server dependencies
-cd ../server && npm install
-```
-
-3. Set up environment variables
-
-Create `.env` files:
-
-**Server (.env)**
-
-```
-PORT=5000
-MONGODB_URI=your mongodb url
-JWT_SECRET=your_jwt_secret
-```
-
-**Client (.env)**
-
-```
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_INFURA_PROJECT_ID=your_infura_id
-```
-
-4. Start development servers
-
-```bash
-# Start both client & server
-npm run dev
-
-# Start client only
-npm run client
-
-# Start server only
-npm run server
-```
+- **Frontend**: React.js with Redux for state management
+- **UI**: Tailwind CSS with responsive design
+- **Blockchain**: Ethereum (Sepolia testnet) integration
+- **Wallet**: MetaMask integration for authentication and transactions
+- **Security**: HIPAA compliance layer for all data interactions
 
 ## Project Structure
 
 ```
 healthmint/
-├── client/                 # React frontend
+├── client/                  # React frontend
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── redux/        # State management
-│   │   └── services/     # API services
-├── server/                # Node.js backend
-│   ├── controllers/      # Route controllers
-│   ├── models/          # Database models
-│   ├── routes/          # API routes
-│   └── services/        # Business logic
-├── contracts/            # Solidity contracts
-└── migrations/           # Contract migrations
+│   │   ├── components/      # UI components
+│   │   │   ├── dashboard/   # Dashboard components
+│   │   │   ├── profile/     # Profile management
+│   │   │   ├── ui/          # Reusable UI elements
+│   │   │   └── providers/   # Context providers
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── redux/           # Redux state management
+│   │   │   └── slices/      # Redux toolkit slices
+│   │   ├── services/        # API and blockchain services
+│   │   └── utils/           # Utility functions
+├── contracts/               # Ethereum smart contracts
+├── server/                  # Backend API (Node.js)
+
 ```
 
-## API Endpoints
+## Getting Started
 
-| Method | Endpoint                   | Description        |
-| ------ | -------------------------- | ------------------ |
-| POST   | `/api/auth/wallet/connect` | Connect wallet     |
-| POST   | `/api/auth/register`       | Register new user  |
-| POST   | `/api/data/upload`         | Upload health data |
-| GET    | `/api/data/browse`         | Browse marketplace |
-| GET    | `/api/profile/stats`       | Get user stats     |
+### Prerequisites
 
-## Security Measures
+- Node.js (v16+)
+- npm or yarn
+- MetaMask browser extension
+- Ethereum on Sepolia testnet
 
-- End-to-end encryption
-- Smart contract access control
-- HIPAA-compliant storage
-- Comprehensive audit logging
-- Multi-factor authentication
+### Installation
+
+1.  Clone the repository
+
+```
+git clone https://github.com/EPW80/Healthmint.git
+cd Healthmint
+
+```
+
+1.  Install dependencies
+
+```
+# Install client dependencies
+cd client && npm install
+
+```
+
+1.  Set up environment variables
+
+Create a `.env` file in the client/server/root directory:
+
+```
+REACT_APP_INFURA_PROJECT_ID=your_infura_project_id
+REACT_APP_CHAIN_ID=0xaa36a7  # Sepolia testnet
+REACT_APP_NETWORK_ID=11155111
+
+```
+
+1.  Start the development server
+
+```
+npm start
+
+```
+
+## User Guide
+
+### Connecting Your Wallet
+
+1.  Ensure MetaMask is installed in your browser
+2.  Visit the Healthmint website and click "Connect Wallet"
+3.  Approve the connection in MetaMask
+4.  Complete registration by selecting your role (Patient or Researcher)
+
+### For Patients
+
+- **Upload health records**: Navigate to the Upload section and follow the prompts
+- **Manage privacy**: Use the Profile section to control data sharing preferences
+- **View access history**: Monitor who has accessed your data in the Dashboard
+
+### For Researchers
+
+- **Browse datasets**: Use the Browse section to discover available health data
+- **Purchase access**: Use ETH to purchase access to relevant datasets
+- **Manage studies**: Keep track of your research in the Dashboard
+
+## Security Features
+
+Healthmint takes security and HIPAA compliance seriously:
+
+- **Data encryption**: All sensitive information is encrypted
+- **Blockchain verification**: All transactions are recorded immutably
+- **Explicit consent**: Patient consent is required and tracked for all data access
+- **Comprehensive audit logs**: All system interactions are logged for compliance
+- **Role-based access control**: Different permissions for different user types
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a pull request
+We welcome contributions to Healthmint! Please follow these steps:
+
+1.  Fork the repository
+2.  Create a feature branch (`git checkout -b feature/amazing-feature`)
+3.  Commit your changes (`git commit -m 'Add some amazing feature'`)
+4.  Push to the branch (`git push origin feature/amazing-feature`)
+5.  Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Copyright <2025> <EPW80>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Contact
 
 Erik Williams - erikpw009@gmail.com
 
-Project Link: [https://github.com/EPW80/Healthmint](https://github.com/EPW80/Healthmint)
+Project Link: <https://github.com/EPW80/Healthmint>
 
 ---
 
-Built with ❤️ by [EPW80](https://github.com/EPW80)
+Healthmint - Secure, Private, Compliant Health Data Exchange on the Blockchain

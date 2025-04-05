@@ -14,7 +14,7 @@ const useHealthData = (options = {}) => {
   const {
     initialFilters = {},
     loadOnMount = true,
-    useMockData = false, // Added option to force mock data
+    useMockData = false, // Force using mock data
   } = options;
 
   const dispatch = useDispatch();
@@ -48,7 +48,9 @@ const useHealthData = (options = {}) => {
       setApiFailure(true);
       setError("Failed to load health records");
 
-      // IMPORTANT: Generate and use mock data when API fails
+      // Use mock data if API fails
+      // This is where we can generate mock data
+      // and set it to the state
       const mockData = generateMockHealthRecords();
       setHealthData(mockData);
       setTotalCount(mockData.length);
@@ -153,7 +155,7 @@ const useHealthData = (options = {}) => {
             throw new Error("Record not found");
           }
 
-          // Add additional mock details
+          // Create a detailed record with mock data
           const enhancedRecord = {
             ...record,
             detailedDescription: `Detailed information about ${record.title}. This record contains comprehensive health data related to ${record.category.toLowerCase()} collected on ${new Date(record.uploadDate).toLocaleDateString()}.`,
@@ -196,7 +198,7 @@ const useHealthData = (options = {}) => {
     resetFilters,
     purchaseData,
     getHealthDataDetails,
-    forceMockData, // Expose this to allow manually switching to mock data
+    forceMockData, // Function to force using mock data
   };
 };
 

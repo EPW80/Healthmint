@@ -10,13 +10,13 @@ export const SUPPORTED_NETWORKS = {
     chainId: "0x1",
     name: "Ethereum Mainnet",
     blockExplorer: "https://etherscan.io",
-    rpcUrl: "https://mainnet.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea", // Replace with your key or env variable
+    rpcUrl: "https://mainnet.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea",
   },
   SEPOLIA: {
     chainId: "0xaa36a7",
     name: "Sepolia Testnet",
     blockExplorer: "https://sepolia.etherscan.io",
-    rpcUrl: "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea", // Replace with your key or env variable
+    rpcUrl: "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea",
   },
 };
 
@@ -356,6 +356,7 @@ export const {
   updateAccount,
   updateNetwork,
   resetWalletState,
+  setWalletConnection,
 } = walletSlice.actions;
 
 // Selectors for easily accessing state
