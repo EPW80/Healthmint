@@ -6,7 +6,6 @@
  * and ensure HIPAA compliance throughout the process.
  */
 
-import apiConfig from "../config/apiConfig.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import errorHandlingService from "../services/errorHandlingService.js";
 

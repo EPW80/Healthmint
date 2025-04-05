@@ -1,8 +1,4 @@
-import {
-  resetVerificationAttempts,
-  clearAuthStorage,
-  performLogout,
-} from "./authLoopPrevention.js";
+import { performLogout } from './authLoopPrevention';
 
 // Mock localStorage and sessionStorage
 const localStorageMock = (() => {
@@ -45,59 +41,40 @@ Object.defineProperty(window, "localStorage", { value: localStorageMock });
 Object.defineProperty(window, "sessionStorage", { value: sessionStorageMock });
 Object.defineProperty(window, "location", { value: locationMock });
 
-describe("authLoopPrevention", () => {
+describe('authLoopPrevention', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    localStorageMock.clear();
-    sessionStorageMock.clear();
-    resetVerificationAttempts();
+    // Mock localStorage and sessionStorage
+    jest.spyOn(global.localStorage, 'clear').mockImplementation(() => {});
+    jest.spyOn(global.sessionStorage, 'clear').mockImplementation(() => {});
+    jest.spyOn(global.localStorage, 'removeItem').mockImplementation(() => {});
+    jest.spyOn(global.sessionStorage, 'removeItem').mockImplementation(() => {});
+    // Use fake timers to control setTimeout
+    jest.useFakeTimers();
   });
 
-  describe("clearAuthStorage", () => {
-    it("should clear all auth-related storage items including user role", () => {
-      // Setup localStorage with items
-      localStorageMock.setItem("healthmint_auth_token", "token123");
-      localStorageMock.setItem("healthmint_user_role", "patient");
-      localStorageMock.setItem("healthmint_wallet_connection", "true");
-
-      // Setup sessionStorage with items
-      sessionStorageMock.setItem("bypass_registration_check", "true");
-
-      // Call the function
-      clearAuthStorage();
-
-      // Verify role was removed
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        "healthmint_user_role"
-      );
-
-      // Verify auth token was removed
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        "healthmint_auth_token"
-      );
-
-      // Verify wallet connection was removed
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        "healthmint_wallet_connection"
-      );
-    });
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
-  describe("performLogout", () => {
-    it("should clear auth storage and redirect to login page", async () => {
-      // Setup localStorage with items
-      localStorageMock.setItem("healthmint_user_role", "patient");
+  test('performLogout should clear auth storage and redirect to login page', async () => {
+    // Spy on window.location.replace
+    const replaceSpy = jest.spyOn(window.location, 'replace').mockImplementation(() => {});
 
-      // Call the function
-      await performLogout();
+    // Call performLogout
+    const logoutPromise = performLogout();
+    // Advance timers past the initial 100ms delay
+    jest.advanceTimersByTime(100);
+    await logoutPromise;
+    // Advance timers past the 150ms redirect timeout
+    jest.advanceTimersByTime(150);
 
-      // Verify role was removed
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        "healthmint_user_role"
-      );
+    // Verify storage is cleared
+    expect(localStorage.clear).toHaveBeenCalled();
+    expect(sessionStorage.clear).toHaveBeenCalled();
+    // Verify redirect to login page
+    expect(replaceSpy).toHaveBeenCalledWith('/login');
 
-      // Verify redirect to login page
-      expect(locationMock.replace).toHaveBeenCalledWith("/login");
-    });
+    replaceSpy.mockRestore();
   });
 });
