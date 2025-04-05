@@ -5,46 +5,8 @@ import { useSelector, useDispatch } from "react-redux";
 import useHealthData from "../hooks/useHealthData.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
+import mockPaymentService from "../services/mockPaymentService.js"; // Added mock payment service
 import DataBrowserView from "./DataBrowserView.js";
-import PaymentModal from "./PaymentModal.js";
-
-if (!hipaaComplianceService.logDataAccess) {
-  hipaaComplianceService.logDataAccess = async function(dataId, purpose, action, metadata = {}) {
-    try {
-      // Create the audit log entry
-      const logEntry = {
-        dataId,
-        purpose,
-        action,
-        timestamp: new Date().toISOString(),
-        userId: metadata.userId || 'unknown',
-        ...metadata,
-      };
-      
-      // Use the createAuditLog method which we know exists
-      await this.createAuditLog('DATA_ACCESS', {
-        dataId,
-        purpose,
-        action,
-        ...metadata,
-        timestamp: new Date().toISOString(),
-      });
-      
-      console.log('[HIPAA] Data access logged:', { 
-        dataId, 
-        action, 
-        purpose,
-        timestamp: logEntry.timestamp
-      });
-      
-      return logEntry;
-    } catch (error) {
-      console.error('[HIPAA] Error logging data access:', error);
-      // Return an empty object instead of throwing to prevent crashes
-      return {};
-    }
-  };
-}
 
 // Categories from backend
 const CATEGORIES = [
@@ -97,12 +59,6 @@ const DATA_FORMATS = [
   "Imaging",
 ];
 
-/**
- * DataBrowser Container Component
- *
- * Manages state and data operations for browsing health datasets
- * with enhanced HIPAA compliance and consent verification
- */
 const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const dispatch = useDispatch();
   const userRole = useSelector((state) => state.role.role);
@@ -117,7 +73,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     totalCount,
     updateFilter,
     resetFilters,
-    purchaseData,
+    purchaseData, // We'll keep this but won't use it directly
     getHealthDataDetails,
   } = useHealthData({
     initialFilters: {
@@ -136,6 +92,21 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     loadOnMount: true,
   });
 
+  // Initialize mock payment service on component mount
+  useEffect(() => {
+    // Initialize the mock payment service
+    const initializePaymentService = async () => {
+      try {
+        await mockPaymentService.initializeProvider();
+        console.log("Mock payment service initialized");
+      } catch (err) {
+        console.error("Failed to initialize mock payment service:", err);
+      }
+    };
+
+    initializePaymentService();
+  }, []);
+
   // Local state
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState(null);
@@ -150,8 +121,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [consentsHistory, setConsentsHistory] = useState([]);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedDatasetForPurchase, setSelectedDatasetForPurchase] = useState(null);
+
+  // Purchase state
+  const [purchasingDataset, setPurchasingDataset] = useState(null);
+  const [purchaseStep, setPurchaseStep] = useState("idle"); // 'idle', 'processing', 'confirming', 'complete', 'error'
+  const [lastTransactionDetails, setLastTransactionDetails] = useState(null); // To store transaction details
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -295,7 +269,105 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [userRole, userId]
   );
 
-  // Define the handleViewDataset and handlePurchase functions without dependencies on each other
+  // Handle purchase start
+  const handlePurchaseStart = useCallback(
+    (datasetId) => {
+      setPurchasingDataset(datasetId);
+      setPurchaseStep("processing");
+
+      // Log purchase initiation for HIPAA compliance
+      hipaaComplianceService.createAuditLog("PURCHASE_INITIATED", {
+        datasetId,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
+        action: "PURCHASE_START",
+      });
+
+      // Show user notification
+      dispatch(
+        addNotification({
+          type: "info",
+          message: "Processing purchase request...",
+          duration: 3000,
+        })
+      );
+    },
+    [dispatch, userId, userRole]
+  );
+
+  // Handle purchase completion
+  const handlePurchaseComplete = useCallback(
+    (datasetId, transactionDetails) => {
+      setPurchaseStep("complete");
+      setLastTransactionDetails(transactionDetails);
+
+      // Log purchase completion for HIPAA compliance
+      hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
+        datasetId,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
+        action: "PURCHASE_COMPLETE",
+        transactionDetails,
+      });
+
+      // Show success notification
+      dispatch(
+        addNotification({
+          type: "success",
+          message: "Purchase completed successfully!",
+          duration: 5000,
+        })
+      );
+
+      // Reset purchase state after delay
+      setTimeout(() => {
+        setPurchasingDataset(null);
+        setPurchaseStep("idle");
+      }, 2000);
+
+      // Call original onPurchase callback if provided
+      if (onPurchase) {
+        onPurchase(datasetId, transactionDetails);
+      }
+    },
+    [dispatch, onPurchase, userId, userRole]
+  );
+
+  // Handle purchase error
+  const handlePurchaseError = useCallback(
+    (datasetId, error) => {
+      setPurchaseStep("error");
+
+      // Log purchase error for HIPAA compliance
+      hipaaComplianceService.createAuditLog("PURCHASE_ERROR", {
+        datasetId,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
+        action: "PURCHASE_ERROR",
+        errorMessage: error?.message || "Unknown purchase error",
+      });
+
+      // Show error notification
+      dispatch(
+        addNotification({
+          type: "error",
+          message:
+            error?.message || "Failed to complete purchase. Please try again.",
+          duration: 7000,
+        })
+      );
+
+      // Reset purchase state after delay
+      setTimeout(() => {
+        setPurchasingDataset(null);
+        setPurchaseStep("idle");
+      }, 3000);
+    },
+    [dispatch, userId, userRole]
+  );
 
   // First, create a viewDatasetImpl function that doesn't depend on requestAndVerifyConsent
   const viewDatasetImpl = useCallback(
@@ -362,26 +434,21 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     ]
   );
 
-  // Similarly, create a purchaseDatasetImpl function
+  // Updated purchaseDatasetImpl function using mockPaymentService
   const purchaseDatasetImpl = useCallback(
     async (id, consentVerified = false) => {
       try {
-        // Find the dataset to purchase
-        const datasetToPurchase = healthData.find(dataset => dataset.id === id);
-        
-        if (!datasetToPurchase) {
+        // Find the dataset to get price information
+        const dataset = healthData.find((d) => d.id === id);
+        if (!dataset) {
           throw new Error("Dataset not found");
         }
-        
-        // Open the payment modal instead of proceeding with direct purchase
-        setSelectedDatasetForPurchase(datasetToPurchase);
-        setIsPaymentModalOpen(true);
-        
+
         // Log action for HIPAA compliance with comprehensive details
         await hipaaComplianceService.logDataAccess(
           id,
-          "Initiating purchase flow for dataset",
-          "PURCHASE_INITIATED",
+          "Purchasing dataset for research/personal health records",
+          "PURCHASE",
           {
             userRole,
             userId,
@@ -389,35 +456,78 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             consentVerified: consentVerified,
             ipAddress: "client", // Server will log actual IP
             datasetInfo: {
-              category:
-                datasetToPurchase.category || "Unknown",
-              price: datasetToPurchase.price || "Unknown",
-              anonymized:
-                datasetToPurchase.anonymized || false,
-            }
+              category: dataset.category || "Unknown",
+              price: dataset.price || "Unknown",
+              anonymized: dataset.anonymized || false,
+            },
+            transactionId: `tx-${Date.now()}-${Math.floor(
+              Math.random() * 1000
+            )}`,
           }
         );
+
+        // Initialize mock payment service if needed
+        if (!mockPaymentService.isInitialized) {
+          await mockPaymentService.initializeProvider();
+        }
+
+        // Check balance before proceeding (optional)
+        const balance = await mockPaymentService.getBalance();
+        console.log(`Current balance: ${balance} ETH`);
+
+        if (parseFloat(balance) < parseFloat(dataset.price)) {
+          throw new Error("Insufficient funds to complete this purchase");
+        }
+
+        // Use mock payment service to purchase the dataset
+        const result = await mockPaymentService.purchaseDataset(
+          id,
+          dataset.price
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || "Transaction failed");
+        }
+
+        // Record this purchase in the consent history for future reference
+        const updatedHistory = [
+          ...consentsHistory,
+          {
+            consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
+            timestamp: new Date().toISOString(),
+            consentGiven: true,
+            purpose: "Dataset purchase confirmation",
+            datasetId: id,
+            actionType: "PURCHASE_COMPLETED",
+            transactionHash: result.transactionHash,
+          },
+        ];
+        setConsentsHistory(updatedHistory);
+
+        return {
+          success: true,
+          datasetId: id,
+          timestamp: new Date().toISOString(),
+          transactionHash: result.transactionHash,
+          blockNumber: result.blockNumber,
+          gasUsed: result.gasUsed,
+        };
       } catch (err) {
-        console.error("Purchase initiation error:", err);
+        console.error("Purchase error:", err);
 
         // Log purchase failure for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_INIT_FAILED", {
+        await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_FAILED", {
           datasetId: id,
           timestamp: new Date().toISOString(),
           userId,
           userRole,
-          errorMessage: err.message || "Unknown error initiating purchase",
+          errorMessage: err.message || "Unknown purchase error",
         });
 
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to initiate dataset purchase. Please try again.",
-          })
-        );
+        throw err; // Re-throw for handling in the calling function
       }
     },
-    [dispatch, healthData, userId, userRole]
+    [consentsHistory, healthData, userId, userRole]
   );
 
   // Request and verify consent for data access
@@ -549,99 +659,65 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [dispatch, requestAndVerifyConsent, viewDatasetImpl]
   );
 
-  // Similarly, define the public handlePurchase function
+  // Updated handlePurchase function to use our mock payment service
   const handlePurchase = useCallback(
     async (id) => {
       try {
+        // Start the purchase process
+        handlePurchaseStart(id);
+
         // Define the purpose for this action
         const purpose =
           "Purchasing dataset for research/personal health records";
 
-        // Verify consent before proceeding - this requires more explicit consent
+        // Verify consent before proceeding
         const hasConsent = await requestAndVerifyConsent(
           purpose,
           id,
           "PURCHASE"
         );
+
         if (!hasConsent) {
+          // Reset purchase state if consent was denied
+          setPurchasingDataset(null);
+          setPurchaseStep("idle");
           return; // Consent modal will be shown or action was denied
         }
 
-        // Call the implementation function with consent verified
-        await purchaseDatasetImpl(id, true);
+        // Proceed with the purchase
+        try {
+          // Use our updated purchaseDatasetImpl that uses mockPaymentService
+          const result = await purchaseDatasetImpl(id, true);
+
+          // If successful, call the completion handler with transaction details
+          handlePurchaseComplete(id, {
+            timestamp: result.timestamp,
+            datasetId: id,
+            transactionId: result.transactionHash,
+            blockNumber: result.blockNumber,
+            gasUsed: result.gasUsed,
+          });
+        } catch (err) {
+          // If purchase implementation failed, handle the error
+          handlePurchaseError(id, err);
+        }
       } catch (err) {
         console.error("Error in handlePurchase:", err);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to process dataset purchase",
-          })
-        );
+
+        // Handle any errors not caught by purchaseDatasetImpl
+        if (purchaseStep !== "error") {
+          handlePurchaseError(id, err);
+        }
       }
     },
-    [dispatch, requestAndVerifyConsent, purchaseDatasetImpl]
-  );
-
-  const handlePurchaseComplete = useCallback(
-    async (purchaseData) => {
-      try {
-        // Log successful purchase for HIPAA compliance
-        await hipaaComplianceService.logDataAccess(
-          purchaseData.datasetId,
-          "Dataset purchase completed successfully",
-          "PURCHASE_COMPLETED",
-          {
-            userRole,
-            userId,
-            timestamp: new Date().toISOString(),
-            transactionHash: purchaseData.transactionHash,
-            price: purchaseData.price
-          }
-        );
-
-        // Close the payment modal
-        setIsPaymentModalOpen(false);
-        
-        // Record this purchase in the consent history for future reference
-        const updatedHistory = [
-          ...consentsHistory,
-          {
-            consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-            timestamp: new Date().toISOString(),
-            consentGiven: true,
-            purpose: "Dataset purchase confirmation",
-            datasetId: purchaseData.datasetId,
-            actionType: "PURCHASE_COMPLETED",
-          },
-        ];
-        setConsentsHistory(updatedHistory);
-
-        // Call the purchase complete callback
-        if (purchaseData) {
-          await purchaseData(purchaseData.datasetId);
-        }
-
-        dispatch(
-          addNotification({
-            type: "success",
-            message: "Dataset purchased successfully!",
-          })
-        );
-
-        if (onPurchase) {
-          onPurchase(purchaseData.datasetId);
-        }
-      } catch (err) {
-        console.error("Purchase completion error:", err);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Error completing purchase. Please contact support.",
-          })
-        );
-      }
-    },
-    [consentsHistory, dispatch, onPurchase, purchaseData, userId, userRole]
+    [
+      handlePurchaseStart,
+      handlePurchaseComplete,
+      handlePurchaseError,
+      requestAndVerifyConsent,
+      purchaseDatasetImpl,
+      purchaseStep,
+    ]
   );
 
   // Handle consent approval from modal
@@ -703,8 +779,21 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             // Use viewDatasetImpl directly, since consent is already verified
             await viewDatasetImpl(datasetId, true);
           } else if (actionType === "PURCHASE" && datasetId) {
-            // Use purchaseDatasetImpl directly, since consent is already verified
-            await purchaseDatasetImpl(datasetId, true);
+            // For purchase, start with handlePurchaseStart
+            handlePurchaseStart(datasetId);
+            try {
+              // Use purchaseDatasetImpl directly, since consent is already verified
+              const result = await purchaseDatasetImpl(datasetId, true);
+              handlePurchaseComplete(datasetId, {
+                timestamp: result.timestamp,
+                datasetId,
+                transactionId: result.transactionHash,
+                blockNumber: result.blockNumber,
+                gasUsed: result.gasUsed,
+              });
+            } catch (err) {
+              handlePurchaseError(datasetId, err);
+            }
           } else if (actionType === "DOWNLOAD" && datasetId) {
             // Handle download logic here if applicable
           }
@@ -740,6 +829,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       dispatch,
       viewDatasetImpl,
       purchaseDatasetImpl,
+      handlePurchaseStart,
+      handlePurchaseComplete,
+      handlePurchaseError,
       userId,
       userRole,
     ]
@@ -980,9 +1072,47 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     );
   };
 
-  // Pass props to the view component
+  // Fetch current wallet balance to display
+  const [walletBalance, setWalletBalance] = useState(null);
+
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        if (mockPaymentService.isInitialized) {
+          const balance = await mockPaymentService.getBalance();
+          setWalletBalance(balance);
+        }
+      } catch (err) {
+        console.error("Error fetching wallet balance:", err);
+      }
+    };
+
+    fetchWalletBalance();
+
+    // Set up periodic balance updates
+    const intervalId = setInterval(fetchWalletBalance, 10000); // Check every 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [purchaseStep]); // Re-fetch when purchase state changes
+
+  // Pass props to the view component (including wallet balance)
   return (
     <>
+      {/* Optional wallet balance display */}
+      {walletBalance !== null && (
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 mb-4 flex justify-between items-center">
+          <span className="text-blue-700 font-medium">
+            Wallet Balance: {walletBalance} ETH
+          </span>
+          {lastTransactionDetails && (
+            <span className="text-xs text-blue-600">
+              Last transaction:{" "}
+              {lastTransactionDetails.transactionId?.substring(0, 10)}...
+            </span>
+          )}
+        </div>
+      )}
+
       <DataBrowserView
         userRole={userRole}
         loading={loading}
@@ -1015,15 +1145,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         studyTypes={STUDY_TYPES}
         dataFormats={DATA_FORMATS}
         consentVerified={consentVerified}
-      />
-
-      {/* Add the PaymentModal component */}
-      <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        dataset={selectedDatasetForPurchase}
-        onPurchaseComplete={handlePurchaseComplete}
-        walletAddress={userId}
+        purchasingDataset={purchasingDataset}
+        purchaseStep={purchaseStep}
+        handlePurchaseStart={handlePurchaseStart}
+        handlePurchaseComplete={handlePurchaseComplete}
+        handlePurchaseError={handlePurchaseError}
       />
 
       {/* Render consent modal when needed */}
