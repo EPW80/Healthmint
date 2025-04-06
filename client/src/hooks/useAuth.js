@@ -77,18 +77,21 @@ const useAuth = () => {
       // Use authService.verifyAuth if it exists, otherwise provide the implementation
       if (typeof authService.verifyAuth === "function") {
         const result = await authService.verifyAuth();
-
-        // Update state based on verification result
+        // Check if result is null or undefined
+        if (!result) {
+          throw new Error(
+            "Authentication verification failed: no result returned from authService"
+          );
+        }
+        // Now safe to access result properties
         setIsAuthenticated(result.isAuthenticated);
         setIsNewUser(result.isNewUser);
         setIsRegistrationComplete(result.isRegistrationComplete);
 
         if (result.userProfile) {
           setUserIdentity(result.userProfile);
-
           // Update Redux state with user profile and role
           dispatch(updateUserProfile(result.userProfile));
-
           if (result.userProfile.role) {
             dispatch(setRole(result.userProfile.role));
           }
