@@ -43,6 +43,88 @@ class AuthService {
   }
 
   /**
+   * Verifies the authentication status of the current user
+   *
+   * @returns {Promise<Object|null>} User data if authenticated, null if not authenticated
+   */
+  async verifyAuth() {
+    try {
+      // Check if we have a wallet address in localStorage
+      const walletAddress = localStorage.getItem(this.walletAddressKey);
+      if (!walletAddress) {
+        console.log("[AuthService] No wallet address found in localStorage");
+        return null;
+      }
+
+      // Check if wallet is connected
+      const isWalletConnected =
+        localStorage.getItem("healthmint_wallet_connection") === "true";
+      if (!isWalletConnected) {
+        console.log(
+          "[AuthService] Wallet not connected according to localStorage"
+        );
+        return null;
+      }
+
+      // Check if we have user data
+      const userData = this.getCurrentUser();
+      if (!userData) {
+        console.log("[AuthService] No user data found");
+        return null;
+      }
+
+      // Check if user is registered
+      const isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
+      if (isNewUser) {
+        console.log(
+          "[AuthService] User is marked as new, registration required"
+        );
+        return { ...userData, isNewUser: true, isRegistrationComplete: false };
+      }
+
+      // Get user role
+      const userRole = localStorage.getItem("healthmint_user_role");
+
+      // Log auth verification for HIPAA compliance
+      await hipaaComplianceService
+        .createAuditLog("AUTH_VERIFICATION", {
+          action: "VERIFY_AUTH",
+          walletAddress,
+          timestamp: new Date().toISOString(),
+        })
+        .catch((err) =>
+          console.error("[AuthService] Error logging auth verification:", err)
+        );
+
+      // Return authenticated user data
+      return {
+        ...userData,
+        address: walletAddress,
+        isAuthenticated: true,
+        isNewUser: false,
+        isRegistrationComplete: true,
+        role: userRole || null,
+      };
+    } catch (error) {
+      console.error("[AuthService] Auth verification error:", error);
+
+      // Log verification failure
+      await hipaaComplianceService
+        .createAuditLog("AUTH_VERIFICATION_FAILURE", {
+          action: "VERIFY_AUTH",
+          walletAddress: this.walletAddress,
+          timestamp: new Date().toISOString(),
+          errorMessage: error.message,
+        })
+        .catch((err) =>
+          console.error("[AuthService] Error logging auth failure:", err)
+        );
+
+      return null;
+    }
+  }
+
+  /**
    * Ensure the authentication token is valid, refreshing it if necessary
    * @returns {Promise<string>} The valid token
    * @throws {Error} If token validation or recovery fails
@@ -318,12 +400,6 @@ class AuthService {
    * Log out the current user
    * @returns {Promise<boolean>} Success or failure
    */
-  // Updated logout method for authService.js
-
-  /**
-   * Log out the current user
-   * @returns {Promise<boolean>} Success or failure
-   */
   async logout() {
     try {
       await hipaaComplianceService.createAuditLog("AUTH_LOGOUT", {
@@ -464,6 +540,16 @@ class AuthService {
    */
   getCurrentUser() {
     return this.userProfile;
+  }
+
+  /**
+   * Helper method to clear auth verification cache
+   * Used by the useAuth hook
+   */
+  clearVerificationCache() {
+    // This method is referenced in protected routes but not needed in this implementation
+    // It's included for API compatibility
+    console.log("[AuthService] Verification cache cleared");
   }
 }
 
