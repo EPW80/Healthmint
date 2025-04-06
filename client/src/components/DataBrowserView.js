@@ -16,6 +16,8 @@ import {
   X,
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
+import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
+import EnhancedPurchaseButton from "./DatasetPurchaseButton.js";
 
 /**
  * DataBrowserView Component
@@ -54,6 +56,8 @@ const DataBrowserView = ({
   categories,
   studyTypes,
   dataFormats,
+  purchasingDataset,
+  purchaseStep,
 }) => {
   // Refs for managing focus and modal accessibility
   const modalRef = useRef(null);
@@ -505,13 +509,16 @@ const DataBrowserView = ({
               >
                 Preview
               </button>
-              <button
-                onClick={() => handlePurchase(data.id)}
-                className="flex-1 py-2 px-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors"
-                aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
-              >
-                Purchase
-              </button>
+              <EnhancedPurchaseButton
+                dataset={data}
+                onClick={handlePurchase}
+                loading={
+                  purchasingDataset === data.id &&
+                  (purchaseStep === "processing" ||
+                    purchaseStep === "confirming")
+                }
+                className="flex-1"
+              />
             </div>
           </div>
         </div>
@@ -632,10 +639,30 @@ const DataBrowserView = ({
                   </button>
                   <button
                     onClick={() => handlePurchase(data.id)}
-                    className="text-green-600 hover:text-green-800"
+                    className={`text-green-600 hover:text-green-800 flex items-center gap-1 ${
+                      purchasingDataset === data.id &&
+                      (purchaseStep === "processing" ||
+                        purchaseStep === "confirming")
+                        ? "opacity-50 cursor-wait"
+                        : ""
+                    }`}
+                    disabled={
+                      purchasingDataset === data.id &&
+                      (purchaseStep === "processing" ||
+                        purchaseStep === "confirming")
+                    }
                     aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
                   >
-                    Purchase
+                    {purchasingDataset === data.id &&
+                    (purchaseStep === "processing" ||
+                      purchaseStep === "confirming") ? (
+                      <>
+                        <LoadingSpinner size="small" color="green" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Purchase"
+                    )}
                   </button>
                 </div>
               </td>
@@ -832,15 +859,22 @@ const DataBrowserView = ({
                 Close
               </button>
 
-              <button
+              <EnhancedPurchaseButton
+                dataset={{
+                  id: selectedDataset,
+                  price: datasetDetails?.price || "0.00",
+                  title: datasetDetails?.title || "Dataset",
+                }}
                 onClick={() => {
                   handlePurchase(selectedDataset);
                   handleClosePreview();
                 }}
-                className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                Purchase Dataset
-              </button>
+                loading={
+                  purchasingDataset === selectedDataset &&
+                  (purchaseStep === "processing" ||
+                    purchaseStep === "confirming")
+                }
+              />
 
               {datasetDetails?.sampleUrl && (
                 <button
@@ -862,6 +896,12 @@ const DataBrowserView = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Add the WalletBalanceDisplay component */}
+      <WalletBalanceDisplay
+        className="mb-6"
+        refreshTrigger={purchasingDataset}
+      />
+
       <div className="mt-4">
         <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
           Browse Health Data{userRole === "researcher" ? " for Research" : ""}

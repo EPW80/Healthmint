@@ -7,6 +7,8 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import mockPaymentService from "../services/mockPaymentService.js"; // Added mock payment service
 import DataBrowserView from "./DataBrowserView.js";
+import TransactionModal from "./TransactionModal.js";
+import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
 
 // Categories from backend
 const CATEGORIES = [
@@ -73,7 +75,6 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     totalCount,
     updateFilter,
     resetFilters,
-    purchaseData, // We'll keep this but won't use it directly
     getHealthDataDetails,
   } = useHealthData({
     initialFilters: {
@@ -125,7 +126,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   // Purchase state
   const [purchasingDataset, setPurchasingDataset] = useState(null);
   const [purchaseStep, setPurchaseStep] = useState("idle"); // 'idle', 'processing', 'confirming', 'complete', 'error'
-  const [lastTransactionDetails, setLastTransactionDetails] = useState(null); // To store transaction details
+  const [setLastTransactionDetails] = useState(null); // To store transaction details
+
+  // Transaction modal state
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState({});
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -274,6 +279,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     (datasetId) => {
       setPurchasingDataset(datasetId);
       setPurchaseStep("processing");
+      setShowTransactionModal(true);
+      setTransactionDetails({
+        datasetId,
+        timestamp: new Date().toISOString(),
+      });
 
       // Log purchase initiation for HIPAA compliance
       hipaaComplianceService.createAuditLog("PURCHASE_INITIATED", {
@@ -302,6 +312,15 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       setPurchaseStep("complete");
       setLastTransactionDetails(transactionDetails);
 
+      // Update transaction modal details
+      setTransactionDetails({
+        ...transactionDetails,
+        datasetId,
+        amount: healthData.find((d) => d.id === datasetId)?.price || "Unknown",
+        message:
+          "Your purchase was successful! You now have access to this dataset.",
+      });
+
       // Log purchase completion for HIPAA compliance
       hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
         datasetId,
@@ -321,10 +340,13 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         })
       );
 
+      // Keep the modal open for the user to see the success state
+
       // Reset purchase state after delay
       setTimeout(() => {
         setPurchasingDataset(null);
         setPurchaseStep("idle");
+        // Don't close the modal automatically - let the user close it to see details
       }, 2000);
 
       // Call original onPurchase callback if provided
@@ -332,13 +354,21 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         onPurchase(datasetId, transactionDetails);
       }
     },
-    [dispatch, onPurchase, userId, userRole]
+    [dispatch, onPurchase, userId, userRole, healthData, setLastTransactionDetails]
   );
 
   // Handle purchase error
   const handlePurchaseError = useCallback(
     (datasetId, error) => {
       setPurchaseStep("error");
+
+      // Update transaction modal details
+      setTransactionDetails({
+        datasetId,
+        error: true,
+        errorMessage:
+          error?.message || "An error occurred during the transaction.",
+      });
 
       // Log purchase error for HIPAA compliance
       hipaaComplianceService.createAuditLog("PURCHASE_ERROR", {
@@ -364,6 +394,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       setTimeout(() => {
         setPurchasingDataset(null);
         setPurchaseStep("idle");
+        // Keep modal open for user to see error details
       }, 3000);
     },
     [dispatch, userId, userRole]
@@ -444,6 +475,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           throw new Error("Dataset not found");
         }
 
+        // Set state to "processing" in the modal
+        setPurchaseStep("processing");
+
         // Log action for HIPAA compliance with comprehensive details
         await hipaaComplianceService.logDataAccess(
           id,
@@ -478,6 +512,14 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         if (parseFloat(balance) < parseFloat(dataset.price)) {
           throw new Error("Insufficient funds to complete this purchase");
         }
+
+        // Update transaction status to confirming
+        setPurchaseStep("confirming");
+        setTransactionDetails((prev) => ({
+          ...prev,
+          amount: dataset.price,
+          processingStep: "blockchain-confirmation",
+        }));
 
         // Use mock payment service to purchase the dataset
         const result = await mockPaymentService.purchaseDataset(
@@ -681,6 +723,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           // Reset purchase state if consent was denied
           setPurchasingDataset(null);
           setPurchaseStep("idle");
+          setShowTransactionModal(false);
           return; // Consent modal will be shown or action was denied
         }
 
@@ -693,7 +736,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           handlePurchaseComplete(id, {
             timestamp: result.timestamp,
             datasetId: id,
-            transactionId: result.transactionHash,
+            transactionHash: result.transactionHash,
             blockNumber: result.blockNumber,
             gasUsed: result.gasUsed,
           });
@@ -1073,7 +1116,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   };
 
   // Fetch current wallet balance to display
-  const [walletBalance, setWalletBalance] = useState(null);
+  const [, setWalletBalance] = useState(null);
 
   useEffect(() => {
     const fetchWalletBalance = async () => {
@@ -1098,20 +1141,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   // Pass props to the view component (including wallet balance)
   return (
     <>
-      {/* Optional wallet balance display */}
-      {walletBalance !== null && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 mb-4 flex justify-between items-center">
-          <span className="text-blue-700 font-medium">
-            Wallet Balance: {walletBalance} ETH
-          </span>
-          {lastTransactionDetails && (
-            <span className="text-xs text-blue-600">
-              Last transaction:{" "}
-              {lastTransactionDetails.transactionId?.substring(0, 10)}...
-            </span>
-          )}
-        </div>
-      )}
+      {/* Use WalletBalanceDisplay instead of simple wallet balance display */}
+      <WalletBalanceDisplay
+        className="mb-4"
+        refreshTrigger={purchasingDataset}
+      />
 
       <DataBrowserView
         userRole={userRole}
@@ -1150,6 +1184,14 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         handlePurchaseStart={handlePurchaseStart}
         handlePurchaseComplete={handlePurchaseComplete}
         handlePurchaseError={handlePurchaseError}
+      />
+
+      {/* Transaction Modal */}
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        step={purchaseStep}
+        details={transactionDetails}
       />
 
       {/* Render consent modal when needed */}
