@@ -72,9 +72,22 @@ const DatasetPurchaseButton = ({
       // Check balance before proceeding
       const balance = await mockPaymentService.getBalance();
       if (parseFloat(balance) < parseFloat(dataset.price)) {
-        throw new Error("Insufficient funds to complete this purchase");
+        // Handle insufficient funds gracefully
+        setPurchaseState("error");
+        setError(
+          "Insufficient funds to complete this purchase. Please add more ETH to your wallet."
+        );
+
+        // Notify parent component of error
+        if (onPurchaseError) {
+          onPurchaseError(dataset.id, {
+            message: "Insufficient funds to complete this purchase",
+          });
+        }
+        return; // Exit early without throwing
       }
 
+      // Rest of the function remains the same...
       // Update state to confirming - simulates blockchain confirmation
       setPurchaseState("confirming");
 
@@ -317,6 +330,14 @@ const DatasetPurchaseButton = ({
           <AlertCircle size={16} className="mr-1" /> Transaction Failed
         </h4>
         <p className="text-xs text-red-700">{error}</p>
+
+        {/* Add a helpful message for insufficient funds */}
+        {error.includes("Insufficient funds") && (
+          <p className="text-xs text-red-700 mt-2">
+            Try adding more ETH to your wallet or selecting a less expensive
+            dataset.
+          </p>
+        )}
       </div>
     );
   };
@@ -361,22 +382,24 @@ const DatasetPurchaseButton = ({
       {renderTransactionDetails()}
 
       {/* Pulse animation CSS */}
-      <style jsx>{`
-        @keyframes pulse {
-          0% {
-            opacity: 0.3;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.1;
-            transform: scale(1.05);
-          }
-          100% {
-            opacity: 0.3;
-            transform: scale(1);
-          }
-        }
-      `}</style>
+      <style>
+        {`
+    @keyframes pulse {
+      0% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.1;
+        transform: scale(1.05);
+      }
+      100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+    }
+  `}
+      </style>
     </div>
   );
 };
