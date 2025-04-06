@@ -1,5 +1,5 @@
 // src/components/WalletConnect.js
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { WalletIcon, AlertCircle } from "../icons/index.js";
 import { X, CheckCircle, AlertTriangle, Loader } from "lucide-react";
@@ -18,13 +18,7 @@ const WalletConnect = ({ onConnect }) => {
   const navigate = useNavigate();
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [localError, setLocalError] = useState(null);
-  const [connectAttempts, setConnectAttempts] = useState(0); // Track connection attempts
-
-  // Add a ref to track component mounted state
-  const isMounted = useRef(true);
-  // Create an AbortController to cancel operations on unmount
-  const abortControllerRef = useRef(new AbortController());
+  const [localError, setLocalError] = useState(null); // Added local error state
 
   // Get wallet connection state
   const {
@@ -46,7 +40,6 @@ const WalletConnect = ({ onConnect }) => {
     isNewUser,
     error: authError,
     loading: authLoading,
-    clearVerificationCache, // Added clearVerificationCache
   } = useAuth();
 
   // Combined error and loading states
@@ -56,24 +49,11 @@ const WalletConnect = ({ onConnect }) => {
   // If auto-connect fails, we want to make it easy for the user to initiate the connection
   const showNetworkWarning = isConnected && network && !network.isSupported;
 
-  // Set the mounted ref to false when component unmounts
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-      // Abort any pending operations
-      abortControllerRef.current.abort();
-    };
-  }, []);
-
-  // Reset connection on mount to prevent infinite loading
+  // Also, at the very beginning of the component, add a check for logout state:
   useEffect(() => {
     // Check for and clear any lingering logout flags when mounting the login component
     const isLogoutInProgress =
       sessionStorage.getItem("logout_in_progress") === "true";
-
-    // Clear verification cache on mount to reset any pending auth states
-    clearVerificationCache();
-
     if (isLogoutInProgress) {
       console.log("WalletConnect: Clearing logout in progress flag");
       sessionStorage.removeItem("logout_in_progress");
@@ -82,29 +62,10 @@ const WalletConnect = ({ onConnect }) => {
       localStorage.removeItem("healthmint_wallet_address");
       localStorage.removeItem("healthmint_wallet_connection");
     }
-
-    // Reset connection state flags to prevent stale states
-    sessionStorage.removeItem("auth_verification_override");
-    sessionStorage.removeItem("bypass_route_protection");
-    sessionStorage.removeItem("bypass_role_check");
-    sessionStorage.removeItem("force_wallet_reconnect");
-
-    // Set a timeout to clear any loading state after 5 seconds
-    const timeoutId = setTimeout(() => {
-      if (loading && isMounted.current) {
-        setIsConnecting(false);
-        setLocalError("Connection timeout. Please try again.");
-      }
-    }, 5000);
-
-    return () => clearTimeout(timeoutId);
-  }, [clearVerificationCache, loading]);
+  }, []);
 
   // Clear reconnection flags and clean up wallet state
   useEffect(() => {
-    // Only run this if component is still mounted
-    if (!isMounted.current) return;
-
     // Clear any forced reconnect flags when we reach this component
     sessionStorage.removeItem("force_wallet_reconnect");
 
@@ -116,10 +77,8 @@ const WalletConnect = ({ onConnect }) => {
       localStorage.removeItem("healthmint_wallet_connection");
 
       // Reset connection state
-      if (isMounted.current) {
-        setIsConnecting(false);
-        setErrorDismissed(false);
-      }
+      setIsConnecting(false);
+      setErrorDismissed(false);
     }
 
     console.log("WalletConnect mounted, connection state:", {
@@ -130,28 +89,8 @@ const WalletConnect = ({ onConnect }) => {
     });
   }, [isConnected, address, isNewUser, isRegistrationComplete]);
 
-  // Fix for infinite loading - Emergency timeout
-  useEffect(() => {
-    if (!loading || !isConnecting) return;
-
-    const emergencyTimeout = setTimeout(() => {
-      if ((loading || isConnecting) && isMounted.current) {
-        console.warn("Emergency timeout triggered: Resetting login state");
-        setIsConnecting(false);
-        setLocalError("Connection timed out. Please try again.");
-
-        // Reset auth state
-        clearVerificationCache();
-      }
-    }, 8000); // 8 second timeout
-
-    return () => clearTimeout(emergencyTimeout);
-  }, [loading, isConnecting, clearVerificationCache]);
-
   // useEffect that handles redirection after successful connection
   useEffect(() => {
-    if (!isMounted.current) return;
-
     if (isConnected && !loading) {
       console.log("WalletConnect: Connection successful, preparing redirect", {
         isRegistrationComplete,
@@ -162,33 +101,26 @@ const WalletConnect = ({ onConnect }) => {
       sessionStorage.removeItem("logout_in_progress");
 
       const redirectUser = async () => {
-        try {
-          // Wait a moment for auth state to be fully established
-          await new Promise((resolve) => setTimeout(resolve, 100));
+        // Wait a moment for auth state to be fully established
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-          // Check if component is still mounted before redirecting
-          if (!isMounted.current) return;
-
-          if (isRegistrationComplete) {
-            // If user has a role already set, send them to dashboard instead of role selection
-            const userRole = localStorage.getItem("healthmint_user_role");
-            if (userRole) {
-              console.log(
-                "WalletConnect: User has role, redirecting to dashboard"
-              );
-              navigate("/dashboard", { replace: true });
-            } else {
-              // If registration is complete but no role, go to role selection
-              console.log("WalletConnect: Redirecting to role selection");
-              navigate("/select-role", { replace: true });
-            }
-          } else if (isNewUser) {
-            // If new user, go to registration
-            console.log("WalletConnect: Redirecting to registration");
-            navigate("/register", { replace: true });
+        if (isRegistrationComplete) {
+          // If user has a role already set, send them to dashboard instead of role selection
+          const userRole = localStorage.getItem("healthmint_user_role");
+          if (userRole) {
+            console.log(
+              "WalletConnect: User has role, redirecting to dashboard"
+            );
+            navigate("/dashboard", { replace: true });
+          } else {
+            // If registration is complete but no role, go to role selection
+            console.log("WalletConnect: Redirecting to role selection");
+            navigate("/select-role", { replace: true });
           }
-        } catch (err) {
-          console.error("Redirect error:", err);
+        } else if (isNewUser) {
+          // If new user, go to registration
+          console.log("WalletConnect: Redirecting to registration");
+          navigate("/register", { replace: true });
         }
       };
 
@@ -198,25 +130,6 @@ const WalletConnect = ({ onConnect }) => {
 
   // Handle connect button click
   const handleConnect = async () => {
-    console.log("⭐️ Connect button clicked");
-
-    // Track connection attempts
-    setConnectAttempts((prev) => prev + 1);
-
-    // If we've tried multiple times, do a more thorough reset
-    if (connectAttempts >= 2) {
-      clearVerificationCache();
-      sessionStorage.removeItem("auth_verification_override");
-      sessionStorage.removeItem("bypass_route_protection");
-      sessionStorage.setItem("force_wallet_reconnect", "true");
-      localStorage.removeItem("healthmint_wallet_address");
-      localStorage.removeItem("healthmint_wallet_connection");
-    }
-
-    // Reset the AbortController for this operation
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
-
     setErrorDismissed(false);
     setIsConnecting(true);
     setLocalError(null); // Clear any previous local errors
@@ -225,23 +138,12 @@ const WalletConnect = ({ onConnect }) => {
       console.log("WalletConnect: Initiating wallet connection...");
 
       // First connect wallet
-      console.log("⭐️ About to call connectWallet()");
       const walletResult = await connectWallet();
-      console.log("⭐️ connectWallet result:", walletResult);
-
-      // Check if component is still mounted or if operation was aborted
-      if (!isMounted.current || signal.aborted) {
-        console.log(
-          "WalletConnect: Component unmounted after wallet connection"
-        );
-        return;
-      }
 
       if (walletResult && walletResult.success) {
         console.log("WalletConnect: Wallet connected successfully");
 
         const walletAddress = walletResult.address;
-        console.log("⭐️ Got wallet address:", walletAddress);
 
         // Save wallet address to localStorage immediately after successful connection
         if (walletAddress) {
@@ -259,17 +161,8 @@ const WalletConnect = ({ onConnect }) => {
         );
 
         // Then handle authentication and user state
-        console.log("⭐️ About to call login with address:", walletAddress);
+        // FIXED: Pass wallet address to login function
         const authResult = await login(walletAddress);
-        console.log("⭐️ Login result:", authResult);
-
-        // Check if component is still mounted
-        if (!isMounted.current || signal.aborted) {
-          console.log(
-            "WalletConnect: Component unmounted after authentication"
-          );
-          return;
-        }
 
         if (authResult && authResult.success) {
           console.log("WalletConnect: Authentication successful");
@@ -318,25 +211,8 @@ const WalletConnect = ({ onConnect }) => {
         })
       );
     } finally {
-      if (isMounted.current) {
-        setIsConnecting(false);
-      }
+      setIsConnecting(false);
     }
-  };
-
-  // Function to manually reset connection state if stuck
-  const handleResetConnection = () => {
-    clearVerificationCache();
-    localStorage.removeItem("healthmint_wallet_address");
-    localStorage.removeItem("healthmint_wallet_connection");
-    sessionStorage.removeItem("auth_verification_override");
-    sessionStorage.removeItem("bypass_route_protection");
-    sessionStorage.removeItem("bypass_role_check");
-    setIsConnecting(false);
-    setLocalError(null);
-
-    // Force page refresh to clear all state
-    window.location.reload();
   };
 
   return (
@@ -385,15 +261,6 @@ const WalletConnect = ({ onConnect }) => {
                 className="text-blue-500 animate-spin flex-shrink-0"
               />
               <span className="flex-1">Connecting to your wallet...</span>
-              {/* Add reset button if loading for too long */}
-              {isConnecting && (
-                <button
-                  onClick={handleResetConnection}
-                  className="text-xs px-2 py-1 bg-blue-200 rounded hover:bg-blue-300"
-                >
-                  Reset
-                </button>
-              )}
             </div>
           )}
 

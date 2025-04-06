@@ -1,681 +1,462 @@
 // src/hooks/useWalletConnect.js
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { ethers } from "ethers";
+
+// Redux actions
 import {
-  setWalletConnection,
+  updateWalletConnection,
   clearWalletConnection,
+  setWalletConnection,
+  selectIsConnected,
+  selectAddress,
+  selectChainId,
+  selectNetwork,
 } from "../redux/slices/walletSlice.js";
+import { updateUserProfile } from "../redux/slices/userSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 
-// Network configurations
-const SUPPORTED_NETWORKS = {
-  // Mainnet (not primary focus for this app)
-  1: {
-    chainId: "0x1",
-    name: "Ethereum Mainnet",
-    isSupported: false,
-    isTestnet: false,
-  },
-  // Sepolia testnet - primary development network
-  11155111: {
-    chainId: "0xaa36a7",
-    name: "Sepolia Testnet",
-    isSupported: true,
-    isTestnet: true,
-  },
-};
-
 /**
- * Custom hook for wallet connection and management
+ * Custom hook for wallet connectivity
  *
  * @param {Object} options - Configuration options
- * @param {boolean} options.autoConnect - Whether to attempt auto-connection on mount
- * @param {boolean} options.persistConnection - Whether to persist connection state
- * @param {boolean} options.silentErrors - Whether to suppress error notifications
- * @returns {Object} - Wallet connection state and methods
+ * @returns {Object} Wallet connection methods and state
  */
-const useWalletConnect = ({
-  autoConnect = true,
-  persistConnection = true,
-  silentErrors = false,
-} = {}) => {
+const useWalletConnect = (options = {}) => {
   const dispatch = useDispatch();
 
-  // Component state
-  const [address, setAddress] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
+  // Extract options with defaults
+  const { autoConnect = false } = options;
+
+  // Get wallet state from Redux
+  const isConnected = useSelector(selectIsConnected);
+  const address = useSelector(selectAddress);
+  const chainId = useSelector(selectChainId);
+  const network = useSelector(selectNetwork);
+
+  // Local state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [network, setNetwork] = useState(null);
-  const [pendingTransactions, setPendingTransactions] = useState([]);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Refs to track initialization state and mounted status
-  const initialized = useRef(false);
-  const isMounted = useRef(true);
-  const connectionAttempted = useRef(false);
+  // References to prevent state updates during cleanup
+  const isActive = useRef(true);
 
-  // Get Ethereum provider from window object
-  const getEthereumProvider = useCallback(() => {
-    if (typeof window === "undefined") return null;
-    return window.ethereum || null;
+  /**
+   * Creates network state object from chain ID
+   * @param {string} chainId - Hex string chain ID
+   */
+  const getNetworkFromChainId = useCallback((chainId) => {
+    if (!chainId) return { name: "Unknown", isSupported: false };
+
+    const networks = {
+      "0x1": { name: "Ethereum Mainnet", isSupported: true },
+      "0xaa36a7": { name: "Sepolia Testnet", isSupported: true },
+      "0x5": { name: "Goerli Testnet", isSupported: false },
+      "0x539": { name: "Local Development", isSupported: true },
+    };
+
+    const network = networks[chainId] || {
+      name: `Unknown Network (${chainId})`,
+      isSupported: false,
+    };
+
+    return { ...network, chainId };
   }, []);
 
-  // Check if MetaMask is installed
-  const checkMetaMaskInstalled = useCallback(() => {
-    const ethereum = getEthereumProvider();
-    return !!ethereum && ethereum.isMetaMask;
-  }, [getEthereumProvider]);
-
-  // Get current connected network info
-  const getNetworkInfo = useCallback(async (provider) => {
-    if (!provider) return null;
-
-    try {
-      const network = await provider.getNetwork();
-      const chainId = network.chainId;
-
-      // Check if we have info for this network
-      if (SUPPORTED_NETWORKS[chainId]) {
-        return {
-          ...SUPPORTED_NETWORKS[chainId],
-          chainId,
-        };
-      }
-
-      // For unknown networks, return basic info
-      return {
-        chainId,
-        name: network.name || `Chain ID: ${chainId}`,
-        isSupported: false,
-        isTestnet: false,
-      };
-    } catch (err) {
-      console.error("Error getting network:", err);
-      return null;
-    }
-  }, []);
-
-  // Clear wallet connection state
-  const clearConnection = useCallback(() => {
-    if (!isMounted.current) return;
-
-    setAddress(null);
-    setIsConnected(false);
-    setProvider(null);
-    setSigner(null);
-    setNetwork(null);
-    setPendingTransactions([]);
-
-    // Clear from localStorage if configured to persist
-    if (persistConnection) {
-      localStorage.removeItem("healthmint_wallet_address");
-      localStorage.removeItem("healthmint_wallet_connection");
-    }
-
-    // Dispatch redux action to clear wallet state
-    dispatch(clearWalletConnection());
-  }, [dispatch, persistConnection]);
-
-  // Handle account changes
-  const handleAccountsChanged = useCallback(
-    (accounts) => {
-      if (!isMounted.current) return;
-
-      if (accounts.length === 0) {
-        // User disconnected their account
-        setError("Wallet disconnected. Please connect again.");
-        clearConnection();
-
-        // Notification of disconnection
-        if (!silentErrors) {
-          dispatch(
-            addNotification({
-              type: "info",
-              message: "Wallet disconnected",
-              duration: 5000,
-            })
-          );
-        }
-      } else {
-        // User switched to a different account
-        const newAddress = accounts[0];
-
-        // Only update if the address has changed
-        if (newAddress !== address) {
-          setAddress(newAddress);
-
-          // Save to localStorage if configured to persist
-          if (persistConnection) {
-            localStorage.setItem("healthmint_wallet_address", newAddress);
-          }
-
-          // Dispatch redux action to update wallet state
-          dispatch(
-            setWalletConnection({
-              address: newAddress,
-              isConnected: true,
-            })
-          );
-
-          // Notification of account change
-          if (!silentErrors && address) {
-            // Only notify if there was a previous address
-            dispatch(
-              addNotification({
-                type: "info",
-                message: "Wallet account changed",
-                duration: 5000,
-              })
-            );
-          }
-        }
-      }
-    },
-    [address, clearConnection, dispatch, silentErrors, persistConnection]
-  );
-
-  // Handle chain/network change
-  const handleChainChanged = useCallback(
-    async (chainIdHex) => {
-      if (!isMounted.current) return;
-
-      try {
-        // Need to refresh page on chain change according to MetaMask best practices
-        // For a better UX, we update state instead of forcing a page refresh
-        const ethereum = getEthereumProvider();
-        if (!ethereum) return;
-
-        const newProvider = new ethers.providers.Web3Provider(ethereum);
-        const newSigner = newProvider.getSigner();
-        const newNetwork = await getNetworkInfo(newProvider);
-
-        setProvider(newProvider);
-        setSigner(newSigner);
-        setNetwork(newNetwork);
-
-        // Update connection status
-        setIsConnected(true);
-
-        // Notification of network change
-        if (!silentErrors) {
-          dispatch(
-            addNotification({
-              type: "info",
-              message: `Network changed to ${newNetwork?.name || "unknown network"}`,
-              duration: 5000,
-            })
-          );
-        }
-
-        // If switched to unsupported network, show a warning
-        if (newNetwork && !newNetwork.isSupported) {
-          dispatch(
-            addNotification({
-              type: "warning",
-              message: `Connected to unsupported network: ${newNetwork.name}. Please switch to Sepolia Testnet.`,
-              duration: 8000,
-            })
-          );
-        }
-      } catch (err) {
-        console.error("Error handling chain change:", err);
-        if (!silentErrors) {
-          dispatch(
-            addNotification({
-              type: "error",
-              message: "Error updating network connection",
-              duration: 5000,
-            })
-          );
-        }
-      }
-    },
-    [getEthereumProvider, getNetworkInfo, dispatch, silentErrors]
-  );
-
-  // Connect to wallet
+  /**
+   * Connect to wallet
+   */
   const connectWallet = useCallback(async () => {
-    // Prevent starting a connection if one is in progress or component unmounted
-    if (loading)
-      return { success: false, error: "Connection already in progress" };
-    if (!isMounted.current)
-      return { success: false, error: "Component unmounted" };
-
-    // Use an abort controller to handle cancellation
-    const abortController = new AbortController();
-    const signal = abortController.signal;
-
-    setLoading(true);
-    setError(null);
-    connectionAttempted.current = true;
+    if (!window.ethereum) {
+      const errorMessage = "Please install MetaMask to continue";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    }
 
     try {
-      // Check if request was aborted
-      if (signal.aborted) {
-        return { success: false, error: "Connection aborted" };
+      setIsConnecting(true);
+      setLoading(true);
+      setError(null);
+
+      // Request accounts
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts found. Please connect your wallet.");
       }
 
-      // Check if MetaMask is installed
-      if (!checkMetaMaskInstalled()) {
-        throw new Error(
-          "MetaMask is not installed. Please install MetaMask to connect your wallet."
-        );
-      }
+      const connectedAddress = accounts[0];
 
-      const ethereum = getEthereumProvider();
-      if (!ethereum) {
-        throw new Error("No Ethereum provider found");
-      }
+      // Get network info
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const connectedNetwork = await provider.getNetwork();
+      const connectedChainId = "0x" + connectedNetwork.chainId.toString(16);
 
-      // Request accounts from user - wrap in a check for component mounted state
-      await ethereum.request({ method: "eth_requestAccounts" });
+      // Get network details
+      const networkDetails = getNetworkFromChainId(connectedChainId);
 
-      // Check again if component is still mounted after user interaction
-      if (!isMounted.current || signal.aborted) {
-        return {
-          success: false,
-          error: "Component unmounted during connection",
-        };
-      }
+      // Save wallet information to localStorage immediately
+      localStorage.setItem("healthmint_wallet_address", connectedAddress);
+      localStorage.setItem("healthmint_wallet_connection", "true");
 
-      // Initialize provider and signer
-      const newProvider = new ethers.providers.Web3Provider(ethereum);
-      const newSigner = newProvider.getSigner();
+      // Update Redux state
+      dispatch(
+        updateWalletConnection({
+          address: connectedAddress,
+          chainId: connectedChainId,
+          isConnected: true,
+          walletType: "metamask",
+          lastConnected: Date.now(),
+        })
+      );
 
-      // Get the connected address
-      const newAddress = await newSigner.getAddress();
-
-      // Final check if component is still mounted
-      if (!isMounted.current || signal.aborted) {
-        return {
-          success: false,
-          error: "Component unmounted during connection",
-        };
-      }
-
-      // Get network information
-      const newNetwork = await getNetworkInfo(newProvider);
-
-      // Setup event listeners - only if component is still mounted
-      if (isMounted.current && !signal.aborted) {
-        ethereum.on("accountsChanged", handleAccountsChanged);
-        ethereum.on("chainChanged", handleChainChanged);
-
-        // Update state - safe to do since we've checked component is mounted
-        setProvider(newProvider);
-        setSigner(newSigner);
-        setAddress(newAddress);
-        setIsConnected(true);
-        setNetwork(newNetwork);
-
-        // Save to localStorage if configured to persist
-        if (persistConnection) {
-          localStorage.setItem("healthmint_wallet_address", newAddress);
-          localStorage.setItem("healthmint_wallet_connection", "true");
-        }
-
-        // Dispatch redux action to update wallet state
-        dispatch(
-          setWalletConnection({
-            address: newAddress,
-            isConnected: true,
-          })
-        );
-
-        // If not on a supported network, warn the user
-        if (newNetwork && !newNetwork.isSupported) {
-          dispatch(
-            addNotification({
-              type: "warning",
-              message: `Connected to unsupported network: ${newNetwork.name}. Please switch to Sepolia Testnet.`,
-              duration: 8000,
-            })
-          );
-        }
-      }
-
-      // Always make sure to update loading state
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      // Update user profile with the wallet address
+      dispatch(updateUserProfile({ address: connectedAddress }));
 
       return {
         success: true,
-        address: newAddress,
-        network: newNetwork,
+        address: connectedAddress,
+        chainId: connectedChainId,
+        network: networkDetails,
       };
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      const errorMessage = err.message || "Failed to connect wallet";
+    } catch (error) {
+      console.error("Wallet connection error:", error);
 
-      // Only update state if component is still mounted
-      if (isMounted.current) {
-        setError(errorMessage);
-        setLoading(false);
-        setIsConnected(false);
+      let errorMessage = error.message || "Failed to connect wallet";
 
-        // Show notification for connection error
-        if (!silentErrors) {
-          dispatch(
-            addNotification({
-              type: "error",
-              message: errorMessage,
-              duration: 5000,
-            })
-          );
-        }
+      if (error.code === 4001) {
+        errorMessage = "You rejected the connection request.";
+      } else if (error.code === -32002) {
+        errorMessage =
+          "Connection request already pending. Please check your wallet.";
       }
+
+      setError(errorMessage);
+
+      // Clean up any partial wallet connection data
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
 
       return {
         success: false,
         error: errorMessage,
       };
+    } finally {
+      if (isActive.current) {
+        setLoading(false);
+        setIsConnecting(false);
+      }
     }
-  }, [
-    loading,
-    checkMetaMaskInstalled,
-    getEthereumProvider,
-    getNetworkInfo,
-    handleAccountsChanged,
-    handleChainChanged,
-    dispatch,
-    persistConnection,
-    silentErrors,
-  ]);
-
-  // Disconnect wallet
+  }, [dispatch, getNetworkFromChainId]);
+  /**
+   * Disconnect from wallet with enhanced cleanup
+   * @returns {Promise<boolean>} Promise that resolves to true if disconnect was successful
+   */
   const disconnectWallet = useCallback(async () => {
-    if (!isMounted.current) return { success: false };
-
     try {
       setLoading(true);
+      setError(null);
 
-      // Remove event listeners
-      const ethereum = getEthereumProvider();
-      if (ethereum) {
-        ethereum.removeListener("accountsChanged", handleAccountsChanged);
-        ethereum.removeListener("chainChanged", handleChainChanged);
-      }
+      // Set logout flag first
+      sessionStorage.setItem("logout_in_progress", "true");
 
-      // Clear connection state
-      clearConnection();
+      // Also clear any auth verification bypass flags
+      sessionStorage.removeItem("auth_verification_override");
+      sessionStorage.removeItem("bypass_route_protection");
+      sessionStorage.removeItem("bypass_role_check");
 
-      // Indicate success
-      setLoading(false);
+      // If MetaMask is available, attempt to disconnect
+      if (typeof window.ethereum !== "undefined") {
+        try {
+          // Some wallets support formal disconnect
+          if (typeof window.ethereum.disconnect === "function") {
+            await window.ethereum.disconnect();
+          }
 
-      return { success: true };
-    } catch (err) {
-      console.error("Error disconnecting wallet:", err);
-      setError("Failed to disconnect wallet");
-      setLoading(false);
-
-      if (!silentErrors) {
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Error disconnecting wallet",
-            duration: 5000,
-          })
-        );
-      }
-
-      return { success: false, error: err.message };
-    }
-  }, [
-    getEthereumProvider,
-    handleAccountsChanged,
-    handleChainChanged,
-    clearConnection,
-    dispatch,
-    silentErrors,
-  ]);
-
-  // Switch network
-  const switchNetwork = useCallback(async () => {
-    if (!isMounted.current || !isConnected) return { success: false };
-
-    try {
-      setLoading(true);
-
-      const ethereum = getEthereumProvider();
-      if (!ethereum) {
-        throw new Error("No Ethereum provider found");
-      }
-
-      // Request switch to Sepolia testnet
-      const sepoliaChainParams = SUPPORTED_NETWORKS[11155111];
-
-      try {
-        // First try to switch to the network
-        await ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: sepoliaChainParams.chainId }],
-        });
-      } catch (switchError) {
-        // If the network is not added, try to add it
-        if (switchError.code === 4902) {
-          await ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: sepoliaChainParams.chainId,
-                chainName: sepoliaChainParams.name,
-                rpcUrls: ["https://rpc.sepolia.org"],
-                blockExplorerUrls: ["https://sepolia.etherscan.io"],
-                nativeCurrency: {
-                  name: "Sepolia Ether",
-                  symbol: "ETH",
-                  decimals: 18,
-                },
-              },
-            ],
-          });
-        } else {
-          throw switchError;
+          // For MetaMask specifically
+          if (window.ethereum.isMetaMask) {
+            // Clear the connection state
+            console.log("Clearing MetaMask connection state");
+          }
+        } catch (err) {
+          console.warn("Non-critical error during wallet disconnect:", err);
+          // Continue despite errors
         }
       }
 
-      // Network switch was successful, update provider and state
-      const newProvider = new ethers.providers.Web3Provider(ethereum);
-      const newSigner = newProvider.getSigner();
-      const newNetwork = await getNetworkInfo(newProvider);
+      // Clear wallet state in Redux
+      dispatch(
+        setWalletConnection({
+          address: null,
+          isConnected: false,
+          network: null,
+        })
+      );
 
-      setProvider(newProvider);
-      setSigner(newSigner);
-      setNetwork(newNetwork);
-      setLoading(false);
+      // Clean localStorage
+      localStorage.removeItem("healthmint_wallet_address");
+      localStorage.removeItem("healthmint_wallet_connection");
 
-      // Notification of successful network switch
+      // Set the reconnect flag
+      sessionStorage.setItem("force_wallet_reconnect", "true");
+
+      // Success notification
       dispatch(
         addNotification({
           type: "success",
-          message: `Switched to network: ${newNetwork.name}`,
+          message: "Wallet disconnected successfully",
+          duration: 3000,
+        })
+      );
+
+      setLoading(false);
+      return true;
+    } catch (err) {
+      console.error("Error disconnecting wallet:", err);
+      setError(err.message || "Failed to disconnect wallet");
+
+      // Add notification
+      dispatch(
+        addNotification({
+          type: "error",
+          message: "Failed to disconnect wallet",
           duration: 5000,
         })
       );
 
-      return { success: true, network: newNetwork };
-    } catch (err) {
-      console.error("Error switching network:", err);
-      setError("Failed to switch network");
       setLoading(false);
+      return false;
+    }
+  }, [dispatch]);
 
-      if (!silentErrors) {
+  /**
+   * Switch to a specific network
+   * @param {string} targetChainId - Chain ID to switch to
+   */
+  const switchNetwork = useCallback(
+    async (targetChainId = "0xaa36a7") => {
+      if (!window.ethereum) return false;
+
+      try {
+        setLoading(true);
+
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: targetChainId }],
+        });
+
+        return true;
+      } catch (error) {
+        console.error("Network switch error:", error);
+
+        if (error.code === 4001) {
+          // User rejected the request
+          dispatch(
+            addNotification({
+              type: "info",
+              message: "Network switch was rejected.",
+            })
+          );
+        } else {
+          dispatch(
+            addNotification({
+              type: "error",
+              message: "Failed to switch network. Please try again.",
+            })
+          );
+        }
+
+        return false;
+      } finally {
+        if (isActive.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [dispatch]
+  );
+
+  /**
+   * Get pending transactions (placeholder implementation)
+   */
+  const getPendingTransactions = useCallback(async () => {
+    return []; // Placeholder - in a real app, you would fetch actual pending transactions
+  }, []);
+
+  // Set up event listeners for wallet changes
+  useEffect(() => {
+    if (!window.ethereum?.on) return;
+
+    // Handle account changes
+    const handleAccountsChanged = (accounts) => {
+      if (!isActive.current) return;
+
+      if (accounts.length === 0) {
+        // User disconnected their wallet
+        dispatch(clearWalletConnection());
+
+        // Also clear localStorage
+        localStorage.removeItem("healthmint_wallet_address");
+        localStorage.removeItem("healthmint_wallet_connection");
+
         dispatch(
           addNotification({
-            type: "error",
-            message: "Failed to switch network",
-            duration: 5000,
+            type: "info",
+            message: "Wallet disconnected",
+          })
+        );
+      } else {
+        // Account changed
+        const newAccount = accounts[0];
+
+        // Update localStorage
+        localStorage.setItem("healthmint_wallet_address", newAccount);
+
+        // Update Redux state
+        dispatch(updateUserProfile({ address: newAccount }));
+        dispatch(updateWalletConnection({ address: newAccount }));
+
+        dispatch(
+          addNotification({
+            type: "info",
+            message: `Account changed to ${newAccount.slice(0, 6)}...${newAccount.slice(-4)}`,
           })
         );
       }
+    };
 
-      return { success: false, error: err.message };
-    }
-  }, [
-    isConnected,
-    getEthereumProvider,
-    getNetworkInfo,
-    dispatch,
-    silentErrors,
-  ]);
+    // Handle chain/network changes
+    const handleChainChanged = (chainId) => {
+      if (!isActive.current) return;
 
-  // Get wallet balance
-  const getBalance = useCallback(
-    async (walletAddress) => {
-      if (!provider) return null;
+      const networkDetails = getNetworkFromChainId(chainId);
 
-      try {
-        const targetAddress = walletAddress || address;
-        if (!targetAddress) return null;
+      // Update Redux state with new chain ID
+      dispatch(
+        updateWalletConnection({
+          chainId,
+          network: networkDetails,
+        })
+      );
 
-        const balance = await provider.getBalance(targetAddress);
-        return ethers.utils.formatEther(balance);
-      } catch (err) {
-        console.error("Error getting balance:", err);
-        return null;
-      }
-    },
-    [provider, address]
-  );
+      dispatch(
+        addNotification({
+          type: networkDetails.isSupported ? "info" : "warning",
+          message: networkDetails.isSupported
+            ? `Connected to ${networkDetails.name}`
+            : `Connected to unsupported network: ${networkDetails.name}`,
+        })
+      );
+    };
 
-  // Get pending transactions
-  const getPendingTransactions = useCallback(async () => {
-    return pendingTransactions;
-  }, [pendingTransactions]);
+    // Set up listeners
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
 
-  // Connect to wallet on initialization if autoConnect is true
-  // This is a separate function to handle auto-connection logic
-  const initializeConnection = useCallback(async () => {
-    if (initialized.current || !isMounted.current) return;
-    initialized.current = true;
-
-    // Check if we should attempt to connect
-    const shouldAutoConnect =
-      autoConnect &&
-      persistConnection &&
+    // Check if there's a wallet address in localStorage but not in Redux
+    const storedAddress = localStorage.getItem("healthmint_wallet_address");
+    const storedConnection =
       localStorage.getItem("healthmint_wallet_connection") === "true";
 
-    // If auto-connect is enabled and we have a stored connection, try to connect
-    if (shouldAutoConnect) {
-      try {
-        // First check if MetaMask is installed
-        if (!checkMetaMaskInstalled()) {
-          throw new Error("MetaMask is not installed");
-        }
-
-        const ethereum = getEthereumProvider();
-        if (!ethereum) {
-          throw new Error("No Ethereum provider found");
-        }
-
-        // Check if already connected
-        const accounts = await ethereum.request({ method: "eth_accounts" });
-
-        if (accounts && accounts.length > 0) {
-          // We have an active connection, initialize provider
-          const newProvider = new ethers.providers.Web3Provider(ethereum);
-          const newSigner = newProvider.getSigner();
-          const newAddress = accounts[0];
-          const newNetwork = await getNetworkInfo(newProvider);
-
-          // Setup event listeners
-          ethereum.on("accountsChanged", handleAccountsChanged);
-          ethereum.on("chainChanged", handleChainChanged);
-
-          // Update state
-          setProvider(newProvider);
-          setSigner(newSigner);
-          setAddress(newAddress);
-          setIsConnected(true);
-          setNetwork(newNetwork);
+    if (storedAddress && storedConnection && !address) {
+      // If we have stored wallet data but no Redux state, restore from localStorage
+      window.ethereum
+        .request({ method: "eth_chainId" })
+        .then((chainId) => {
+          const networkDetails = getNetworkFromChainId(chainId);
 
           // Update Redux state
           dispatch(
-            setWalletConnection({
-              address: newAddress,
+            updateWalletConnection({
+              address: storedAddress,
+              chainId,
               isConnected: true,
+              network: networkDetails,
+              walletType: "metamask",
+              lastConnected: Date.now(),
             })
           );
 
-          // Return true to indicate successful connection
-          return true;
-        } else {
-          // No active connection
-          return false;
-        }
-      } catch (err) {
-        console.error("Auto-connection error:", err);
-        return false;
-      }
+          // Update user profile
+          dispatch(updateUserProfile({ address: storedAddress }));
+        })
+        .catch(console.error);
     }
 
-    return false;
-  }, [
-    autoConnect,
-    persistConnection,
-    checkMetaMaskInstalled,
-    getEthereumProvider,
-    getNetworkInfo,
-    handleAccountsChanged,
-    handleChainChanged,
-    dispatch,
-  ]);
+    // Auto-connect if requested
+    if (autoConnect && !isConnected) {
+      // Use eth_accounts instead of eth_requestAccounts to avoid popup
+      window.ethereum
+        .request({ method: "eth_accounts" })
+        .then((accounts) => {
+          if (accounts && accounts.length > 0) {
+            const connectedAddress = accounts[0];
 
-  // Handle cleanup and set isMounted.current to false when component unmounts
-  useEffect(() => {
-    // Set up an abort controller for ongoing operations
-    const abortController = new AbortController();
+            // Save to localStorage
+            localStorage.setItem("healthmint_wallet_address", connectedAddress);
+            localStorage.setItem("healthmint_wallet_connection", "true");
 
-    // Run initialization if not already done
-    if (!initialized.current) {
-      initializeConnection().catch((err) => {
-        console.warn("Initialization failed:", err);
-      });
+            // Get chain ID
+            window.ethereum
+              .request({ method: "eth_chainId" })
+              .then((chainId) => {
+                const networkDetails = getNetworkFromChainId(chainId);
+
+                // Update Redux state
+                dispatch(
+                  updateWalletConnection({
+                    address: connectedAddress,
+                    chainId,
+                    isConnected: true,
+                    network: networkDetails,
+                    walletType: "metamask",
+                    lastConnected: Date.now(),
+                  })
+                );
+
+                // Update user profile
+                dispatch(updateUserProfile({ address: connectedAddress }));
+              })
+              .catch(console.error);
+          }
+        })
+        .catch(console.error)
+        .finally(() => {
+          if (isActive.current) {
+            setIsInitialized(true);
+          }
+        });
+    } else {
+      setIsInitialized(true);
     }
 
     // Cleanup function
     return () => {
-      // Signal any ongoing operations to abort
-      abortController.abort();
-
-      // Set mounted flag to false
-      isMounted.current = false;
-
-      // Remove event listeners if ethereum provider exists
-      const ethereum = getEthereumProvider();
-      if (ethereum) {
-        ethereum.removeListener("accountsChanged", handleAccountsChanged);
-        ethereum.removeListener("chainChanged", handleChainChanged);
-      }
+      isActive.current = false;
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum.removeListener("chainChanged", handleChainChanged);
     };
-  }, [
-    initializeConnection,
-    getEthereumProvider,
-    handleAccountsChanged,
-    handleChainChanged,
-  ]);
+  }, [autoConnect, dispatch, getNetworkFromChainId, isConnected, address]);
 
-  // Return public API
   return {
     // State
-    address,
+    isInitialized,
     isConnected,
+    isConnecting,
+    address,
+    chainId,
+    network,
     loading,
     error,
-    provider,
-    signer,
-    network,
-    pendingTransactions,
 
     // Methods
     connectWallet,
     disconnectWallet,
     switchNetwork,
-    getBalance,
     getPendingTransactions,
   };
 };
