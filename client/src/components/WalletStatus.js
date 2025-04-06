@@ -59,6 +59,16 @@ const WalletStatus = ({
   const formatBalance = (balanceInWei) => {
     if (balanceInWei === null || balanceInWei === undefined) return "Unknown";
 
+    // Check if it's already in ETH format (string with decimal)
+    if (typeof balanceInWei === "string" && balanceInWei.includes(".")) {
+      const balanceInEth = parseFloat(balanceInWei);
+      // Format based on value
+      if (balanceInEth === 0) return "0 ETH";
+      if (balanceInEth < 0.001) return "< 0.001 ETH";
+      if (balanceInEth < 0.1) return balanceInEth.toFixed(4) + " ETH";
+      return balanceInEth.toFixed(3) + " ETH";
+    }
+
     // Convert from Wei to ETH (division by 10^18)
     const balanceInEth = parseFloat(balanceInWei) / 1e18;
 
@@ -84,30 +94,38 @@ const WalletStatus = ({
 
   // Fetch the wallet balance
   const fetchBalance = useCallback(async () => {
-    if (!walletAddress || !isConnected) return;
+    if (!walletAddress && !isConnected) return;
 
     try {
       setLoadingBalance(true);
       setError(null);
 
-      // Use the getBalance function from the hook instead of mockPaymentService
-      if (walletGetBalance) {
-        const balanceResult = await walletGetBalance(walletAddress);
-        setBalance(balanceResult);
-      } else if (
-        mockPaymentService &&
-        mockPaymentService.isInitialized &&
-        mockPaymentService.getBalance
-      ) {
-        // Fallback to mockPaymentService if available and initialized
-        const balanceResult = await mockPaymentService.getBalance();
-        setBalance(balanceResult);
-      } else {
-        throw new Error("Balance fetching is not available");
+      // Make sure mockPaymentService is initialized
+      if (!mockPaymentService.isInitialized) {
+        await mockPaymentService.initializeProvider();
       }
+
+      // Try all available methods to get balance, with proper fallbacks
+      if (walletGetBalance) {
+        try {
+          const balanceResult = await walletGetBalance(walletAddress);
+          setBalance(balanceResult);
+          return;
+        } catch (err) {
+          console.log("Wallet get balance failed, trying fallback method", err);
+          // Continue to next method if this one fails
+        }
+      }
+
+      // Use mockPaymentService as fallback
+      const balanceResult = await mockPaymentService.getBalance();
+      setBalance(balanceResult);
     } catch (err) {
       console.error("Error fetching wallet balance:", err);
       setError("Failed to fetch balance");
+
+      // Set a fallback balance to prevent UI issues
+      setBalance("0.00");
     } finally {
       setLoadingBalance(false);
     }
@@ -132,7 +150,21 @@ const WalletStatus = ({
   // Fetch balance on component mount and when address changes
   useEffect(() => {
     if (showBalance) {
-      fetchBalance();
+      // Initialize mockPaymentService first to ensure it's ready
+      const init = async () => {
+        try {
+          if (!mockPaymentService.isInitialized) {
+            await mockPaymentService.initializeProvider();
+          }
+          fetchBalance();
+        } catch (err) {
+          console.error("Error initializing payment service:", err);
+          // Set a fallback balance
+          setBalance("0.00");
+        }
+      };
+
+      init();
     }
   }, [fetchBalance, showBalance, walletAddress]);
 
@@ -279,12 +311,13 @@ const WalletStatus = ({
               className={`w-2 h-2 rounded-full ${network.isSupported ? "bg-green-500" : "bg-yellow-500"} mr-2`}
             ></div>
             <span className="text-sm text-gray-600">
-              Network: <span className="font-medium">{network.name}</span>
+              Network:{" "}
+              <span className="font-medium">{network.name || "Unknown"}</span>
             </span>
           </div>
 
           <div className="text-xs text-gray-500">
-            Chain ID: {network.chainId}
+            Chain ID: {network?.chainId || "Unknown"}
           </div>
         </div>
       )}
