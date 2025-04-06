@@ -7,6 +7,8 @@
 export const ROUTES = {
   // Auth routes
   LOGIN: "/login",
+  FORGOT_PASSWORD: "/forgot-password",
+  REGISTER: "/register",
   ROLE_SELECT: "/select-role",
 
   // Dashboard routes
