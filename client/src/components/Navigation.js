@@ -95,17 +95,24 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
 
   // Filter navigation items based on user role
   const getNavigationItems = () => {
+    // Common items for all roles
     const baseItems = [
       { to: "/", label: "Home", icon: Home },
-      { to: "/upload", label: "Upload Data", icon: Upload },
       { to: "/transactions", label: "Transactions", icon: Clock },
       { to: "/profile", label: "Profile Settings", icon: Settings },
     ];
 
-    // Only add Browse Data option for researchers
-    if (userRole === "researcher") {
-      // Insert at index 2 (after Upload Data)
-      baseItems.splice(2, 0, {
+    // Role-specific items
+    if (userRole === "patient") {
+      // Add Upload Data option only for patients - insert after Home
+      baseItems.splice(1, 0, {
+        to: "/upload",
+        label: "Upload Data",
+        icon: Upload,
+      });
+    } else if (userRole === "researcher") {
+      // Add Browse Data option only for researchers - insert after Home
+      baseItems.splice(1, 0, {
         to: "/browse",
         label: "Browse Data",
         icon: Search,
