@@ -524,7 +524,9 @@ function AppContent() {
           <Route
             path="/upload"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={["patient"]}>
+                {" "}
+                {/* Only allow patients */}
                 {isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
