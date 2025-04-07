@@ -539,7 +539,9 @@ function AppContent() {
           <Route
             path="/browse"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {" "}
+                {/* Only allow researchers */}
                 {isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
