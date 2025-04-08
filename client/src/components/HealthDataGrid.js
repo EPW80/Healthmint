@@ -153,7 +153,7 @@ const HealthDataGrid = () => {
             </div>
             
             <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex justify-between">
-              <span className="text-sm font-medium text-blue-600">${(record.price/100).toFixed(2)}</span>
+              <span className="text-sm font-medium text-blue-600">${(record.price).toFixed(2)}</span>
               <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
                 View Details
               </button>

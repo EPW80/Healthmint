@@ -122,7 +122,7 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
 
 WalletBalanceDisplay.propTypes = {
   className: PropTypes.string,
-  refreshTrigger: PropTypes.any, // Any value that should trigger a balance refresh when changed
+  refreshTrigger: PropTypes.any, // Can be any type, used to trigger refresh
 };
 
 export default WalletBalanceDisplay;

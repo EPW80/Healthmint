@@ -18,7 +18,7 @@ const WalletConnect = ({ onConnect }) => {
   const navigate = useNavigate();
   const [errorDismissed, setErrorDismissed] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [localError, setLocalError] = useState(null); // Added local error state
+  const [localError, setLocalError] = useState(null); // Local error state
 
   // Get wallet connection state
   const {

@@ -35,9 +35,9 @@ const generateMockHealthRecords = () => {
     return sizes[Math.floor(Math.random() * sizes.length)]();
   };
 
-  // Generate random price from $10 to $500
+  // Generate random price below 0.7 ETH
   const getRandomPrice = () => {
-    return (Math.floor(Math.random() * 49) + 1) * 10;
+    return (Math.random() * 0.68 + 0.01).toFixed(3);
   };
 
   // Record template data with explicit verification status
