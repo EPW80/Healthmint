@@ -8,7 +8,6 @@ import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import mockPaymentService from "../services/mockPaymentService.js"; // Added mock payment service
 import DataBrowserView from "./DataBrowserView.js";
 import TransactionModal from "./TransactionModal.js";
-import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
 
 // Categories from backend
 const CATEGORIES = [
@@ -354,7 +353,14 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         onPurchase(datasetId, transactionDetails);
       }
     },
-    [dispatch, onPurchase, userId, userRole, healthData, setLastTransactionDetails]
+    [
+      dispatch,
+      onPurchase,
+      userId,
+      userRole,
+      healthData,
+      setLastTransactionDetails,
+    ]
   );
 
   // Handle purchase error
@@ -1141,12 +1147,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   // Pass props to the view component (including wallet balance)
   return (
     <>
-      {/* Use WalletBalanceDisplay instead of simple wallet balance display */}
-      <WalletBalanceDisplay
-        className="mb-4"
-        refreshTrigger={purchasingDataset}
-      />
-
+      {/* Data Browser View */}
+      {/* Pass the wallet balance as a prop to DataBrowserView */}
       <DataBrowserView
         userRole={userRole}
         loading={loading}
