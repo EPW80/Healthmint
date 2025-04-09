@@ -662,6 +662,119 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [consentsHistory, healthData, userId, userRole, selectedTiers]
   );
 
+  /**
+   * Handle dataset download with proper error handling
+   * @param {string} datasetId - The ID of the dataset to download
+   */
+  const handleDownloadDataset = useCallback(
+    async (datasetId) => {
+      try {
+        // Set loading state
+        setDetailsLoading(true);
+
+        // Log download attempt for HIPAA compliance
+        await hipaaComplianceService.createAuditLog(
+          "DATASET_DOWNLOAD_ATTEMPT",
+          {
+            datasetId,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+            action: "DOWNLOAD",
+          }
+        );
+
+        // Check if the dataset exists in our data
+        const datasetExists = healthData.some(
+          (dataset) => dataset.id === datasetId
+        );
+        if (!datasetExists) {
+          throw new Error(`Dataset with ID ${datasetId} not found`);
+        }
+
+        // Instead of directly accessing the API endpoint, use mockDataService
+        // This avoids making requests to non-existent endpoints
+        const downloadUrl =
+          await mockDataService.getDatasetDownloadUrl(datasetId);
+
+        if (!downloadUrl) {
+          throw new Error("Download URL could not be generated");
+        }
+
+        // Log successful download preparation
+        await hipaaComplianceService.createAuditLog(
+          "DATASET_DOWNLOAD_PREPARED",
+          {
+            datasetId,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+            action: "DOWNLOAD_READY",
+          }
+        );
+
+        // Show notification to user
+        dispatch(
+          addNotification({
+            type: "info",
+            message: "Preparing download. This may take a moment...",
+            duration: 3000,
+          })
+        );
+
+        // Use our mock service to simulate download instead of direct API call
+        const result = await mockDataService.downloadDataset(datasetId);
+
+        if (result.success) {
+          dispatch(
+            addNotification({
+              type: "success",
+              message: "Dataset downloaded successfully!",
+              duration: 5000,
+            })
+          );
+
+          // Log successful download
+          await hipaaComplianceService.createAuditLog(
+            "DATASET_DOWNLOAD_COMPLETE",
+            {
+              datasetId,
+              timestamp: new Date().toISOString(),
+              userId,
+              userRole,
+              action: "DOWNLOAD_COMPLETE",
+            }
+          );
+        } else {
+          throw new Error(result.error || "Download failed");
+        }
+      } catch (err) {
+        console.error("Download error:", err);
+
+        // Log error
+        await hipaaComplianceService.createAuditLog("DATASET_DOWNLOAD_ERROR", {
+          datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+          errorMessage: err.message || "Unknown download error",
+          action: "DOWNLOAD_ERROR",
+        });
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message: `Download failed: ${err.message || "Unknown error"}`,
+            duration: 7000,
+          })
+        );
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [dispatch, userId, userRole, healthData, setDetailsLoading]
+  );
+
   // Request and verify consent for data access
   const requestAndVerifyConsent = useCallback(
     async (purpose, datasetId = null, actionType = "VIEW") => {
@@ -1272,6 +1385,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         toggleFavorite={toggleFavorite}
         handlePurchase={handlePurchase}
         handleViewDataset={handleViewDataset}
+        handleDownloadDataset={handleDownloadDataset}
         searchInput={searchInput}
         handleSearchInputChange={handleSearchInputChange}
         handleSearchKeyDown={handleSearchKeyDown}

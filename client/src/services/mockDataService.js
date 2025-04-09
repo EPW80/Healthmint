@@ -1,15 +1,6 @@
 // src/services/mockDataService.js
 
-/**
- * Mock Data Service for health data marketplace
- * 
- * Provides functions to interact with health datasets, including support
- * for tiered pricing, previews, and transaction simulation.
- */
-
 import mockDataUtils from "../utils/mockDataUtils.js";
-
-// Cache for dataset information to improve performance
 
 /**
  * Mock Data Service that integrates with the existing app structure
@@ -29,13 +20,13 @@ const mockDataService = {
       console.log("Initializing mock data service...");
       // Load datasets from mockDataUtils
       this.mockData = mockDataUtils.getMockHealthData();
-      
+
       // Also ensure we're compatible with the original hardcoded data format
       this.hardcodedDatasets = await this.getAvailableDatasets();
-      
+
       // Merge datasets for comprehensive coverage
       this.allDatasets = [...this.mockData, ...this.hardcodedDatasets];
-      
+
       this.isInitialized = true;
       return true;
     } catch (err) {
@@ -156,13 +147,13 @@ const mockDataService = {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     try {
-      // First try to find the dataset in our combined datasets collection
+      // Try to find the dataset
       let dataset = null;
-      
-      // Find in original hardcoded format
+
+      // Check in hardcoded datasets
       const hardcodedDatasets = await mockDataService.getAvailableDatasets();
       dataset = hardcodedDatasets.find((d) => d.id === datasetId);
-      
+
       // If not found, check in mockData from mockDataUtils
       if (!dataset && mockDataService.mockData) {
         dataset = mockDataService.mockData.find((d) => d.id === datasetId);
@@ -170,8 +161,10 @@ const mockDataService = {
 
       // If dataset not found, return default tiers instead of throwing error
       if (!dataset) {
-        console.warn(`Dataset with ID ${datasetId} not found when fetching tiers. Using default tiers.`);
-        
+        console.warn(
+          `Dataset with ID ${datasetId} not found when fetching tiers. Using default tiers.`
+        );
+
         // Return default tiers instead of throwing an error
         return [
           {
@@ -180,15 +173,17 @@ const mockDataService = {
             percentage: 25,
             recordCount: 250,
             price: "0.1250",
-            description: "25% sample of records, ideal for initial research exploration",
+            description:
+              "25% sample of records, ideal for initial research exploration",
           },
           {
             id: "standard",
-            name: "Standard", 
+            name: "Standard",
             percentage: 50,
             recordCount: 500,
             price: "0.2500",
-            description: "50% sample with balanced representation of the full dataset",
+            description:
+              "50% sample with balanced representation of the full dataset",
           },
           {
             id: "complete",
@@ -214,7 +209,8 @@ const mockDataService = {
           percentage: 25,
           recordCount: Math.round(dataset.recordCount * 0.25),
           price: formatPrice(dataset.price * 0.25),
-          description: "25% sample of records, ideal for initial research exploration",
+          description:
+            "25% sample of records, ideal for initial research exploration",
         },
         {
           id: "standard",
@@ -222,7 +218,8 @@ const mockDataService = {
           percentage: 50,
           recordCount: Math.round(dataset.recordCount * 0.5),
           price: formatPrice(dataset.price * 0.5),
-          description: "50% sample with balanced representation of the full dataset",
+          description:
+            "50% sample with balanced representation of the full dataset",
         },
         {
           id: "complete",
@@ -234,9 +231,9 @@ const mockDataService = {
         },
       ];
     } catch (error) {
-      // Handle errors gracefully without throwing
+      // Log the error for debugging
       console.error(`Error in getDatasetTiers for ${datasetId}:`, error);
-      
+
       // Return default tiers in case of any error
       return [
         {
@@ -248,16 +245,16 @@ const mockDataService = {
           description: "Basic tier (error recovery)",
         },
         {
-          id: "standard", 
+          id: "standard",
           name: "Standard",
           percentage: 50,
           recordCount: 200,
-          price: "0.1000", 
+          price: "0.1000",
           description: "Standard tier (error recovery)",
         },
         {
           id: "complete",
-          name: "Complete", 
+          name: "Complete",
           percentage: 100,
           recordCount: 400,
           price: "0.2000",
@@ -268,12 +265,8 @@ const mockDataService = {
   },
 
   /**
-   * Purchase a dataset with tier selection
-   * @param {Object} details - Purchase details
-   * @param {string} details.datasetId - Dataset ID
-   * @param {string} details.tier - Tier ID (basic, standard, complete)
-   * @param {number|string} details.price - Price for the selected tier
-   * @param {string} details.walletAddress - User's wallet address
+   * Purchase a dataset
+   * @param {Object} details - Purchase details including datasetId, price, and tier
    * @returns {Promise<Object>} Promise that resolves to purchase result
    */
   purchaseDataset: async (details) => {
@@ -307,14 +300,16 @@ const mockDataService = {
 
       // Try to find the dataset
       let dataset = null;
-      
+
       // Check in hardcoded datasets
       const hardcodedDatasets = await mockDataService.getAvailableDatasets();
       dataset = hardcodedDatasets.find((d) => d.id === details.datasetId);
-      
+
       // If not found in hardcoded data, check in mockData
       if (!dataset && mockDataService.mockData) {
-        dataset = mockDataService.mockData.find((d) => d.id === details.datasetId);
+        dataset = mockDataService.mockData.find(
+          (d) => d.id === details.datasetId
+        );
       }
 
       if (!dataset) {
@@ -348,14 +343,17 @@ const mockDataService = {
         price: details.price,
         recordCount,
         purchaseDate: new Date().toISOString(),
-        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        expiryDate: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(), // 30 days from now
         accessUrl: `/my-data/${details.datasetId}`,
       };
     } catch (error) {
       console.error("Error in purchaseDataset:", error);
       return {
         success: false,
-        message: error.message || "An unexpected error occurred during purchase"
+        message:
+          error.message || "An unexpected error occurred during purchase",
       };
     }
   },
@@ -448,13 +446,13 @@ const mockDataService = {
         sampleSize: 3,
         columns: [
           { name: "patient_id", type: "string" },
-          { name: "value", type: "number" }
+          { name: "value", type: "number" },
         ],
         sampleData: [
           { patient_id: "P1000", value: "100" },
           { patient_id: "P1001", value: "120" },
-          { patient_id: "P1002", value: "110" }
-        ]
+          { patient_id: "P1002", value: "110" },
+        ],
       };
     }
   },
@@ -529,7 +527,7 @@ const mockDataService = {
   },
 
   // Add compatibility methods for any new functions in the enhanced service
-  
+
   /**
    * Get dataset details (backwards compatibility)
    */
@@ -542,19 +540,21 @@ const mockDataService = {
 
       // Try to find the dataset
       let dataset = null;
-      
+
       // Check in hardcoded datasets
       const hardcodedDatasets = await mockDataService.getAvailableDatasets();
       dataset = hardcodedDatasets.find((d) => d.id === datasetId);
-      
+
       // If not found in hardcoded data, check in mockData
       if (!dataset && mockDataService.mockData) {
         dataset = mockDataService.mockData.find((d) => d.id === datasetId);
       }
 
       if (!dataset) {
-        console.warn(`Dataset with ID ${datasetId} not found when fetching details. Using placeholder data.`);
-        
+        console.warn(
+          `Dataset with ID ${datasetId} not found when fetching details. Using placeholder data.`
+        );
+
         // Return placeholder data instead of throwing
         return {
           id: datasetId,
@@ -567,34 +567,259 @@ const mockDataService = {
           verified: false,
           format: "Unknown",
           uploadDate: new Date().toISOString(),
-          errorMessage: `Dataset with ID ${datasetId} not found`
+          errorMessage: `Dataset with ID ${datasetId} not found`,
         };
       }
 
       // Get tiers for the dataset
       const tiers = await mockDataService.getDatasetTiers(datasetId);
-      
+
       // Return enhanced dataset details
       return {
         ...dataset,
         tiers,
         uploadDate: dataset.uploadDate || new Date().toISOString(),
         sampleData: {
-          note: "Sample data available on purchase"
-        }
+          note: "Sample data available on purchase",
+        },
       };
     } catch (error) {
       console.error(`Error fetching details for dataset ${datasetId}:`, error);
-      
+
       // Return placeholder data instead of throwing
       return {
         id: datasetId,
         title: "Error Loading Dataset",
         description: "An error occurred while loading dataset details.",
-        errorMessage: error.message
+        errorMessage: error.message,
       };
     }
-  }
+  },
+
+  /**
+   * Get a download URL for a dataset - avoids hitting non-existent API endpoints
+   * @param {string} datasetId - Dataset ID to download
+   * @returns {Promise<string>} - Download URL or null
+   */
+  getDatasetDownloadUrl: async (datasetId) => {
+    try {
+      // Make sure we're initialized
+      if (!mockDataService.isInitialized) {
+        await mockDataService.initialize();
+      }
+
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Try to find the dataset
+      let dataset = null;
+
+      // Check in hardcoded datasets
+      const hardcodedDatasets = await mockDataService.getAvailableDatasets();
+      dataset = hardcodedDatasets.find((d) => d.id === datasetId);
+
+      // If not found in hardcoded data, check in mockData
+      if (!dataset && mockDataService.mockData) {
+        dataset = mockDataService.mockData.find((d) => d.id === datasetId);
+      }
+
+      if (!dataset) {
+        console.warn(
+          `Dataset with ID ${datasetId} not found when generating download URL.`
+        );
+        return null;
+      }
+
+      // In a real app, this would return an actual download URL from the server
+      // Since we know the /api/datasets/:id/download endpoint doesn't exist,
+      // we'll return a mock URL that will be handled by the downloadDataset method
+      return `mock://datasets/${datasetId}/download`;
+    } catch (err) {
+      console.error("Error generating download URL:", err);
+      return null;
+    }
+  },
+
+  /**
+   * Download a dataset without making an API call
+   * @param {string} datasetId - Dataset ID to download
+   * @param {string} [tierId="complete"] - Tier ID to download
+   * @returns {Promise<Object>} - Download result
+   */
+  downloadDataset: async (datasetId, tierId = "complete") => {
+    try {
+      // Make sure we're initialized
+      if (!mockDataService.isInitialized) {
+        await mockDataService.initialize();
+      }
+
+      // Simulate download delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Try to find the dataset
+      let dataset = null;
+
+      // Check in hardcoded datasets
+      const hardcodedDatasets = await mockDataService.getAvailableDatasets();
+      dataset = hardcodedDatasets.find((d) => d.id === datasetId);
+
+      // If not found in hardcoded data, check in mockData
+      if (!dataset && mockDataService.mockData) {
+        dataset = mockDataService.mockData.find((d) => d.id === datasetId);
+      }
+
+      if (!dataset) {
+        return {
+          success: false,
+          error: `Dataset with ID ${datasetId} not found in available datasets`,
+        };
+      }
+
+      // Get tiers info for the dataset
+      const tiers = await mockDataService.getDatasetTiers(datasetId);
+      const tier =
+        tiers.find((t) => t.id === tierId) ||
+        tiers.find((t) => t.id === "complete");
+
+      if (!tier) {
+        return {
+          success: false,
+          error: `Tier ${tierId} not available for dataset ${datasetId}`,
+        };
+      }
+
+      // Generate sample data based on dataset type and tier
+      const recordCount = tier.recordCount;
+      const recordsToGenerate = Math.min(recordCount, 100); // Cap at 100 records for the mock file
+
+      const mockRecords = [];
+      for (let i = 0; i < recordsToGenerate; i++) {
+        const record = {};
+
+        // Common fields
+        record.id = `record-${i + 1}`;
+        record.patient_id = `P${1000 + i}`;
+        record.timestamp = new Date(
+          Date.now() - i * 24 * 60 * 60 * 1000
+        ).toISOString();
+
+        // Dataset-specific fields
+        if (dataset.category === "Laboratory") {
+          record.test_name = dataset.title;
+          record.result = Math.floor(Math.random() * 100) + 50;
+          record.unit = "mg/dL";
+          record.reference_range = "50-150";
+          record.is_abnormal = Math.random() > 0.7;
+        } else if (dataset.category === "Physical Exam") {
+          record.examination_type = "Annual";
+          record.height = 170 + Math.floor(Math.random() * 20);
+          record.weight = 60 + Math.floor(Math.random() * 40);
+          record.temperature = (36.5 + Math.random()).toFixed(1);
+          record.blood_pressure = `${110 + Math.floor(Math.random() * 30)}/${70 + Math.floor(Math.random() * 20)}`;
+          record.heart_rate = 60 + Math.floor(Math.random() * 30);
+        } else if (dataset.category === "Cardiology") {
+          record.test_type = dataset.title;
+          record.heart_rate = 60 + Math.floor(Math.random() * 30);
+          record.rhythm = Math.random() > 0.8 ? "Irregular" : "Regular";
+          record.pr_interval = 120 + Math.floor(Math.random() * 80);
+          record.qrs_duration = 80 + Math.floor(Math.random() * 40);
+        } else if (dataset.category === "Immunization") {
+          record.vaccine_type = "COVID-19";
+          record.manufacturer = ["Pfizer", "Moderna", "Johnson & Johnson"][
+            Math.floor(Math.random() * 3)
+          ];
+          record.dose_number = Math.floor(Math.random() * 3) + 1;
+          record.site = ["Left Arm", "Right Arm"][
+            Math.floor(Math.random() * 2)
+          ];
+        } else {
+          // Generic fields for other types
+          record.description = `Record ${i + 1} for ${dataset.title}`;
+          record.value = Math.floor(Math.random() * 100);
+          record.notes = "Auto-generated sample data";
+        }
+
+        mockRecords.push(record);
+      }
+
+      // Create the mock content
+      const mockContent = JSON.stringify(
+        {
+          metadata: {
+            id: dataset.id,
+            title: dataset.title,
+            category: dataset.category,
+            recordCount: tier.recordCount,
+            tier: tier.id,
+            tier_name: tier.name,
+            format: dataset.format,
+            timestamp: new Date().toISOString(),
+            downloadId: `download-${Date.now()}`,
+            description: dataset.description,
+            provider: "Healthmint Mock Data Service",
+          },
+          records: mockRecords,
+          statistics: {
+            record_count: recordsToGenerate,
+            formats: [dataset.format],
+            record_types: [dataset.category],
+          },
+        },
+        null,
+        2
+      );
+
+      // Determine file extension based on format
+      let fileExt = "json";
+      if (dataset.format === "CSV") {
+        fileExt = "csv";
+      } else if (dataset.format === "DICOM") {
+        fileExt = "dcm";
+      }
+
+      // Create file name
+      const fileName =
+        `${dataset.title || "dataset"}-${datasetId}-${tier.id}.${fileExt}`
+          .replace(/\s+/g, "_")
+          .toLowerCase();
+
+      // Create blob and download
+      const blob = new Blob([mockContent], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      // Create a temporary link element to download the file
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+
+      return {
+        success: true,
+        downloadId: `download-${Date.now()}`,
+        fileName: fileName,
+        timestamp: new Date().toISOString(),
+        tierInfo: tier,
+        datasetInfo: {
+          id: dataset.id,
+          title: dataset.title,
+          category: dataset.category,
+        },
+      };
+    } catch (err) {
+      console.error("Error downloading dataset:", err);
+      return {
+        success: false,
+        error: err.message || "An error occurred during download",
+      };
+    }
+  },
 };
 
 // Export the singleton instance

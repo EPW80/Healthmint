@@ -1,4 +1,5 @@
 // src/components/DataBrowserView.js
+
 import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
@@ -14,7 +15,6 @@ import {
   StarOff,
   Info,
   X,
-  Wallet,
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
@@ -39,6 +39,7 @@ const DataBrowserView = ({
   toggleFavorite,
   handlePurchase,
   handleViewDataset,
+  handleDownloadDataset,
   searchInput,
   handleSearchInputChange,
   handleSearchKeyDown,
@@ -60,10 +61,6 @@ const DataBrowserView = ({
   dataFormats,
   purchasingDataset,
   purchaseStep,
-  handlePurchaseStart,
-  handlePurchaseComplete,
-  handlePurchaseError,
-  walletBalance,
   selectedTiers = {},
   datasetTiers = {},
   handleTierChange,
@@ -131,13 +128,7 @@ const DataBrowserView = ({
     };
   }, [previewOpen, handleClosePreview]);
 
-  // Format wallet balance for display
-  const formatBalance = (balance) => {
-    if (!balance) return "0.0000 ETH";
-    return parseFloat(balance).toFixed(4) + " ETH";
-  };
-
-  // Render search and basic filters
+  // Handle dataset purchase confirmation
   const renderSearchAndFilters = () => (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/30 shadow-md">
       <div className="mb-4">
@@ -423,19 +414,6 @@ const DataBrowserView = ({
           </div>
         </div>
       )}
-    </div>
-  );
-
-  // Render wallet balance info
-  const renderWalletBalance = () => (
-    <div className="mb-4 flex items-center bg-blue-50 p-3 rounded-lg">
-      <Wallet className="text-blue-500 mr-2" size={20} />
-      <div className="flex-1">
-        <p className="text-sm text-blue-700">Your Wallet Balance:</p>
-        <p className="text-lg font-medium text-blue-800">
-          {formatBalance(walletBalance)}
-        </p>
-      </div>
     </div>
   );
 
@@ -1024,6 +1002,15 @@ const DataBrowserView = ({
                 Close
               </button>
 
+              {/* Download Button */}
+              <button
+                onClick={() => handleDownloadDataset(selectedDataset)}
+                className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                <Download size={16} className="mr-2" aria-hidden="true" />
+                Download Dataset
+              </button>
+
               <EnhancedPurchaseButton
                 dataset={{
                   id: selectedDataset,
@@ -1050,7 +1037,7 @@ const DataBrowserView = ({
                   onClick={() =>
                     window.open(datasetDetails.sampleUrl, "_blank")
                   }
-                  className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center focus:outline-none focus:ring-2 focus:ring-green-400"
+                  className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 flex items-center focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <Download size={16} className="mr-2" aria-hidden="true" />
                   Download Sample
@@ -1065,9 +1052,6 @@ const DataBrowserView = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Wallet Balance Display */}
-      {walletBalance && renderWalletBalance()}
-
       {/* Standard WalletBalanceDisplay component */}
       <WalletBalanceDisplay
         className="mb-6"
@@ -1173,6 +1157,7 @@ DataBrowserView.propTypes = {
   toggleFavorite: PropTypes.func.isRequired,
   handlePurchase: PropTypes.func.isRequired,
   handleViewDataset: PropTypes.func.isRequired,
+  handleDownloadDataset: PropTypes.func.isRequired,
   searchInput: PropTypes.string,
   handleSearchInputChange: PropTypes.func.isRequired,
   handleSearchKeyDown: PropTypes.func.isRequired,
