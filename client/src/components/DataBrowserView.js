@@ -1,5 +1,5 @@
 // src/components/DataBrowserView.js
-import React, { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
   CheckCircle,
@@ -14,16 +14,18 @@ import {
   StarOff,
   Info,
   X,
+  Wallet,
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
 import EnhancedPurchaseButton from "./DatasetPurchaseButton.js";
+import DataTierSelector from "./DataTierSelector.js";
 
 /**
  * DataBrowserView Component
  *
  * Presentation component for displaying health data browsing interface
- * with improved accessibility features
+ * with improved accessibility features and tier selection
  */
 const DataBrowserView = ({
   userRole,
@@ -58,11 +60,35 @@ const DataBrowserView = ({
   dataFormats,
   purchasingDataset,
   purchaseStep,
+  handlePurchaseStart,
+  handlePurchaseComplete,
+  handlePurchaseError,
+  walletBalance,
+  selectedTiers = {},
+  datasetTiers = {},
+  handleTierChange,
+  fetchDatasetTiers,
 }) => {
   // Refs for managing focus and modal accessibility
   const modalRef = useRef(null);
   const triggerRef = useRef(null);
   const closeButtonRef = useRef(null);
+
+  // Local state for expanded tier view
+  const [expandedTierCards, setExpandedTierCards] = useState({});
+
+  // Toggle tier view expansion for a specific dataset
+  const toggleTierView = (datasetId) => {
+    setExpandedTierCards((prev) => ({
+      ...prev,
+      [datasetId]: !prev[datasetId],
+    }));
+
+    // Fetch tier data if not already loaded
+    if (!datasetTiers[datasetId] && fetchDatasetTiers) {
+      fetchDatasetTiers(datasetId);
+    }
+  };
 
   // Keep track of the element that opened the modal
   useEffect(() => {
@@ -71,8 +97,17 @@ const DataBrowserView = ({
       triggerRef.current = document.activeElement;
       // Focus the close button when modal opens
       closeButtonRef.current.focus();
+
+      // Fetch tier data for selected dataset if not already loaded
+      if (
+        selectedDataset &&
+        !datasetTiers[selectedDataset] &&
+        fetchDatasetTiers
+      ) {
+        fetchDatasetTiers(selectedDataset);
+      }
     }
-  }, [previewOpen]);
+  }, [previewOpen, selectedDataset, datasetTiers, fetchDatasetTiers]);
 
   // Handle focus restoration when modal closes
   useEffect(() => {
@@ -95,6 +130,12 @@ const DataBrowserView = ({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [previewOpen, handleClosePreview]);
+
+  // Format wallet balance for display
+  const formatBalance = (balance) => {
+    if (!balance) return "0.0000 ETH";
+    return parseFloat(balance).toFixed(4) + " ETH";
+  };
 
   // Render search and basic filters
   const renderSearchAndFilters = () => (
@@ -385,6 +426,19 @@ const DataBrowserView = ({
     </div>
   );
 
+  // Render wallet balance info
+  const renderWalletBalance = () => (
+    <div className="mb-4 flex items-center bg-blue-50 p-3 rounded-lg">
+      <Wallet className="text-blue-500 mr-2" size={20} />
+      <div className="flex-1">
+        <p className="text-sm text-blue-700">Your Wallet Balance:</p>
+        <p className="text-lg font-medium text-blue-800">
+          {formatBalance(walletBalance)}
+        </p>
+      </div>
+    </div>
+  );
+
   // Render view toggle and count
   const renderViewOptions = () => (
     <div className="flex justify-between items-center mb-6">
@@ -427,7 +481,7 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render grid view
+  // Render grid view with tier selection
   const renderGridView = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {filteredData.map((data) => (
@@ -483,7 +537,9 @@ const DataBrowserView = ({
             <div className="mt-3 text-gray-600 text-sm">
               <div className="flex items-center gap-1 mb-1">
                 <FileText size={14} aria-hidden="true" />
-                <span>{data.recordCount || "Unknown"} records</span>
+                <span>
+                  {data.recordCount?.toLocaleString() || "Unknown"} records
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <BarChart size={14} aria-hidden="true" />
@@ -491,13 +547,49 @@ const DataBrowserView = ({
               </div>
             </div>
 
-            <p className="mt-3 text-gray-700">
+            <p className="mt-3 text-gray-700 line-clamp-2">
               {data.description || "No description available."}
             </p>
 
-            <p className="mt-4 text-xl font-bold text-blue-600">
-              {data.price} ETH
-            </p>
+            {expandedTierCards[data.id] ? (
+              <div className="mt-4">
+                {datasetTiers[data.id] ? (
+                  <DataTierSelector
+                    datasetId={data.id}
+                    datasetName={data.title || data.category}
+                    fullRecordCount={data.recordCount}
+                    fullPrice={parseFloat(data.price)}
+                    onTierChange={(tierData) =>
+                      handleTierChange(data.id, tierData.tier)
+                    }
+                    className="mt-2"
+                  />
+                ) : (
+                  <div className="flex justify-center my-4">
+                    <LoadingSpinner size="small" label="Loading tiers..." />
+                  </div>
+                )}
+                <button
+                  onClick={() => toggleTierView(data.id)}
+                  className="w-full mt-3 text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Hide tier options
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="mt-4 text-xl font-bold text-blue-600">
+                  {data.price} ETH
+                </p>
+                <button
+                  onClick={() => toggleTierView(data.id)}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center"
+                >
+                  <ChevronDown size={14} className="mr-1" />
+                  View pricing tiers
+                </button>
+              </>
+            )}
           </div>
 
           <div className="p-4 border-t border-gray-100 bg-gray-50">
@@ -510,8 +602,13 @@ const DataBrowserView = ({
                 Preview
               </button>
               <EnhancedPurchaseButton
-                dataset={data}
-                onClick={handlePurchase}
+                dataset={{
+                  id: data.id,
+                  price: selectedTiers[data.id]?.price || data.price,
+                  title: data.title || data.category,
+                }}
+                selectedTier={selectedTiers[data.id]?.id || "complete"}
+                onClick={() => handlePurchase(data.id)}
                 loading={
                   purchasingDataset === data.id &&
                   (purchaseStep === "processing" ||
@@ -526,7 +623,7 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render table view
+  // Render table view with tier information
   const renderTableView = () => (
     <div className="overflow-x-auto bg-white rounded-xl shadow-md">
       <table
@@ -558,6 +655,12 @@ const DataBrowserView = ({
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Format
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Tier
             </th>
             <th
               scope="col"
@@ -618,14 +721,45 @@ const DataBrowserView = ({
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {data.recordCount || "Unknown"}
+                {data.recordCount?.toLocaleString() || "Unknown"}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {data.format || "Various"}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
+                {datasetTiers[data.id] ? (
+                  <select
+                    className="text-sm border border-gray-300 rounded px-2 py-1"
+                    value={selectedTiers[data.id]?.id || "complete"}
+                    onChange={(e) => {
+                      const selected = datasetTiers[data.id].find(
+                        (t) => t.id === e.target.value
+                      );
+                      if (selected && handleTierChange) {
+                        handleTierChange(data.id, selected);
+                      }
+                    }}
+                  >
+                    {datasetTiers[data.id].map((tier) => (
+                      <option key={tier.id} value={tier.id}>
+                        {tier.name} ({tier.percentage}%)
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <button
+                    onClick={() =>
+                      fetchDatasetTiers && fetchDatasetTiers(data.id)
+                    }
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                  >
+                    Load Tiers
+                  </button>
+                )}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm font-medium text-blue-600">
-                  {data.price} ETH
+                  {selectedTiers[data.id]?.price || data.price} ETH
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
@@ -651,7 +785,7 @@ const DataBrowserView = ({
                       (purchaseStep === "processing" ||
                         purchaseStep === "confirming")
                     }
-                    aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
+                    aria-label={`Purchase ${data.title || data.category}`}
                   >
                     {purchasingDataset === data.id &&
                     (purchaseStep === "processing" ||
@@ -673,7 +807,7 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render dataset preview modal with enhanced accessibility
+  // Render dataset preview modal with enhanced accessibility and tier selection
   const renderDatasetPreview = () => {
     if (!previewOpen || !selectedDataset) return null;
 
@@ -747,13 +881,33 @@ const DataBrowserView = ({
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-600">
-                      {datasetDetails.price} ETH
+                      {selectedTiers[selectedDataset]?.price ||
+                        datasetDetails.price}{" "}
+                      ETH
                     </p>
                     <p className="text-sm text-gray-500">
                       Last updated: {datasetDetails.uploadDate || "Unknown"}
                     </p>
                   </div>
                 </div>
+
+                {/* Tier Selection in Preview */}
+                {datasetTiers[selectedDataset] && (
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h5 className="text-lg font-medium text-gray-900 mb-4">
+                      Data Tiers
+                    </h5>
+                    <DataTierSelector
+                      datasetId={selectedDataset}
+                      datasetName={datasetDetails.title || "Dataset"}
+                      fullRecordCount={datasetDetails.recordCount}
+                      fullPrice={parseFloat(datasetDetails.price)}
+                      onTierChange={(tierData) =>
+                        handleTierChange(selectedDataset, tierData.tier)
+                      }
+                    />
+                  </div>
+                )}
 
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                   <div className="flex items-start gap-2">
@@ -788,8 +942,19 @@ const DataBrowserView = ({
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h5 className="font-medium text-gray-900 mb-1">Records</h5>
                     <p className="text-lg font-semibold">
-                      {datasetDetails.recordCount || "Unknown"}
+                      {selectedTiers[
+                        selectedDataset
+                      ]?.recordCount?.toLocaleString() ||
+                        datasetDetails.recordCount?.toLocaleString() ||
+                        "Unknown"}
                     </p>
+                    {selectedTiers[selectedDataset] &&
+                      selectedTiers[selectedDataset].percentage !== 100 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {selectedTiers[selectedDataset].percentage}% of full
+                          dataset
+                        </p>
+                      )}
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h5 className="font-medium text-gray-900 mb-1">Format</h5>
@@ -862,9 +1027,13 @@ const DataBrowserView = ({
               <EnhancedPurchaseButton
                 dataset={{
                   id: selectedDataset,
-                  price: datasetDetails?.price || "0.00",
+                  price:
+                    selectedTiers[selectedDataset]?.price ||
+                    datasetDetails?.price ||
+                    "0.00",
                   title: datasetDetails?.title || "Dataset",
                 }}
+                selectedTier={selectedTiers[selectedDataset]?.id || "complete"}
                 onClick={() => {
                   handlePurchase(selectedDataset);
                   handleClosePreview();
@@ -896,7 +1065,10 @@ const DataBrowserView = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Add the WalletBalanceDisplay component */}
+      {/* Wallet Balance Display */}
+      {walletBalance && renderWalletBalance()}
+
+      {/* Standard WalletBalanceDisplay component */}
       <WalletBalanceDisplay
         className="mb-6"
         refreshTrigger={purchasingDataset}
@@ -1026,6 +1198,11 @@ DataBrowserView.propTypes = {
   handlePurchaseStart: PropTypes.func,
   handlePurchaseComplete: PropTypes.func,
   handlePurchaseError: PropTypes.func,
+  walletBalance: PropTypes.string,
+  selectedTiers: PropTypes.object,
+  datasetTiers: PropTypes.object,
+  handleTierChange: PropTypes.func,
+  fetchDatasetTiers: PropTypes.func,
 };
 
 export default DataBrowserView;

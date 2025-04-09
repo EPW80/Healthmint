@@ -18,6 +18,7 @@ import mockPaymentService from "../services/mockPaymentService.js";
  */
 const DatasetPurchaseButton = ({
   dataset,
+  selectedTier = "complete",
   onPurchaseStart,
   onPurchaseComplete,
   onPurchaseError,
@@ -57,7 +58,15 @@ const DatasetPurchaseButton = ({
     try {
       // Notify parent component that purchase is starting
       if (onPurchaseStart) {
-        onPurchaseStart(dataset.id);
+        onPurchaseStart(dataset.id, selectedTier);
+      }
+
+      // Calculate the price based on tier
+      let purchasePrice = dataset.price;
+      if (selectedTier === "basic") {
+        purchasePrice = parseFloat(dataset.price) * 0.25;
+      } else if (selectedTier === "standard") {
+        purchasePrice = parseFloat(dataset.price) * 0.5;
       }
 
       setPurchaseState("processing");
@@ -410,6 +419,7 @@ DatasetPurchaseButton.propTypes = {
     price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     title: PropTypes.string,
   }).isRequired,
+  selectedTier: PropTypes.oneOf(["basic", "standard", "complete"]),
   onPurchaseStart: PropTypes.func,
   onPurchaseComplete: PropTypes.func,
   onPurchaseError: PropTypes.func,

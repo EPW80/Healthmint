@@ -4,6 +4,7 @@
  *
  * Provides mock implementations of blockchain and payment interactions
  * for testing and development without requiring actual blockchain connections.
+ * Enhanced to support tiered data purchasing.
  */
 
 class MockPaymentService {
@@ -103,12 +104,19 @@ class MockPaymentService {
   }
 
   /**
-   * Purchase a dataset with mock transaction
+   * Purchase a dataset with mock transaction, with support for tiered purchasing
    * @param {string} datasetId - ID of the dataset to purchase
    * @param {string|number} amount - Amount to pay for the dataset
+   * @param {string} tier - Optional tier (basic, standard, complete)
+   * @param {number} recordCount - Optional record count for the tier
    * @returns {Promise<Object>} Transaction result
    */
-  async purchaseDataset(datasetId, amount) {
+  async purchaseDataset(
+    datasetId,
+    amount,
+    tier = "complete",
+    recordCount = null
+  ) {
     // Ensure the service is initialized
     if (!this.isInitialized) {
       await this.initializeProvider();
@@ -136,7 +144,9 @@ class MockPaymentService {
       }
     }
 
-    console.log(`Mock purchasing dataset ${datasetId} for ${amount} ETH`);
+    console.log(
+      `Mock purchasing dataset ${datasetId} (${tier} tier) for ${amount} ETH`
+    );
 
     // Simulate network delay and processing
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -157,11 +167,13 @@ class MockPaymentService {
     // Update mock balance (subtraction with gas costs)
     this.mockBalance = (currentBalance - parsedAmount - gasCost).toFixed(6);
 
-    // Create transaction record
+    // Create transaction record with tier information
     const transaction = {
       paymentId: `pay_${Date.now()}`,
       datasetId,
       amount,
+      tier, // Add tier information
+      recordCount, // Add record count information
       transactionHash,
       blockNumber,
       gasUsed,
@@ -180,14 +192,20 @@ class MockPaymentService {
       gasUsed,
       gasCost: gasCost.toFixed(6),
       timestamp: transaction.timestamp,
+      tier, // Return tier information
+      recordCount, // Return record count
+      amount, // Return amount paid
     };
   }
 
   /**
-   * Get payment history
+   * Get payment history with tier information
+   * @param {Object} filters - Optional filters for transactions
+   * @param {string} filters.tier - Filter by tier
+   * @param {string} filters.datasetId - Filter by dataset ID
    * @returns {Promise<Array>} List of transactions
    */
-  async getPaymentHistory() {
+  async getPaymentHistory(filters = {}) {
     // Ensure the service is initialized
     if (!this.isInitialized) {
       await this.initializeProvider();
@@ -196,7 +214,21 @@ class MockPaymentService {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    return [...this.mockTransactions];
+    let transactions = [...this.mockTransactions];
+
+    // Apply filters if provided
+    if (filters) {
+      if (filters.tier) {
+        transactions = transactions.filter((tx) => tx.tier === filters.tier);
+      }
+      if (filters.datasetId) {
+        transactions = transactions.filter(
+          (tx) => tx.datasetId === filters.datasetId
+        );
+      }
+    }
+
+    return transactions;
   }
 
   /**
@@ -213,7 +245,7 @@ class MockPaymentService {
   }
 
   /**
-   * Generate mock transaction history
+   * Generate mock transaction history with tier information
    * @private
    */
   _generateMockTransactions() {
@@ -224,6 +256,12 @@ class MockPaymentService {
       "Laboratory",
       "Genetics",
       "Immunization",
+    ];
+
+    const tiers = [
+      { id: "basic", percentage: 25 },
+      { id: "standard", percentage: 50 },
+      { id: "complete", percentage: 100 },
     ];
 
     // Generate 5-10 mock historical transactions
@@ -244,10 +282,19 @@ class MockPaymentService {
       const category =
         categories[Math.floor(Math.random() * categories.length)];
 
+      // Random tier
+      const tier = tiers[Math.floor(Math.random() * tiers.length)];
+
+      // Random record count
+      const baseRecordCount = 1000 + Math.floor(Math.random() * 9000);
+      const recordCount = Math.round(baseRecordCount * (tier.percentage / 100));
+
       this.mockTransactions.push({
         paymentId: `pay_${date.getTime()}`,
         datasetId,
         amount,
+        tier: tier.id,
+        recordCount,
         transactionHash: `0x${Array.from({ length: 64 }, () =>
           Math.floor(Math.random() * 16).toString(16)
         ).join("")}`,

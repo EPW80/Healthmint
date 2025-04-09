@@ -5,7 +5,8 @@ import { useSelector, useDispatch } from "react-redux";
 import useHealthData from "../hooks/useHealthData.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
-import mockPaymentService from "../services/mockPaymentService.js"; // Added mock payment service
+import mockPaymentService from "../services/mockPaymentService.js";
+import mockDataService from "../services/mockDataService.js";
 import DataBrowserView from "./DataBrowserView.js";
 import TransactionModal from "./TransactionModal.js";
 
@@ -92,10 +93,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     loadOnMount: true,
   });
 
-  // Initialize mock payment service on component mount
+  // Initialize mock services on component mount
   useEffect(() => {
-    // Initialize the mock payment service
-    const initializePaymentService = async () => {
+    const initializeServices = async () => {
       try {
         await mockPaymentService.initializeProvider();
         console.log("Mock payment service initialized");
@@ -104,7 +104,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       }
     };
 
-    initializePaymentService();
+    initializeServices();
   }, []);
 
   // Local state
@@ -122,14 +122,70 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const [pendingAction, setPendingAction] = useState(null);
   const [consentsHistory, setConsentsHistory] = useState([]);
 
+  // Tier selection state
+  const [selectedTiers, setSelectedTiers] = useState({});
+  const [datasetTiers, setDatasetTiers] = useState({});
+
   // Purchase state
   const [purchasingDataset, setPurchasingDataset] = useState(null);
   const [purchaseStep, setPurchaseStep] = useState("idle"); // 'idle', 'processing', 'confirming', 'complete', 'error'
-  const [setLastTransactionDetails] = useState(null); // To store transaction details
+  const [walletBalance, setWalletBalance] = useState(null);
 
   // Transaction modal state
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState({});
+
+  // Fetch tier data for a dataset
+  const fetchDatasetTiers = useCallback(
+    async (datasetId) => {
+      if (!datasetTiers[datasetId]) {
+        try {
+          const tiers = await mockDataService.getDatasetTiers(datasetId);
+          setDatasetTiers((prev) => ({
+            ...prev,
+            [datasetId]: tiers,
+          }));
+
+          // Default to complete tier
+          if (!selectedTiers[datasetId]) {
+            setSelectedTiers((prev) => ({
+              ...prev,
+              [datasetId]: tiers.find((t) => t.id === "complete"),
+            }));
+          }
+
+          return tiers;
+        } catch (err) {
+          console.error(`Error fetching tiers for dataset ${datasetId}:`, err);
+          return null;
+        }
+      }
+      return datasetTiers[datasetId];
+    },
+    [datasetTiers, selectedTiers]
+  );
+
+  // Handle tier selection change
+  const handleTierChange = useCallback(
+    (datasetId, tierData) => {
+      setSelectedTiers((prev) => ({
+        ...prev,
+        [datasetId]: tierData,
+      }));
+
+      hipaaComplianceService.createAuditLog("TIER_SELECTION_CHANGE", {
+        datasetId,
+        tier: tierData.id,
+        percentage: tierData.percentage,
+        recordCount: tierData.recordCount,
+        price: tierData.price,
+        timestamp: new Date().toISOString(),
+        userRole,
+        userId,
+      });
+    },
+    [userRole, userId]
+  );
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -273,79 +329,95 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [userRole, userId]
   );
 
-  // Handle purchase start
+  // Handle purchase start with tier support
   const handlePurchaseStart = useCallback(
     (datasetId) => {
       setPurchasingDataset(datasetId);
       setPurchaseStep("processing");
       setShowTransactionModal(true);
+
+      // Get the selected tier for this dataset
+      const tier = selectedTiers[datasetId] || { id: "complete" };
+      const dataset = healthData.find((d) => d.id === datasetId);
+
+      if (!dataset) {
+        console.error(`Dataset with ID ${datasetId} not found`);
+        return;
+      }
+
+      // Set transaction details with tier information
       setTransactionDetails({
         datasetId,
+        tier: tier.id || "complete",
+        recordCount: tier.recordCount || dataset.recordCount,
+        amount: tier.price || dataset.price.toString(),
         timestamp: new Date().toISOString(),
       });
 
-      // Log purchase initiation for HIPAA compliance
+      // Log purchase initiation with tier information
       hipaaComplianceService.createAuditLog("PURCHASE_INITIATED", {
         datasetId,
+        tier: tier.id || "complete",
+        recordCount: tier.recordCount || dataset.recordCount,
+        price: tier.price || dataset.price.toString(),
         timestamp: new Date().toISOString(),
         userId,
         userRole,
         action: "PURCHASE_START",
       });
 
-      // Show user notification
+      // Show user notification with tier info
       dispatch(
         addNotification({
           type: "info",
-          message: "Processing purchase request...",
+          message: `Processing ${tier.id || "complete"} tier purchase request...`,
           duration: 3000,
         })
       );
     },
-    [dispatch, userId, userRole]
+    [dispatch, userId, userRole, selectedTiers, healthData]
   );
 
   // Handle purchase completion
   const handlePurchaseComplete = useCallback(
     (datasetId, transactionDetails) => {
       setPurchaseStep("complete");
-      setLastTransactionDetails(transactionDetails);
 
-      // Update transaction modal details
-      setTransactionDetails({
+      // Update transaction modal details with tier information
+      setTransactionDetails((prev) => ({
+        ...prev,
         ...transactionDetails,
         datasetId,
-        amount: healthData.find((d) => d.id === datasetId)?.price || "Unknown",
         message:
-          "Your purchase was successful! You now have access to this dataset.",
-      });
+          `Your purchase of the ${transactionDetails.tier || "complete"} tier was successful!` +
+          " You now have access to this dataset.",
+      }));
 
-      // Log purchase completion for HIPAA compliance
+      // Log purchase completion with tier information
       hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
         datasetId,
+        tier: transactionDetails.tier || "complete",
+        recordCount: transactionDetails.recordCount,
         timestamp: new Date().toISOString(),
         userId,
         userRole,
         action: "PURCHASE_COMPLETE",
-        transactionDetails,
+        transactionHash: transactionDetails.transactionHash,
       });
 
       // Show success notification
       dispatch(
         addNotification({
           type: "success",
-          message: "Purchase completed successfully!",
+          message: `${transactionDetails.tier || "Complete"} tier purchase completed successfully!`,
           duration: 5000,
         })
       );
-
-      // Keep the modal open for the user to see the success state
 
       // Reset purchase state after delay
       setTimeout(() => {
         setPurchasingDataset(null);
         setPurchaseStep("idle");
-        // Don't close the modal automatically - let the user close it to see details
       }, 2000);
 
       // Call original onPurchase callback if provided
@@ -353,14 +425,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         onPurchase(datasetId, transactionDetails);
       }
     },
-    [
-      dispatch,
-      onPurchase,
-      userId,
-      userRole,
-      healthData,
-      setLastTransactionDetails,
-    ]
+    [dispatch, onPurchase, userId, userRole]
   );
 
   // Handle purchase error
@@ -369,16 +434,18 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       setPurchaseStep("error");
 
       // Update transaction modal details
-      setTransactionDetails({
+      setTransactionDetails((prev) => ({
+        ...prev,
         datasetId,
         error: true,
         errorMessage:
-          error?.message || "An error occurred during the transaction.",
-      });
+          error?.message || `An error occurred during the transaction.`,
+      }));
 
       // Log purchase error for HIPAA compliance
       hipaaComplianceService.createAuditLog("PURCHASE_ERROR", {
         datasetId,
+        tier: transactionDetails.tier || "complete",
         timestamp: new Date().toISOString(),
         userId,
         userRole,
@@ -400,13 +467,12 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       setTimeout(() => {
         setPurchasingDataset(null);
         setPurchaseStep("idle");
-        // Keep modal open for user to see error details
       }, 3000);
     },
-    [dispatch, userId, userRole]
+    [dispatch, userId, userRole, transactionDetails]
   );
 
-  // First, create a viewDatasetImpl function that doesn't depend on requestAndVerifyConsent
+  // View dataset implementation
   const viewDatasetImpl = useCallback(
     async (datasetId, consentVerified = false) => {
       try {
@@ -414,7 +480,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         setSelectedDataset(datasetId);
         setPreviewOpen(true);
 
-        // Log access for HIPAA compliance with enhanced details
+        // Fetch tier data for this dataset
+        await fetchDatasetTiers(datasetId);
+
+        // Log access for HIPAA compliance
         await hipaaComplianceService.logDataAccess(
           datasetId,
           "Viewing dataset details for research/patient evaluation",
@@ -427,7 +496,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             consentVerified: consentVerified,
             dataCategory:
               healthData.find((d) => d.id === datasetId)?.category || "Unknown",
-            ipAddress: "client", // Server will log actual IP
+            ipAddress: "client",
           }
         );
 
@@ -468,54 +537,59 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       healthData,
       userId,
       userRole,
+      fetchDatasetTiers,
     ]
   );
 
-  // Updated purchaseDatasetImpl function using mockPaymentService
+  // Updated purchase implementation with tier support
   const purchaseDatasetImpl = useCallback(
     async (id, consentVerified = false) => {
       try {
-        // Find the dataset to get price information
+        // Find the dataset
         const dataset = healthData.find((d) => d.id === id);
         if (!dataset) {
           throw new Error("Dataset not found");
         }
 
+        // Get tier information
+        const tier = selectedTiers[id] || { id: "complete" };
+        const tierPrice = tier.price || dataset.price.toString();
+        const recordCount = tier.recordCount || dataset.recordCount;
+
         // Set state to "processing" in the modal
         setPurchaseStep("processing");
 
-        // Log action for HIPAA compliance with comprehensive details
+        // Log action for HIPAA compliance with tier information
         await hipaaComplianceService.logDataAccess(
           id,
-          "Purchasing dataset for research/personal health records",
+          `Purchasing ${tier.id} tier of dataset for research`,
           "PURCHASE",
           {
             userRole,
             userId,
             timestamp: new Date().toISOString(),
             consentVerified: consentVerified,
-            ipAddress: "client", // Server will log actual IP
+            ipAddress: "client",
             datasetInfo: {
               category: dataset.category || "Unknown",
-              price: dataset.price || "Unknown",
+              tier: tier.id,
+              price: tierPrice,
+              recordCount: recordCount,
               anonymized: dataset.anonymized || false,
             },
-            transactionId: `tx-${Date.now()}-${Math.floor(
-              Math.random() * 1000
-            )}`,
+            transactionId: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           }
         );
 
-        // Initialize mock payment service if needed
+        // Initialize payment service if needed
         if (!mockPaymentService.isInitialized) {
           await mockPaymentService.initializeProvider();
         }
 
-        // Check balance before proceeding (optional)
+        // Check balance before proceeding
         const balance = await mockPaymentService.getBalance();
-        console.log(`Current balance: ${balance} ETH`);
 
-        if (parseFloat(balance) < parseFloat(dataset.price)) {
+        if (parseFloat(balance) < parseFloat(tierPrice)) {
           throw new Error("Insufficient funds to complete this purchase");
         }
 
@@ -523,21 +597,25 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         setPurchaseStep("confirming");
         setTransactionDetails((prev) => ({
           ...prev,
-          amount: dataset.price,
+          amount: tierPrice,
+          tier: tier.id,
+          recordCount: recordCount,
           processingStep: "blockchain-confirmation",
         }));
 
-        // Use mock payment service to purchase the dataset
+        // Use payment service to purchase with tier information
         const result = await mockPaymentService.purchaseDataset(
           id,
-          dataset.price
+          tierPrice,
+          tier.id,
+          recordCount
         );
 
         if (!result.success) {
           throw new Error(result.error || "Transaction failed");
         }
 
-        // Record this purchase in the consent history for future reference
+        // Record this purchase in the consent history with tier info
         const updatedHistory = [
           ...consentsHistory,
           {
@@ -546,6 +624,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             consentGiven: true,
             purpose: "Dataset purchase confirmation",
             datasetId: id,
+            tier: tier.id,
+            recordCount: recordCount,
             actionType: "PURCHASE_COMPLETED",
             transactionHash: result.transactionHash,
           },
@@ -559,23 +639,27 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           transactionHash: result.transactionHash,
           blockNumber: result.blockNumber,
           gasUsed: result.gasUsed,
+          tier: tier.id,
+          recordCount: recordCount,
+          price: tierPrice,
         };
       } catch (err) {
         console.error("Purchase error:", err);
 
-        // Log purchase failure for HIPAA compliance
+        // Log purchase failure
         await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_FAILED", {
           datasetId: id,
+          tier: selectedTiers[id]?.id || "complete",
           timestamp: new Date().toISOString(),
           userId,
           userRole,
           errorMessage: err.message || "Unknown purchase error",
         });
 
-        throw err; // Re-throw for handling in the calling function
+        throw err;
       }
     },
-    [consentsHistory, healthData, userId, userRole]
+    [consentsHistory, healthData, userId, userRole, selectedTiers]
   );
 
   // Request and verify consent for data access
@@ -589,6 +673,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             purpose,
             datasetId,
             actionType,
+            tier: selectedTiers[datasetId]?.id,
             timestamp: new Date().toISOString(),
             userId,
             userRole,
@@ -603,6 +688,16 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             ? hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
             : hipaaComplianceService.CONSENT_TYPES.DATA_BROWSING;
 
+        // Include tier info for purchases
+        const tierInfo =
+          actionType === "PURCHASE" && datasetId && selectedTiers[datasetId]
+            ? {
+                tier: selectedTiers[datasetId].id,
+                recordCount: selectedTiers[datasetId].recordCount,
+                price: selectedTiers[datasetId].price,
+              }
+            : null;
+
         // Prepare detailed consent request metadata
         const consentRequestMetadata = {
           datasetId,
@@ -610,13 +705,14 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           requestDateTime: new Date().toISOString(),
           actionType,
           userRole,
+          ...(tierInfo && { tierInfo }),
           requesterInfo: {
             userId,
             role: userRole,
           },
         };
 
-        // Verify consent with enhanced tracking
+        // Verify consent
         const hasConsent = await hipaaComplianceService.verifyConsent(
           consentType,
           consentRequestMetadata
@@ -629,6 +725,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             datasetId,
             actionType,
             consentType,
+            tierInfo,
             metadata: consentRequestMetadata,
           });
 
@@ -642,6 +739,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           datasetId,
           actionType,
           consentType,
+          ...(tierInfo && { tier: tierInfo.tier }),
           timestamp: new Date().toISOString(),
           userId,
           userRole,
@@ -671,10 +769,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         return false;
       }
     },
-    [consentVerified, userId, userRole]
+    [consentVerified, userId, userRole, selectedTiers]
   );
 
-  // Now define the public handleViewDataset function that uses requestAndVerifyConsent
+  // Handle view dataset with consent
   const handleViewDataset = useCallback(
     async (datasetId) => {
       try {
@@ -707,16 +805,18 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [dispatch, requestAndVerifyConsent, viewDatasetImpl]
   );
 
-  // Updated handlePurchase function to use our mock payment service
+  // Handle purchase with consent and tier support
   const handlePurchase = useCallback(
     async (id) => {
       try {
+        // Get the selected tier
+        const tier = selectedTiers[id];
+
         // Start the purchase process
         handlePurchaseStart(id);
 
-        // Define the purpose for this action
-        const purpose =
-          "Purchasing dataset for research/personal health records";
+        // Define the purpose with tier info
+        const purpose = `Purchasing ${tier?.id || "complete"} tier of dataset for research`;
 
         // Verify consent before proceeding
         const hasConsent = await requestAndVerifyConsent(
@@ -730,30 +830,32 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           setPurchasingDataset(null);
           setPurchaseStep("idle");
           setShowTransactionModal(false);
-          return; // Consent modal will be shown or action was denied
+          return;
         }
 
         // Proceed with the purchase
         try {
-          // Use our updated purchaseDatasetImpl that uses mockPaymentService
+          // Use tier-aware purchaseDatasetImpl
           const result = await purchaseDatasetImpl(id, true);
 
-          // If successful, call the completion handler with transaction details
+          // Handle success
           handlePurchaseComplete(id, {
             timestamp: result.timestamp,
             datasetId: id,
             transactionHash: result.transactionHash,
             blockNumber: result.blockNumber,
             gasUsed: result.gasUsed,
+            tier: result.tier,
+            recordCount: result.recordCount,
+            price: result.price,
           });
         } catch (err) {
-          // If purchase implementation failed, handle the error
+          // Handle errors
           handlePurchaseError(id, err);
         }
       } catch (err) {
         console.error("Error in handlePurchase:", err);
 
-        // Handle any errors not caught by purchaseDatasetImpl
         if (purchaseStep !== "error") {
           handlePurchaseError(id, err);
         }
@@ -766,6 +868,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       requestAndVerifyConsent,
       purchaseDatasetImpl,
       purchaseStep,
+      selectedTiers,
     ]
   );
 
@@ -775,22 +878,29 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       try {
         if (!pendingAction) return;
 
-        const { purpose, datasetId, actionType, consentType, metadata } =
-          pendingAction;
+        const {
+          purpose,
+          datasetId,
+          actionType,
+          consentType,
+          metadata,
+          tierInfo,
+        } = pendingAction;
 
-        // Record the consent decision with detailed metadata
+        // Record the consent decision with tier info if applicable
         await hipaaComplianceService.recordConsent(consentType, approved, {
           ...metadata,
           consentDecision: approved ? "APPROVED" : "DECLINED",
           consentMethodType: "EXPLICIT_MODAL",
-          consentVersion: "1.2", // Track consent version for legal compliance
+          consentVersion: "1.2",
+          ...(tierInfo && { tierInfo }),
           consentText: approved
-            ? "User explicitly approved data access via consent modal"
-            : "User declined data access via consent modal",
-          ipAddress: "client", // Actual IP will be logged server-side
+            ? `User explicitly approved ${tierInfo ? tierInfo.tier + " tier " : ""}data access via consent modal`
+            : `User declined ${tierInfo ? tierInfo.tier + " tier " : ""}data access via consent modal`,
+          ipAddress: "client",
         });
 
-        // Log consent decision in audit trail
+        // Log consent decision
         await hipaaComplianceService.createAuditLog(
           approved ? "CONSENT_GRANTED" : "CONSENT_DECLINED",
           {
@@ -798,6 +908,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             datasetId,
             actionType,
             consentType,
+            ...(tierInfo && { tier: tierInfo.tier }),
             timestamp: new Date().toISOString(),
             userId,
             userRole,
@@ -809,7 +920,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         setConsentVerified(approved);
         setConsentModalOpen(false);
 
-        // Update consents history
+        // Update consents history with tier info if applicable
         const updatedHistory = [
           ...consentsHistory,
           {
@@ -818,6 +929,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
             consentGiven: approved,
             purpose,
             datasetId,
+            ...(tierInfo && { tier: tierInfo.tier }),
           },
         ];
         setConsentsHistory(updatedHistory);
@@ -825,26 +937,29 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         // If approved, proceed with the pending action
         if (approved) {
           if (actionType === "VIEW" && datasetId) {
-            // Use viewDatasetImpl directly, since consent is already verified
+            // View dataset
             await viewDatasetImpl(datasetId, true);
           } else if (actionType === "PURCHASE" && datasetId) {
-            // For purchase, start with handlePurchaseStart
+            // Start purchase
             handlePurchaseStart(datasetId);
             try {
-              // Use purchaseDatasetImpl directly, since consent is already verified
+              // Purchase with consent verified
               const result = await purchaseDatasetImpl(datasetId, true);
+
+              // Handle successful purchase
               handlePurchaseComplete(datasetId, {
                 timestamp: result.timestamp,
                 datasetId,
-                transactionId: result.transactionHash,
+                transactionHash: result.transactionHash,
                 blockNumber: result.blockNumber,
                 gasUsed: result.gasUsed,
+                tier: result.tier,
+                recordCount: result.recordCount,
+                price: result.price,
               });
             } catch (err) {
               handlePurchaseError(datasetId, err);
             }
-          } else if (actionType === "DOWNLOAD" && datasetId) {
-            // Handle download logic here if applicable
           }
         } else {
           // Notify the user their action was canceled due to consent denial
@@ -886,9 +1001,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     ]
   );
 
-  // HIPAA compliance checking on mount
+  // Check for existing consent
   useEffect(() => {
-    // Check if the user has provided general consent for data browsing
     const checkInitialConsent = async () => {
       try {
         // Check for existing consent records
@@ -965,6 +1079,24 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       console.error("Failed to load favorites:", err);
     }
   }, []);
+
+  // Fetch wallet balance periodically
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        if (mockPaymentService.isInitialized) {
+          const balance = await mockPaymentService.getBalance();
+          setWalletBalance(balance);
+        }
+      } catch (err) {
+        console.error("Error fetching wallet balance:", err);
+      }
+    };
+
+    fetchWalletBalance();
+    const intervalId = setInterval(fetchWalletBalance, 10000);
+    return () => clearInterval(intervalId);
+  }, [purchaseStep]);
 
   // Filter datasets based on all criteria
   const filteredData = useMemo(() => {
@@ -1068,7 +1200,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const renderConsentModal = () => {
     if (!consentModalOpen || !pendingAction) return null;
 
-    const { purpose, actionType, consentType } = pendingAction;
+    const { purpose, actionType, consentType, tierInfo } = pendingAction;
+    const tierDetails = tierInfo ? ` (${tierInfo.tier} tier)` : "";
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -1076,7 +1209,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           <div className="mb-4">
             <h3 className="text-xl font-bold mb-2">HIPAA Consent Required</h3>
             <p className="text-gray-700">Your consent is required for:</p>
-            <p className="font-medium my-2 text-blue-700">{purpose}</p>
+            <p className="font-medium my-2 text-blue-700">
+              {purpose}
+              {tierDetails}
+            </p>
 
             <div className="my-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
               <p className="text-sm text-gray-700 mb-3">
@@ -1087,8 +1223,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
                 <li>Your consent will be securely documented</li>
                 {actionType === "PURCHASE" && (
                   <li>
-                    Purchasing this dataset creates a permanent record of your
-                    consent
+                    Purchasing this dataset{tierDetails} creates a permanent
+                    record of your consent
                   </li>
                 )}
                 {consentType ===
@@ -1121,34 +1257,9 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     );
   };
 
-  // Fetch current wallet balance to display
-  const [, setWalletBalance] = useState(null);
-
-  useEffect(() => {
-    const fetchWalletBalance = async () => {
-      try {
-        if (mockPaymentService.isInitialized) {
-          const balance = await mockPaymentService.getBalance();
-          setWalletBalance(balance);
-        }
-      } catch (err) {
-        console.error("Error fetching wallet balance:", err);
-      }
-    };
-
-    fetchWalletBalance();
-
-    // Set up periodic balance updates
-    const intervalId = setInterval(fetchWalletBalance, 10000); // Check every 10 seconds
-
-    return () => clearInterval(intervalId);
-  }, [purchaseStep]); // Re-fetch when purchase state changes
-
-  // Pass props to the view component (including wallet balance)
   return (
     <>
       {/* Data Browser View */}
-      {/* Pass the wallet balance as a prop to DataBrowserView */}
       <DataBrowserView
         userRole={userRole}
         loading={loading}
@@ -1186,6 +1297,11 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         handlePurchaseStart={handlePurchaseStart}
         handlePurchaseComplete={handlePurchaseComplete}
         handlePurchaseError={handlePurchaseError}
+        walletBalance={walletBalance}
+        handleTierChange={handleTierChange}
+        selectedTiers={selectedTiers}
+        datasetTiers={datasetTiers}
+        fetchDatasetTiers={fetchDatasetTiers}
       />
 
       {/* Transaction Modal */}
@@ -1196,7 +1312,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
         details={transactionDetails}
       />
 
-      {/* Render consent modal when needed */}
+      {/* Consent Modal */}
       {renderConsentModal()}
     </>
   );
