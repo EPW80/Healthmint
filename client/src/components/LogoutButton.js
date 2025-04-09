@@ -66,6 +66,7 @@ const LogoutButton = ({
 
     try {
       setLoading(true);
+      sessionStorage.setItem("logout_in_progress", "true"); // Set a flag in session storage
 
       // Show notification
       dispatch(
@@ -99,7 +100,7 @@ const LogoutButton = ({
         clearSessionStorage: true,
         useHardRedirect: true,
         onComplete: () => {
-          // This won't run if the page is redirected
+          // Clear the logout flag
           setLoading(false);
         },
       });
