@@ -41,8 +41,7 @@ const generateMockHealthRecords = () => {
     return (Math.random() * 0.49 + 0.01).toFixed(4);
   };
 
-  // Record template data with explicit verification status
-  // Use true, false, or null (for random determination)
+  // Templates for health records
   const recordTemplates = [
     {
       title: "Annual Physical Examination",
