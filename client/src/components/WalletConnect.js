@@ -49,28 +49,27 @@ const WalletConnect = ({ onConnect }) => {
   // If auto-connect fails, we want to make it easy for the user to initiate the connection
   const showNetworkWarning = isConnected && network && !network.isSupported;
 
-  // Also, at the very beginning of the component, add a check for logout state:
+  // Handle network switch
   useEffect(() => {
-    // Check for and clear any lingering logout flags when mounting the login component
+    // Check if the user is on the correct network
     const isLogoutInProgress =
       sessionStorage.getItem("logout_in_progress") === "true";
     if (isLogoutInProgress) {
       console.log("WalletConnect: Clearing logout in progress flag");
       sessionStorage.removeItem("logout_in_progress");
 
-      // Clear any wallet connection state as well
+      // Clear any wallet connection data
       localStorage.removeItem("healthmint_wallet_address");
       localStorage.removeItem("healthmint_wallet_connection");
     }
   }, []);
 
-  // Clear reconnection flags and clean up wallet state
+  // Effect to handle component mount and cleanup
   useEffect(() => {
-    // Clear any forced reconnect flags when we reach this component
+    // Clear any reconnection flags
     sessionStorage.removeItem("force_wallet_reconnect");
 
-    // If we're on the login page and the wallet is not connected,
-    // clean up any potentially stale connection data
+    // Check if the wallet is connected
     if (!isConnected) {
       console.log("WalletConnect: Wallet not connected, cleaning up state");
       localStorage.removeItem("healthmint_wallet_address");
