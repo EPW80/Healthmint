@@ -1,5 +1,5 @@
 // src/components/roles/RoleSelector.js
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { User, Microscope, Loader } from "lucide-react";
@@ -30,17 +30,8 @@ const RoleSelector = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Refs to prevent infinite loops
-  const hasCheckedWalletRef = useRef(false);
-
-  // Check logout and wallet connection status - ONCE only
+  // Check logout and wallet connection status
   useEffect(() => {
-    // Skip if already checked to prevent infinite loop
-    if (hasCheckedWalletRef.current) return;
-
-    // Mark as checked
-    hasCheckedWalletRef.current = true;
-
     if (isLogoutInProgress()) {
       console.log("RoleSelector: Logout in progress, redirecting to login");
       navigate("/login", { replace: true });
@@ -57,9 +48,7 @@ const RoleSelector = () => {
       console.log("RoleSelector: No wallet connection, redirecting to login");
       navigate("/login", { replace: true });
     }
-    // Intentionally omitting dependencies to run only once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [navigate]);
 
   // Check for existing role and redirect if found
   useEffect(() => {

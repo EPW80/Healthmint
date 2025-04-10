@@ -80,8 +80,8 @@ const DatasetPurchaseButton = ({
 
       // Check balance before proceeding
       const balance = await mockPaymentService.getBalance();
-      if (parseFloat(balance) < parseFloat(dataset.price)) {
-        // Handle insufficient funds gracefully
+      if (parseFloat(balance) < parseFloat(purchasePrice)) {
+        // Use purchasePrice here instead of dataset.price
         setPurchaseState("error");
         setError(
           "Insufficient funds to complete this purchase. Please add more ETH to your wallet."
@@ -96,14 +96,13 @@ const DatasetPurchaseButton = ({
         return; // Exit early without throwing
       }
 
-      // Rest of the function remains the same...
       // Update state to confirming - simulates blockchain confirmation
       setPurchaseState("confirming");
 
-      // Process the payment with mock service
+      // Process the payment with mock service - use purchasePrice here
       const result = await mockPaymentService.purchaseDataset(
         dataset.id,
-        dataset.price
+        purchasePrice
       );
 
       if (result.success) {
@@ -111,7 +110,7 @@ const DatasetPurchaseButton = ({
         setTransactionDetails({
           ...result,
           timestamp: new Date().toISOString(),
-          amount: dataset.price,
+          amount: purchasePrice, // Use purchasePrice here too
         });
 
         // Notify parent component of successful purchase

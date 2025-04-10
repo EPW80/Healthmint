@@ -109,23 +109,14 @@ const AppContent = () => {
     switchNetwork,
     getPendingTransactions,
   } = useWalletConnect();
-  // Extract only what we use from useAuth
-  const { isNewUser } = useAuth();
+  const { isNewUser, verifyAuth, clearVerificationCache } = useAuth();
 
   // State management
   const [isInitialized, setIsInitialized] = useState(false);
-  const pendingLogoutRef = useRef(false);
+  const [isVerifying, setIsVerifying] = useState(true);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  
-  // Force initialization after a short delay
-  useEffect(() => {
-    // Skip the verification entirely and just initialize
-    const timer = setTimeout(() => {
-      setIsInitialized(true);
-    }, 1000); // Short delay to show loading state
-    
-    return () => clearTimeout(timer);
-  }, []);
+  const pendingLogoutRef = useRef(false);
+  const initAttemptedRef = useRef(false);
 
   // Registration completion handler
   const handleRegistrationComplete = useCallback(
@@ -140,6 +131,64 @@ const AppContent = () => {
     },
     [dispatch]
   );
+
+  // Emergency loop breaker
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isVerifying && initAttemptedRef.current) {
+        console.warn("AppContent: Emergency loop break after 6s", {
+          location: location.pathname,
+        });
+        sessionStorage.setItem("auth_verification_override", "true");
+        sessionStorage.setItem("bypass_route_protection", "true");
+        setIsVerifying(false);
+        setIsInitialized(true);
+        clearVerificationCache();
+        dispatch(
+          addNotification({
+            type: "warning",
+            message: "Authentication timed out. Some features may be limited.",
+            duration: 5000,
+          })
+        );
+      }
+    }, 6000);
+    return () => clearTimeout(timeout);
+  }, [isVerifying, clearVerificationCache, dispatch, location.pathname]);
+
+  // Initial authentication verification
+  useEffect(() => {
+    if (initAttemptedRef.current) return;
+    initAttemptedRef.current = true;
+
+    const initAuth = async () => {
+      setIsVerifying(true);
+      try {
+        console.log("AppContent: Verifying auth state...");
+        await Promise.race([
+          verifyAuth(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Auth timeout")), 3000)
+          ),
+        ]);
+      } catch (error) {
+        console.error("AppContent: Auth verification failed:", error);
+        dispatch(
+          addNotification({
+            type: "warning",
+            message: "Auth verification timed out.",
+            duration: 5000,
+          })
+        );
+      } finally {
+        setIsVerifying(false);
+        setIsInitialized(true);
+      }
+    };
+
+    const timer = setTimeout(initAuth, 100);
+    return () => clearTimeout(timer);
+  }, [verifyAuth, dispatch]);
 
   // Check pending transactions
   const checkPendingTransactions = useCallback(async () => {
@@ -240,7 +289,7 @@ const AppContent = () => {
     )
   );
 
-  if (!isInitialized) {
+  if (!isInitialized || isVerifying) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <LoadingSpinner size="large" />
