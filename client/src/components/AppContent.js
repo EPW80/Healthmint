@@ -31,7 +31,8 @@ import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
 import UserRegistration from "./UserRegistration.js";
 import TransactionsPage from "../pages/TransactionPage.js";
-import DataMarketplace from "../pages/DataMarketplace.js"; 
+import DataMarketplace from "../pages/DataMarketplace.js";
+import DataContributionPortal from "../pages/DataContributionPortal.js"; // Add this import
 
 // Logout Confirmation Dialog
 const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
@@ -427,6 +428,20 @@ const AppContent = () => {
                   <Navigate to="/select-role" replace />
                 ) : (
                   <DataMarketplace />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contribute"
+            element={
+              <ProtectedRoute allowedRoles={["patient"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <DataContributionPortal />
                 )}
               </ProtectedRoute>
             }

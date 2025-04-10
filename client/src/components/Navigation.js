@@ -5,7 +5,6 @@ import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   Home,
-  Upload,
   Search,
   Settings,
   LogOut,
@@ -16,6 +15,8 @@ import {
   ChevronDown,
   AlertTriangle,
   ShoppingCart,
+  Database,
+  HeartPulse,
 } from "lucide-react";
 import useNavigation from "../hooks/useNavigation.js";
 
@@ -105,12 +106,21 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
 
     // Role-specific items
     if (userRole === "patient") {
-      // Add Upload Data option only for patients - insert after Home
-      baseItems.splice(1, 0, {
-        to: "/upload",
-        label: "Upload Data",
-        icon: Upload,
-      });
+      // Add patient-specific items - insert after Home
+      baseItems.splice(
+        1,
+        0,
+        {
+          to: "/upload",
+          label: "Upload Records",
+          icon: Database,
+        },
+        {
+          to: "/contribute",
+          label: "Contribute Data",
+          icon: HeartPulse,
+        }
+      );
     } else if (userRole === "researcher") {
       baseItems.splice(
         1,
@@ -122,7 +132,7 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
         },
         {
           to: "/marketplace",
-          label: "Portal",
+          label: "Request Portal",
           icon: ShoppingCart,
         }
       );
