@@ -21,11 +21,6 @@ import { addNotification } from "../redux/slices/notificationSlice";
 import researcherTransactionService from "../services/researcherTransactionService";
 import patientTransactionService from "../services/patientTransactionService";
 
-/**
- * Format relative time (replacement for date-fns formatDistanceToNow)
- * @param {Date} date - Date to format
- * @returns {string} - Relative time string
- */
 const formatRelativeTime = (date) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now - date) / 1000);
@@ -52,11 +47,6 @@ const formatRelativeTime = (date) => {
   return `${diffInYears} year${diffInYears !== 1 ? "s" : ""} ago`;
 };
 
-/**
- * Role-specific transaction history page
- * - For researchers: Shows purchased data history
- * - For patients: Shows data sharing transactions
- */
 const TransactionsPage = () => {
   // Get the user's role from Redux
   const userRole = useSelector((state) => state.role.role);

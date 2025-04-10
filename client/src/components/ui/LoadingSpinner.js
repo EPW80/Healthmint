@@ -2,12 +2,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-/**
- * LoadingSpinner Component
- *
- * A standardized loading indicator that can be used throughout the application
- * with configurable size, appearance and proper accessibility attributes.
- */
 const LoadingSpinner = ({
   size = "medium",
   color = "blue",
@@ -15,15 +9,16 @@ const LoadingSpinner = ({
   showLabel = false,
   className = "",
   fullScreen = false,
+  spinnerStyle = {},
 }) => {
-  // Size mappings
+  // Size mappings (using Tailwind classes)
   const sizeClasses = {
     small: "h-4 w-4 border-2",
     medium: "h-8 w-8 border-3",
     large: "h-12 w-12 border-4",
   };
 
-  // Color mappings
+  // Color mappings (using Tailwind classes)
   const colorClasses = {
     blue: "border-blue-500 border-t-transparent",
     green: "border-green-500 border-t-transparent",
@@ -32,9 +27,10 @@ const LoadingSpinner = ({
     white: "border-white border-t-transparent",
   };
 
-  const spinnerClasses = `animate-spin ${sizeClasses[size] || sizeClasses.medium} ${colorClasses[color] || colorClasses.blue} rounded-full ${className}`;
+  // Consolidated spinner classes
+  const spinnerClasses = `animate-spin ${sizeClasses[size] || sizeClasses.medium} ${colorClasses[color] || colorClasses.blue} rounded-full`;
 
-  // If fullScreen, show it centered on the screen with a backdrop
+  // Full-screen spinner
   if (fullScreen) {
     return (
       <div
@@ -43,20 +39,29 @@ const LoadingSpinner = ({
         aria-live="polite"
       >
         <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-          <div className={spinnerClasses} aria-hidden="true"></div>
+          <div
+            className={spinnerClasses}
+            style={spinnerStyle}
+            aria-hidden="true"
+          ></div>
           <span className="mt-3 text-gray-700">{label}</span>
         </div>
       </div>
     );
   }
 
+  // Inline spinner
   return (
     <div
-      className="flex items-center justify-center"
+      className={`flex items-center justify-center ${className}`}
       role="status"
       aria-live="polite"
     >
-      <div className={spinnerClasses} aria-hidden="true"></div>
+      <div
+        className={spinnerClasses}
+        style={spinnerStyle}
+        aria-hidden="true"
+      ></div>
       {showLabel && (
         <span className="ml-3 text-sm font-medium text-gray-700">{label}</span>
       )}
@@ -72,6 +77,7 @@ LoadingSpinner.propTypes = {
   showLabel: PropTypes.bool,
   className: PropTypes.string,
   fullScreen: PropTypes.bool,
+  spinnerStyle: PropTypes.object, // For custom inline styles
 };
 
 export default LoadingSpinner;

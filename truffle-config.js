@@ -21,10 +21,6 @@ if (fs.existsSync(envPath)) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * Provider Manager Class
- * Handles wallet provider initialization with retry logic and proper error handling
- */
 class ProviderManager {
   constructor() {
     // Check for private key or mnemonic (safer option for non-dev environments)

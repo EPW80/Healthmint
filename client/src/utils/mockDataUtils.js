@@ -1,13 +1,7 @@
 // src/utils/mockDataUtils.js
 import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
 
-/**
- * Utility functions for managing mock health data
- */
 const mockDataUtils = {
-  /**
-   * Initialize mock data in local storage if it doesn't exist
-   */
   initializeMockData: () => {
     const existingData = localStorage.getItem("healthmint_mock_health_data");
 
@@ -35,9 +29,6 @@ const mockDataUtils = {
     }
   },
 
-  /**
-   * Get persisted mock data or generate new if none exists
-   */
   getMockHealthData: () => {
     try {
       const storedData = localStorage.getItem("healthmint_mock_health_data");
@@ -53,9 +44,6 @@ const mockDataUtils = {
     }
   },
 
-  /**
-   * Update a mock record in local storage
-   */
   updateMockRecord: (recordId, updateData) => {
     try {
       const mockData = mockDataUtils.getMockHealthData();
@@ -74,9 +62,6 @@ const mockDataUtils = {
     }
   },
 
-  /**
-   * Add a new mock record to local storage
-   */
   addMockRecord: (newRecord) => {
     try {
       const mockData = mockDataUtils.getMockHealthData();
@@ -99,9 +84,6 @@ const mockDataUtils = {
     }
   },
 
-  /**
-   * Delete a mock record from local storage
-   */
   deleteMockRecord: (recordId) => {
     try {
       const mockData = mockDataUtils.getMockHealthData();
@@ -118,9 +100,6 @@ const mockDataUtils = {
     }
   },
 
-  /**
-   * Reset mock data with fresh generated data
-   */
   resetMockData: () => {
     try {
       const freshData = generateMockHealthRecords();

@@ -11,13 +11,8 @@ import { clearUserProfile } from "../redux/slices/userSlice.js";
 import LoadingSpinner from "./ui/LoadingSpinner";
 import useWalletConnect from "../hooks/useWalletConnect.js";
 
-/**
- * An improved logout button that properly redirects to login page
- * and prevents authentication loops
- *
- * @param {Object} props Component props
- * @returns {JSX.Element} Logout button component
- */
+// This component is a button that allows users to log out of the application.
+// It provides options for different button styles, sizes, and whether to show an icon.
 const LogoutButton = ({
   variant = "primary",
   size = "md",

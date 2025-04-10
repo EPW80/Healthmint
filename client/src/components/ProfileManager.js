@@ -28,10 +28,7 @@ import useAsyncOperation from "../hooks/useAsyncOperation.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 
-/**
- * Helper function to deep merge objects with defaults
- * This ensures nested objects are properly merged rather than overwritten
- */
+// ProfileManager component
 function deepMerge(defaults, userData) {
   if (!userData) return { ...defaults };
 
@@ -58,12 +55,7 @@ function deepMerge(defaults, userData) {
   return result;
 }
 
-/**
- * Preprocess the profile data to ensure valid values
- * @param {Object} profile - The profile data to clean
- * @param {Object} defaultProfile - Default profile for reference
- * @returns {Object} - Profile data with valid values
- */
+// Default profile data
 const preprocessProfileData = (profile, defaultProfile) => {
   if (!profile) return { ...defaultProfile };
 
@@ -127,12 +119,7 @@ const preprocessProfileData = (profile, defaultProfile) => {
   return cleanProfile;
 };
 
-/**
- * ProfileManager Component
- *
- * A unified profile management interface for both patients and researchers
- * that maintains HIPAA compliance throughout
- */
+// API operations
 const ProfileManager = () => {
   const dispatch = useDispatch();
   const userRole = useSelector(selectRole);

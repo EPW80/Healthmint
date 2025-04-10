@@ -31,6 +31,7 @@ import DataUpload from "./DataUpload.js";
 import DataBrowser from "./DataBrowser.js";
 import UserRegistration from "./UserRegistration.js";
 import TransactionsPage from "../pages/TransactionPage.js";
+import DataMarketplace from "../pages/DataMarketplace.js"; 
 
 // Logout Confirmation Dialog
 const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
@@ -411,6 +412,21 @@ const AppContent = () => {
                   <Navigate to="/select-role" replace />
                 ) : (
                   <DataBrowser />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          {/* Add DataMarketplace route */}
+          <Route
+            path="/marketplace"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <DataMarketplace />
                 )}
               </ProtectedRoute>
             }

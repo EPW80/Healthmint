@@ -2,17 +2,16 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-/**
- * GlassContainer - A container with glass morphism effect
- *
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child elements
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props.rest - Other props to pass to the div
- */
-export const GlassContainer = ({ children, className = "", ...props }) => (
+// GlassContainer: A flexible container with glassmorphism effect
+export const GlassContainer = ({
+  children,
+  className = "",
+  padding = "p-8 sm:p-10",
+  maxWidth = "max-w-lg",
+  ...props
+}) => (
   <div
-    className={`bg-white/80 backdrop-blur-md rounded-3xl p-8 sm:p-10 w-full max-w-lg mx-auto shadow-xl border border-white/30 transition-all duration-300 hover:translate-y-[-5px] hover:shadow-2xl ${className}`}
+    className={`bg-white/80 backdrop-blur-md rounded-3xl ${padding} w-full ${maxWidth} mx-auto shadow-xl border border-white/30 transition-all duration-300 hover:translate-y-[-5px] hover:shadow-2xl focus-within:shadow-2xl ${className}`}
     {...props}
   >
     {children}
@@ -22,18 +21,11 @@ export const GlassContainer = ({ children, className = "", ...props }) => (
 GlassContainer.propTypes = {
   children: PropTypes.node,
   className: PropTypes.string,
+  padding: PropTypes.string,
+  maxWidth: PropTypes.string,
 };
 
-/**
- * ConnectButton - A styled button for wallet connection and primary actions
- *
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Button content
- * @param {boolean} props.disabled - Whether the button is disabled
- * @param {Function} props.onClick - Click handler
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props.rest - Other props to pass to the button
- */
+// ConnectButton: A styled button for wallet connection with improved disabled state
 export const ConnectButton = ({
   children,
   disabled = false,
@@ -42,8 +34,10 @@ export const ConnectButton = ({
   ...props
 }) => (
   <button
-    className={`w-full py-4 px-6 text-lg font-bold text-white rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 shadow-md hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 hover:scale-[1.02] ${
-      disabled ? "opacity-50 cursor-not-allowed" : ""
+    className={`w-full py-4 px-6 text-lg font-bold text-white rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 hover:scale-[1.02] ${
+      disabled
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
     } ${className}`}
     disabled={disabled}
     onClick={onClick}
@@ -60,21 +54,7 @@ ConnectButton.propTypes = {
   className: PropTypes.string,
 };
 
-/**
- * FormInput - A styled input field with consistent styling
- *
- * @param {Object} props - Component props
- * @param {string} props.label - Input label
- * @param {string} props.name - Input name
- * @param {string} props.type - Input type
- * @param {string} props.value - Input value
- * @param {Function} props.onChange - Change handler
- * @param {string} props.placeholder - Placeholder text
- * @param {string} props.error - Error message
- * @param {boolean} props.disabled - Whether the input is disabled
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props.rest - Other props to pass to the input
- */
+// FormInput: A flexible input component with enhanced disabled and error states
 export const FormInput = ({
   label,
   name,
@@ -104,13 +84,15 @@ export const FormInput = ({
       onChange={onChange}
       placeholder={placeholder}
       disabled={disabled}
-      className={`w-full px-4 py-3 bg-white/70 hover:bg-white/80 focus:bg-white/90 rounded-xl border transition-all duration-200 ${
+      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 ${
+        disabled
+          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+          : "bg-white/70 hover:bg-white/80 focus:bg-white/90"
+      } ${
         error
           ? "border-red-300 focus:border-red-500 focus:ring-red-200"
           : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-      } focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
-        disabled ? "opacity-60 cursor-not-allowed" : ""
-      }`}
+      } focus:outline-none focus:ring-2 focus:ring-opacity-50`}
       {...props}
     />
     {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
@@ -129,20 +111,7 @@ FormInput.propTypes = {
   className: PropTypes.string,
 };
 
-/**
- * FormSelect - A styled select dropdown
- *
- * @param {Object} props - Component props
- * @param {string} props.label - Select label
- * @param {string} props.name - Select name
- * @param {Array} props.options - Select options
- * @param {string} props.value - Select value
- * @param {Function} props.onChange - Change handler
- * @param {string} props.error - Error message
- * @param {boolean} props.disabled - Whether the select is disabled
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props.rest - Other props to pass to the select
- */
+// FormSelect: A select component with improved disabled and error states
 export const FormSelect = ({
   label,
   name,
@@ -169,13 +138,15 @@ export const FormSelect = ({
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className={`w-full px-4 py-3 bg-white/70 hover:bg-white/80 focus:bg-white/90 rounded-xl border transition-all duration-200 ${
+      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 ${
+        disabled
+          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+          : "bg-white/70 hover:bg-white/80 focus:bg-white/90"
+      } ${
         error
           ? "border-red-300 focus:border-red-500 focus:ring-red-200"
           : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-      } focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
-        disabled ? "opacity-60 cursor-not-allowed" : ""
-      }`}
+      } focus:outline-none focus:ring-2 focus:ring-opacity-50`}
       {...props}
     >
       {options.map((option) => (
@@ -204,17 +175,16 @@ FormSelect.propTypes = {
   className: PropTypes.string,
 };
 
-/**
- * Card - A styled card component with consistent styling
- *
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Card content
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props.rest - Other props to pass to the div
- */
-export const Card = ({ children, className = "", ...props }) => (
+// Card: A customizable card component with shadow and border options
+export const Card = ({
+  children,
+  className = "",
+  shadow = "shadow-md",
+  border = "border-gray-100",
+  ...props
+}) => (
   <div
-    className={`bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg ${className}`}
+    className={`bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg ${shadow} border ${border} ${className}`}
     {...props}
   >
     {children}
@@ -224,29 +194,28 @@ export const Card = ({ children, className = "", ...props }) => (
 Card.propTypes = {
   children: PropTypes.node,
   className: PropTypes.string,
+  shadow: PropTypes.string,
+  border: PropTypes.string,
 };
 
-/**
- * Button - A general purpose button with variants
- *
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Button content
- * @param {string} props.variant - Button variant (primary, secondary, outlined, text)
- * @param {boolean} props.disabled - Whether the button is disabled
- * @param {Function} props.onClick - Click handler
- * @param {string} props.className - Additional CSS classes
- * @param {Object} props.rest - Other props to pass to the button
- */
+// Button: A versatile button component with variant and size options
 export const Button = ({
   children,
   variant = "primary",
+  size = "medium",
   disabled = false,
   onClick,
   className = "",
   ...props
 }) => {
   const baseClasses =
-    "px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50";
+    "rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50";
+
+  const sizeClasses = {
+    small: "px-3 py-1 text-sm",
+    medium: "px-4 py-2",
+    large: "px-6 py-3 text-lg",
+  };
 
   const variantClasses = {
     primary: "bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-300",
@@ -259,7 +228,9 @@ export const Button = ({
 
   return (
     <button
-      className={`${baseClasses} ${variantClasses[variant]} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
+      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${
+        disabled ? "opacity-50 cursor-not-allowed" : ""
+      } ${className}`}
       disabled={disabled}
       onClick={onClick}
       {...props}
@@ -272,6 +243,7 @@ export const Button = ({
 Button.propTypes = {
   children: PropTypes.node,
   variant: PropTypes.oneOf(["primary", "secondary", "outlined", "text"]),
+  size: PropTypes.oneOf(["small", "medium", "large"]),
   disabled: PropTypes.bool,
   onClick: PropTypes.func,
   className: PropTypes.string,

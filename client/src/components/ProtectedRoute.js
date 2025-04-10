@@ -10,10 +10,7 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import { isLogoutInProgress } from "../utils/authLoopPrevention.js";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 
-/**
- * RedirectTracker
- * Singleton utility to detect and prevent redirect loops
- */
+// This object tracks redirects to prevent infinite loops and excessive redirects
 const redirectTracker = {
   history: {}, // Path -> timestamp
   counts: {}, // Path -> redirect count
@@ -57,11 +54,7 @@ const redirectTracker = {
   },
 };
 
-/**
- * ProtectedRoute
- * Ensures authentication and role-based access for protected routes
- * with improved logout handling
- */
+// This component protects routes based on authentication and role
 const ProtectedRoute = ({
   children,
   allowedRoles = [],

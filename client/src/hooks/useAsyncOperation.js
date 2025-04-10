@@ -3,17 +3,6 @@ import { useState, useCallback } from "react";
 import { useError } from "../contexts/ErrorContext";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * Custom hook for handling async operations with consistent error handling
- * and HIPAA compliance
- *
- * @param {Object} options - Options for the hook
- * @param {string} options.componentId - Unique ID for the component using this hook
- * @param {Function} options.onSuccess - Callback to execute on success
- * @param {Function} options.onError - Additional error handling callback
- * @param {string} options.userId - User identifier for HIPAA logging
- * @returns {Object} Async operation utilities
- */
 const useAsyncOperation = (options = {}) => {
   const {
     componentId = "unknown",
@@ -30,8 +19,6 @@ const useAsyncOperation = (options = {}) => {
 
   // Create a sanitized metadata object that is HIPAA compliant
   const createSafeMetadata = (operation, args) => {
-    // Don't include actual argument values as they might contain PHI
-    // Just include information about the argument types
     const argInfo = args.map((arg) =>
       typeof arg === "object"
         ? Array.isArray(arg)
@@ -95,7 +82,6 @@ const useAsyncOperation = (options = {}) => {
         // Add error to global error state
         addError(componentId, error, safeMetadata);
 
-        // Log error for HIPAA compliance
         try {
           hipaaComplianceService.createAuditLog("ASYNC_OPERATION_ERROR", {
             componentId,

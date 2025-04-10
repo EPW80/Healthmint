@@ -19,12 +19,7 @@ import ErrorDisplay from "./ui/ErrorDisplay.js";
 import mockPaymentService from "../services/mockPaymentService.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * TransactionHistory Component
- *
- * Displays the user's transaction history for data uploads, purchases, and other blockchain
- * interactions with HIPAA-compliant logging using the mock payment service
- */
+// This component displays a user's transaction history, including filters for type, date range, and status.
 const TransactionHistory = ({
   limit = 10,
   showFilters = true,
@@ -57,7 +52,7 @@ const TransactionHistory = ({
       : `${num.toFixed(num < 0.1 ? 4 : 3)} ETH`;
   };
 
-  // Format date in a user-friendly way
+  // Format date based on timestamp
   const formatDate = (timestamp) => {
     if (!timestamp) return "Unknown";
 
@@ -77,7 +72,7 @@ const TransactionHistory = ({
     }
   };
 
-  // Get status badge styling based on transaction status
+  // Get status badge classes based on transaction status
   const getStatusBadge = (status) => {
     const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
 
@@ -109,9 +104,7 @@ const TransactionHistory = ({
     }
   };
 
-  // Create unique transaction key to prevent duplicate key issues
-
-  // Initialize mock payment service on component mount
+  // Initialize mock payment service
   useEffect(() => {
     const initMockService = async () => {
       if (!mockPaymentService.isInitialized) {
@@ -156,16 +149,13 @@ const TransactionHistory = ({
       // Fetch transaction history from mock payment service
       const mockTransactions = await mockPaymentService.getPaymentHistory();
 
-      // Transform mock transactions to match our component's expected format
-      // Ensure each transaction has a truly unique ID
+      // Transform the mock transaction data
       const transformedHistory = mockTransactions.map((tx, index) => ({
-        // Generate a unique ID if one doesn't exist
         id: tx.paymentId || `tx_${index}_${Date.now()}`,
-        // Add a generated internal key for rendering purposes
         internalKey: `${tx.paymentId || "tx"}_${index}_${Date.now()}`,
         hash: tx.transactionHash,
-        type: "purchase", // Set all mock transactions as purchases for now
-        status: "success", // All mock transactions are successful
+        type: "purchase", // Assuming all transactions are purchases for this example
+        status: "success",
         amount: tx.amount,
         timestamp: tx.timestamp,
         description: `Dataset Purchase: ${tx.datasetId}`,

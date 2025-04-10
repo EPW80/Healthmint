@@ -1,6 +1,5 @@
 // src/redux/slices/authSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-
 import authService from "../../services/authService.js";
 import { addNotification } from "./notificationSlice.js";
 
@@ -18,9 +17,6 @@ const initialState = {
   userId: null,
 };
 
-/**
- * Async thunk for user authentication via wallet signature
- */
 export const loginAsync = createAsyncThunk(
   "auth/login",
   async ({ address }, { rejectWithValue, dispatch }) => {
@@ -75,9 +71,6 @@ export const loginAsync = createAsyncThunk(
   }
 );
 
-/**
- * Async thunk for refreshing authentication token
- */
 export const refreshTokenAsync = createAsyncThunk(
   "auth/refreshToken",
   async (_, { rejectWithValue, dispatch, getState }) => {
@@ -107,8 +100,6 @@ export const refreshTokenAsync = createAsyncThunk(
         userRoles,
       };
     } catch (error) {
-      // Since this often happens in the background, only show notification
-      // for unexpected errors, not for expired refresh tokens
       if (error.message !== "No refresh token available") {
         dispatch(
           addNotification({
@@ -124,9 +115,6 @@ export const refreshTokenAsync = createAsyncThunk(
   }
 );
 
-/**
- * Async thunk for logging out the user
- */
 export const logoutAsync = createAsyncThunk(
   "auth/logout",
   async (_, { dispatch }) => {
@@ -147,16 +135,11 @@ export const logoutAsync = createAsyncThunk(
     } catch (error) {
       console.error("Logout error:", error);
 
-      // Still return success even if API call fails
-      // to ensure user is logged out from the frontend
       return true;
     }
   }
 );
 
-/**
- * Async thunk for setting or updating user role
- */
 export const updateRoleAsync = createAsyncThunk(
   "auth/updateRole",
   async ({ role, address }, { rejectWithValue, dispatch, getState }) => {
@@ -401,5 +384,4 @@ export const selectUserId = (state) => state.auth.userId;
 export const selectHasRole = (role) => (state) =>
   state.auth.userRoles.includes(role);
 
-// Export reducer
 export default authSlice.reducer;

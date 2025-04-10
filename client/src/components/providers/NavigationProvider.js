@@ -3,23 +3,12 @@ import React, { createContext, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 
-// Create context and export it so useNavigation.js can import it
 export const NavigationContext = createContext(null);
 
-/**
- * Navigation Provider Component
- *
- * Provides navigation methods and location information to child components
- */
+// Create a custom hook to use the NavigationContext
 const NavigationProvider = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  /**
-   * Navigate to a specific route
-   * @param {string} to - Route to navigate to
-   * @param {Object} options - Navigation options
-   */
   const navigateTo = useCallback(
     (to, options = {}) => {
       navigate(to, options);
@@ -27,18 +16,12 @@ const NavigationProvider = ({ children }) => {
     [navigate]
   );
 
-  /**
-   * Go back to previous route
-   */
+  // Function to go back to the previous route
   const goBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
 
-  /**
-   * Replace current route
-   * @param {string} to - Route to navigate to
-   * @param {Object} options - Navigation options
-   */
+  // Function to replace the current route with a new one
   const replaceTo = useCallback(
     (to, options = {}) => {
       navigate(to, { ...options, replace: true });

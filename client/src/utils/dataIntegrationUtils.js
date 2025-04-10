@@ -1,11 +1,4 @@
 // client/src/utils/dataIntegrationUtils.js
-/**
- * Data Integration Utilities
- *
- * This module provides functions to integrate health data from various sources
- * and ensure HIPAA compliance throughout the process.
- */
-
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import errorHandlingService from "../services/errorHandlingService.js";
 
@@ -19,12 +12,6 @@ const SOURCE_TYPES = {
   IMAGING_DATA: "imaging",
 };
 
-/**
- * Validates health data for HIPAA compliance
- * @param {Object} data - The health data to validate
- * @param {Object} options - Validation options
- * @returns {Object} Validation results
- */
 export const validateHealthData = (data, options = {}) => {
   try {
     if (!data) {
@@ -85,12 +72,6 @@ export const validateHealthData = (data, options = {}) => {
   }
 };
 
-/**
- * Processes health data from external sources
- * @param {Object} data - The data to process
- * @param {string} sourceType - Source type from SOURCE_TYPES
- * @returns {Object} Processed data
- */
 export const processExternalHealthData = async (data, sourceType) => {
   try {
     if (!data) {
@@ -174,11 +155,6 @@ export const processExternalHealthData = async (data, sourceType) => {
   }
 };
 
-/**
- * Normalizes Electronic Health Record data
- * @param {Object} data - The EHR data to normalize
- * @returns {Object} Normalized data
- */
 function normalizeEHRData(data) {
   // Implementation would convert EHR-specific formats to standard format
   return {
@@ -187,11 +163,6 @@ function normalizeEHRData(data) {
   };
 }
 
-/**
- * Verifies patient-uploaded health data
- * @param {Object} data - The patient data to verify
- * @returns {Object} Verified data
- */
 function verifyPatientData(data) {
   // Implementation would add verification flags
   return {
@@ -202,11 +173,6 @@ function verifyPatientData(data) {
   };
 }
 
-/**
- * Processes wearable device data
- * @param {Object} data - The wearable data to process
- * @returns {Object} Processed data
- */
 function processWearableData(data) {
   // Implementation would typically handle time series data
   return {
@@ -216,11 +182,6 @@ function processWearableData(data) {
   };
 }
 
-/**
- * Processes laboratory results
- * @param {Object} data - The lab results to process
- * @returns {Object} Processed lab results
- */
 function processLabResults(data) {
   // Implementation would handle lab-specific data
   return {
@@ -230,11 +191,6 @@ function processLabResults(data) {
   };
 }
 
-/**
- * Integrates health data from different sources
- * @param {Array} dataSources - Array of data sources to integrate
- * @returns {Promise<Object>} Integrated data result
- */
 export const integrateHealthData = async (dataSources) => {
   try {
     if (!Array.isArray(dataSources) || dataSources.length === 0) {
@@ -302,7 +258,6 @@ export const integrateHealthData = async (dataSources) => {
   }
 };
 
-// Default export
 export default {
   SOURCE_TYPES,
   validateHealthData,

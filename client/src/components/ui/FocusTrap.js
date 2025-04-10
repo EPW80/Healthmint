@@ -2,13 +2,9 @@
 import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 
-/**
- * FocusTrap Component
- *
- * A utility component that traps focus within its children when active
- * Improves accessibility of modals and popups by preventing users from
- * tabbing outside the contained elements
- */
+// FocusTrap: A component to trap focus within a specified area
+// This is useful for modals, popups, or any interactive component
+// that should restrict keyboard navigation to its contents.
 const FocusTrap = ({
   children,
   active = true,

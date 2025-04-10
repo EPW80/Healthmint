@@ -4,11 +4,7 @@ import PropTypes from "prop-types";
 import { RefreshCw, Wallet, DollarSign, AlertTriangle } from "lucide-react";
 import mockPaymentService from "../services/mockPaymentService.js";
 
-/**
- * WalletBalanceDisplay Component
- *
- * Displays the current wallet balance and provides refresh functionality
- */
+// Mock payment service
 const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(false);

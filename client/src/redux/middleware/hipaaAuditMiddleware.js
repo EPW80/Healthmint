@@ -1,10 +1,6 @@
 // src/redux/middleware/hipaaAuditMiddleware.js
 import hipaaComplianceService from "../../services/hipaaComplianceService";
 
-/**
- * Redux middleware to handle HIPAA compliance audit logging
- * This centralizes audit logging for important state changes
- */
 export const hipaaAuditMiddleware = (store) => (next) => (action) => {
   // Process the action first
   const result = next(action);

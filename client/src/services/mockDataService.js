@@ -1,18 +1,9 @@
 // src/services/mockDataService.js
-
 import mockDataUtils from "../utils/mockDataUtils.js";
 
-/**
- * Mock Data Service that integrates with the existing app structure
- * while providing more robust error handling for dataset operations
- */
 const mockDataService = {
   isInitialized: false,
 
-  /**
-   * Initialize the mock data service to load data from mockDataUtils
-   * @returns {Promise<boolean>} Success status
-   */
   async initialize() {
     if (this.isInitialized) return true;
 
@@ -35,10 +26,6 @@ const mockDataService = {
     }
   },
 
-  /**
-   * Get available datasets (original function for compatibility)
-   * @returns {Promise<Array>} Promise that resolves to array of datasets
-   */
   getAvailableDatasets: async () => {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 800));
@@ -132,11 +119,6 @@ const mockDataService = {
     ];
   },
 
-  /**
-   * Get tiered pricing options for a dataset - FIX FOR THE ERROR
-   * @param {string} datasetId - The dataset ID to get tiers for
-   * @returns {Promise<Array>} Array of tier objects
-   */
   getDatasetTiers: async (datasetId) => {
     // Make sure we're initialized
     if (!mockDataService.isInitialized) {
@@ -264,11 +246,6 @@ const mockDataService = {
     }
   },
 
-  /**
-   * Purchase a dataset
-   * @param {Object} details - Purchase details including datasetId, price, and tier
-   * @returns {Promise<Object>} Promise that resolves to purchase result
-   */
   purchaseDataset: async (details) => {
     try {
       // Make sure we're initialized
@@ -358,12 +335,6 @@ const mockDataService = {
     }
   },
 
-  /**
-   * Get dataset preview data
-   * @param {string} datasetId - Dataset ID
-   * @param {string} tier - Optional tier to preview (defaults to basic sample)
-   * @returns {Promise<Object>} Promise that resolves to preview data
-   */
   getDatasetPreview: async (datasetId, tier = "basic") => {
     try {
       // Make sure we're initialized
@@ -457,11 +428,6 @@ const mockDataService = {
     }
   },
 
-  /**
-   * Get user's purchased datasets
-   * @param {string} walletAddress - User's wallet address
-   * @returns {Promise<Array>} Promise that resolves to array of purchased datasets
-   */
   getUserPurchasedDatasets: async () => {
     try {
       // Make sure we're initialized
@@ -526,11 +492,6 @@ const mockDataService = {
     }
   },
 
-  // Add compatibility methods for any new functions in the enhanced service
-
-  /**
-   * Get dataset details (backwards compatibility)
-   */
   getDatasetDetails: async (datasetId) => {
     try {
       // Make sure we're initialized
@@ -596,11 +557,6 @@ const mockDataService = {
     }
   },
 
-  /**
-   * Get a download URL for a dataset - avoids hitting non-existent API endpoints
-   * @param {string} datasetId - Dataset ID to download
-   * @returns {Promise<string>} - Download URL or null
-   */
   getDatasetDownloadUrl: async (datasetId) => {
     try {
       // Make sure we're initialized
@@ -630,9 +586,7 @@ const mockDataService = {
         return null;
       }
 
-      // In a real app, this would return an actual download URL from the server
-      // Since we know the /api/datasets/:id/download endpoint doesn't exist,
-      // we'll return a mock URL that will be handled by the downloadDataset method
+      // Generate download URL based on dataset format
       return `mock://datasets/${datasetId}/download`;
     } catch (err) {
       console.error("Error generating download URL:", err);
@@ -640,12 +594,6 @@ const mockDataService = {
     }
   },
 
-  /**
-   * Download a dataset without making an API call
-   * @param {string} datasetId - Dataset ID to download
-   * @param {string} [tierId="complete"] - Tier ID to download
-   * @returns {Promise<Object>} - Download result
-   */
   downloadDataset: async (datasetId, tierId = "complete") => {
     try {
       // Make sure we're initialized
@@ -822,5 +770,4 @@ const mockDataService = {
   },
 };
 
-// Export the singleton instance
 export default mockDataService;

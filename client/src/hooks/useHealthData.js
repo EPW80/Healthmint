@@ -1,15 +1,11 @@
 // src/hooks/useHealthData.js
 // Update this file to use mock data when API fails
-
 import { useState, useEffect, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import apiService from "../services/apiService.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
 
-/**
- * Custom hook for managing health data with fallback to mock data
- */
 const useHealthData = (options = {}) => {
   const {
     initialFilters = {},
@@ -31,7 +27,6 @@ const useHealthData = (options = {}) => {
     setError(null);
 
     try {
-      // Real API call
       const response = await apiService.get("/api/data/records", filters);
 
       if (!response.success || !response.data || response.data.length === 0) {
@@ -48,9 +43,6 @@ const useHealthData = (options = {}) => {
       setApiFailure(true);
       setError("Failed to load health records");
 
-      // Use mock data if API fails
-      // This is where we can generate mock data
-      // and set it to the state
       const mockData = generateMockHealthRecords();
       setHealthData(mockData);
       setTotalCount(mockData.length);
@@ -164,7 +156,6 @@ const useHealthData = (options = {}) => {
             lastUpdated: new Date().toISOString(),
             viewCount: Math.floor(Math.random() * 100),
             fileSize: `${(record.recordCount / 1000).toFixed(1)} MB`,
-            // Add more detailed fields as needed
           };
 
           // Simulate API delay
@@ -198,7 +189,7 @@ const useHealthData = (options = {}) => {
     resetFilters,
     purchaseData,
     getHealthDataDetails,
-    forceMockData, // Function to force using mock data
+    forceMockData,
   };
 };
 

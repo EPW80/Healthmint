@@ -5,18 +5,7 @@ import { store } from "../redux/store.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { migrateLocalHealthData } from "./dataMigrationUtils.js";
 
-/**
- * Application Initialization Script
- *
- * Handles one-time initialization tasks when the application starts,
- * such as migrating mock data to real data, setting up health data services,
- * and ensuring HIPAA compliance throughout.
- */
-
-/**
- * Initializes the application
- * This should be called once when the app starts
- */
+/// Initialize the service
 export const initializeApplication = async () => {
   try {
     console.log("Initializing application...");
@@ -66,9 +55,6 @@ export const initializeApplication = async () => {
   }
 };
 
-/**
- * Handles migration of mock data to real data if needed
- */
 async function handleMockDataMigration() {
   try {
     // Check if there's local mock data to migrate
@@ -80,8 +66,7 @@ async function handleMockDataMigration() {
       return { success: true, message: "No mock data to migrate" };
     }
 
-    // If we're in development and using mock data,
-    // check if user wants to migrate
+    // Check if the user is in a production environment
     if (apiConfig.shouldUseMockData()) {
       // Ask user if they want to migrate mock data
       const shouldMigrate = window.confirm(
@@ -120,10 +105,7 @@ async function handleMockDataMigration() {
   }
 }
 
-/**
- * Checks if the backend is available
- * @returns {Promise<boolean>} Whether backend is available
- */
+// Check backend connectivity
 async function checkBackendConnectivity() {
   try {
     // If using mock data, we don't need to check connectivity
@@ -156,10 +138,7 @@ async function checkBackendConnectivity() {
   }
 }
 
-/**
- * Cleans up mock data and related resources
- * This should be called when the app shuts down or when explicitly removing mock data
- */
+// Cleanup mock data resources
 export const cleanupMockData = async () => {
   try {
     // Only run in production to ensure no data leakage
@@ -197,7 +176,6 @@ export const cleanupMockData = async () => {
   }
 };
 
-// Default export
 export default {
   initializeApplication,
   cleanupMockData,

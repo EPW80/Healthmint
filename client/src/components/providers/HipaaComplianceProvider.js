@@ -5,13 +5,6 @@ import useHipaaCompliance from "../../hooks/useHipaaCompliance.js";
 
 // Create context for HIPAA compliance
 const HipaaComplianceContext = createContext(null);
-
-/**
- * HIPAA Compliance Provider Component
- *
- * Provides HIPAA compliance functionality to all child components
- * through React Context
- */
 export const HipaaComplianceProvider = ({ children, options = {} }) => {
   // Use the hook to get all HIPAA functionality
   const hipaaCompliance = useHipaaCompliance(options);
@@ -34,11 +27,6 @@ HipaaComplianceProvider.propTypes = {
   }),
 };
 
-/**
- * Custom hook to use the HIPAA compliance context
- *
- * Use this in components that need HIPAA compliance functionality
- */
 export const useHipaaContext = () => {
   const context = useContext(HipaaComplianceContext);
   if (!context) {

@@ -13,10 +13,6 @@ import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
 import { isLogoutInProgress } from "../../utils/authLoopPrevention.js";
 
-/**
- * RoleSelector Component: Allows users to select their role (Patient or Researcher)
- * with navigation and logout handling.
- */
 const RoleSelector = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();

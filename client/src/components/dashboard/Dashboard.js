@@ -9,7 +9,7 @@ import {
   Clock,
   Shield,
   AlertCircle,
-  CheckCircle, // This is imported correctly
+  CheckCircle,
   Bell,
   Database,
   Download,
@@ -42,18 +42,12 @@ import useAsyncOperation from "../../hooks/useAsyncOperation.js";
 import ErrorDisplay from "../ui/ErrorDisplay.js";
 import LoadingSpinner from "../ui/LoadingSpinner.js";
 
-/**
- * Unified Dashboard Component
- *
- * Renders a role-specific dashboard with tailored metrics, features, and terminology
- * for both patients and researchers.
- */
 const Dashboard = ({ onNavigate }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // Get user information from Redux
-  const userRole = useSelector(selectRole) || "patient"; // Default to patient if undefined
+  const userRole = useSelector(selectRole) || "patient"; // Default to 'patient'
   const { loading: uiLoading = false, error: uiError = null } = useSelector(
     (state) => state.ui || {}
   );
@@ -70,13 +64,6 @@ const Dashboard = ({ onNavigate }) => {
     pendingRequests = 0,
     activeStudies = 0,
     securityScore = 85,
-    // Removing unused variables from destructuring
-    // appliedFilters = 0,
-    // totalUploads = 0,
-    // totalShared = 0,
-    // earnings = "0",
-    // datasetsAccessed = 0,
-    // totalSpent = "0",
   } = userProfile || {};
 
   // Get health data state from hook
@@ -197,10 +184,7 @@ const Dashboard = ({ onNavigate }) => {
           userId,
         });
 
-        // Get record details
         await getRecordDetails(recordId);
-
-        // Set the viewing record
         setViewingRecord(recordId);
       });
     },
@@ -332,8 +316,6 @@ const Dashboard = ({ onNavigate }) => {
             message: "Dataset purchased successfully!",
           })
         );
-
-        // Here would be the actual purchase functionality
       });
     },
     [executeAsync, dispatch, userId, userRole]
@@ -350,7 +332,7 @@ const Dashboard = ({ onNavigate }) => {
       case "upload":
         return <Upload className="w-5 h-5 text-blue-500" />;
       case "access":
-        return <CheckCircle className="w-5 h-5 text-green-500" />; // Fixed: Changed 'Check' to 'CheckCircle'
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
       case "request":
         return <Bell className="w-5 h-5 text-yellow-500" />;
       case "download":

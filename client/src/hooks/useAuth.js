@@ -7,12 +7,6 @@ import authService from "../services/authService.js";
 import { isLogoutInProgress } from "../utils/authLoopPrevention.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * useAuth Hook
- *
- * Manages authentication state, registration, and related operations
- * with improved logout handling
- */
 const useAuth = () => {
   const dispatch = useDispatch();
 
@@ -29,9 +23,6 @@ const useAuth = () => {
   const verificationCacheTimeoutRef = useRef(null);
   const verificationCacheRef = useRef(null);
 
-  /**
-   * Clear verification cache
-   */
   const clearVerificationCache = useCallback(() => {
     verificationCacheRef.current = null;
 
@@ -41,9 +32,6 @@ const useAuth = () => {
     }
   }, []);
 
-  /**
-   * Verify authentication status with smart caching and logout handling
-   */
   const verifyAuth = useCallback(async () => {
     // Skip verification if there's a logout in progress
     if (isLogoutInProgress()) {
@@ -74,7 +62,6 @@ const useAuth = () => {
     setError(null);
 
     try {
-      // Use authService.verifyAuth if it exists, otherwise provide the implementation
       if (typeof authService.verifyAuth === "function") {
         const result = await authService.verifyAuth();
         // Check if result is null or undefined
@@ -234,9 +221,6 @@ const useAuth = () => {
     }
   }, [dispatch, clearVerificationCache]);
 
-  /**
-   * Handle login with a wallet address
-   */
   const login = useCallback(
     async (walletAddress) => {
       if (!walletAddress) {
@@ -267,7 +251,6 @@ const useAuth = () => {
           }
         }
 
-        // Create HIPAA-compliant audit log for login
         await hipaaComplianceService.createAuditLog("USER_LOGIN", {
           timestamp: new Date().toISOString(),
           walletAddress,
@@ -284,7 +267,6 @@ const useAuth = () => {
         console.error("Login error:", err);
         setError(err.message || "Failed to log in");
 
-        // Create HIPAA-compliant audit log for login error
         await hipaaComplianceService.createAuditLog("USER_LOGIN_ERROR", {
           timestamp: new Date().toISOString(),
           walletAddress,
@@ -298,9 +280,6 @@ const useAuth = () => {
     [dispatch, clearVerificationCache]
   );
 
-  /**
-   * Complete the registration process
-   */
   const completeRegistration = useCallback(
     async (userData) => {
       if (!userData || !userData.role) {
@@ -329,9 +308,7 @@ const useAuth = () => {
           userId: userData.address || userData.id,
         });
 
-        // Clear any cached verification after registration
         clearVerificationCache();
-
         setLoading(false);
         return true;
       } catch (err) {
@@ -352,9 +329,6 @@ const useAuth = () => {
     [dispatch, clearVerificationCache]
   );
 
-  /**
-   * Register a new user
-   */
   const register = useCallback(
     async (userData) => {
       if (!userData || !userData.address) {
@@ -366,9 +340,7 @@ const useAuth = () => {
       setError(null);
 
       try {
-        // Call authentication service to register user
-
-        // Update authentication state
+        // Call authentication service to register the user
         setIsAuthenticated(true);
         setIsNewUser(false);
         setIsRegistrationComplete(true);

@@ -1,5 +1,4 @@
 // src/components/DataBrowserView.js
-
 import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
@@ -21,12 +20,6 @@ import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
 import EnhancedPurchaseButton from "./DatasetPurchaseButton.js";
 import DataTierSelector from "./DataTierSelector.js";
 
-/**
- * DataBrowserView Component
- *
- * Presentation component for displaying health data browsing interface
- * with improved accessibility features and tier selection
- */
 const DataBrowserView = ({
   userRole,
   loading,

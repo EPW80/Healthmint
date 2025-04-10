@@ -10,12 +10,8 @@ import {
 import PropTypes from "prop-types";
 import mockPaymentService from "../services/mockPaymentService.js";
 
-/**
- * DatasetPurchaseButton Component
- *
- * An enhanced button component that handles dataset purchase interactions
- * using the mock payment service with improved visual feedback.
- */
+// This component is responsible for rendering a button that allows users to purchase a dataset.
+// It handles the purchase process, including payment processing and transaction confirmation.
 const DatasetPurchaseButton = ({
   dataset,
   selectedTier = "complete",
@@ -93,7 +89,7 @@ const DatasetPurchaseButton = ({
             message: "Insufficient funds to complete this purchase",
           });
         }
-        return; // Exit early without throwing
+        return; // Exit early if insufficient funds
       }
 
       // Update state to confirming - simulates blockchain confirmation
@@ -110,7 +106,7 @@ const DatasetPurchaseButton = ({
         setTransactionDetails({
           ...result,
           timestamp: new Date().toISOString(),
-          amount: purchasePrice, // Use purchasePrice here too
+          amount: purchasePrice, // Amount paid
         });
 
         // Notify parent component of successful purchase

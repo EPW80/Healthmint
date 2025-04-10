@@ -5,17 +5,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * useBlockchain Hook
- *
- * A hook for interacting with blockchain functionality with improved error handling
- * and fallbacks when certain functions aren't available
- */
 const useBlockchain = (options = {}) => {
   const {
     showNotifications = true,
     logErrors = true,
-    simulateFunctions = true, // Add flag for simulating functions in development
+    simulateFunctions = true,
   } = options;
 
   const dispatch = useDispatch();
@@ -30,9 +24,6 @@ const useBlockchain = (options = {}) => {
     };
   }, [walletAddress]);
 
-  /**
-   * Wrapper function to handle errors consistently across blockchain operations
-   */
   const withErrorHandling = useCallback(
     async (operation, operationName) => {
       setLoading(true);
@@ -83,9 +74,6 @@ const useBlockchain = (options = {}) => {
     [dispatch, showNotifications, logErrors, walletAddress]
   );
 
-  /**
-   * Simulated transaction history function for development/fallback
-   */
   const simulatedGetTransactionHistory = useCallback(
     async (filterParams = {}) => {
       console.log(
@@ -206,9 +194,6 @@ const useBlockchain = (options = {}) => {
     []
   );
 
-  /**
-   * Simulated balance checking function for development/fallback
-   */
   const simulatedGetBalance = useCallback(async (address) => {
     console.log("Using simulated getBalance for address:", address);
 
@@ -222,9 +207,6 @@ const useBlockchain = (options = {}) => {
     return balanceInWei.toString();
   }, []);
 
-  /**
-   * Simulated upload function for development/fallback
-   */
   const simulatedUploadHealthData = useCallback(
     async (ipfsHash, category, price, description) => {
       console.log("Using simulated uploadHealthData:", {
@@ -246,9 +228,6 @@ const useBlockchain = (options = {}) => {
     []
   );
 
-  /**
-   * Get transaction history with error handling
-   */
   const getTransactionHistory = useCallback(
     async (filters = {}) => {
       // Check if window.ethereum is available
@@ -281,9 +260,6 @@ const useBlockchain = (options = {}) => {
     ]
   );
 
-  /**
-   * Get wallet balance with error handling
-   */
   const getBalance = useCallback(
     async (address = walletAddress) => {
       // Check if window.ethereum is available
@@ -309,9 +285,6 @@ const useBlockchain = (options = {}) => {
     [withErrorHandling, walletAddress, simulateFunctions, simulatedGetBalance]
   );
 
-  /**
-   * Upload health data to blockchain with error handling
-   */
   const uploadHealthData = useCallback(
     async (ipfsHash, category, price, description) => {
       // Check if window.ethereum is available
@@ -332,7 +305,6 @@ const useBlockchain = (options = {}) => {
       }
 
       return withErrorHandling(async () => {
-        // Create transaction parameters
         const params = {
           from: walletAddress,
           to: process.env.REACT_APP_CONTRACT_ADDRESS,
@@ -381,9 +353,6 @@ const useBlockchain = (options = {}) => {
     ]
   );
 
-  /**
-   * Get pending transactions
-   */
   const getPendingTransactions = useCallback(async () => {
     // Check if window.ethereum is available
     if (!window.ethereum || !window.ethereum.request) {

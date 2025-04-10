@@ -54,11 +54,6 @@ const rootReducer = combineReducers({
   notifications: notificationReducer,
 });
 
-/**
- * Creates a persisted wallet state object with only serializable data
- * @param {Object} walletState - The complete wallet state
- * @returns {Object} Serializable wallet state for persistence
- */
 const createPersistableWalletState = (walletState) => ({
   address: walletState.address,
   chainId: walletState.chainId,
@@ -72,11 +67,6 @@ const createPersistableWalletState = (walletState) => ({
   },
 });
 
-/**
- * Creates a persisted auth state object with only necessary data
- * @param {Object} authState - The complete auth state
- * @returns {Object} Auth state for persistence
- */
 const createPersistableAuthState = (authState) => ({
   token: authState.token,
   refreshToken: authState.refreshToken,
@@ -97,8 +87,6 @@ const store = configureStore({
       },
       thunk: {
         extraArgument: {
-          // Add any extra arguments for thunks here
-          // For example, you could add an API client or a logger
           apiClient: null,
         },
       },

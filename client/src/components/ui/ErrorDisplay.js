@@ -3,11 +3,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { AlertCircle, X, RefreshCw } from "lucide-react";
 
-/**
- * ErrorDisplay Component
- *
- * A standardized error display component for consistent error handling across the application
- */
 const ErrorDisplay = ({
   error,
   onDismiss,

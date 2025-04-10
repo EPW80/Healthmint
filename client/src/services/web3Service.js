@@ -1,11 +1,9 @@
 // src/services/web3Service.js
 import { ethers } from "ethers";
-import  networkConfig  from "../config/networkConfig.js";
+import networkConfig from "../config/networkConfig.js";
 import HealthDataMarketplace from "../contracts/HealthDataMarketplace.json";
 
-/**
- * Error class for Web3 operations
- */
+// Error handling for Web3-related issues
 class Web3Error extends Error {
   constructor(message, code = "WEB3_ERROR", details = {}) {
     super(message);
@@ -16,12 +14,8 @@ class Web3Error extends Error {
   }
 }
 
-/**
- * Centralized service for all blockchain interactions
- *
- * This service ensures consistent Web3 provider usage and
- * standardized error handling across the application.
- */
+// Web3Service class to manage Ethereum interactions
+// and contract interactions
 class Web3Service {
   constructor() {
     this.provider = null;
@@ -45,11 +39,7 @@ class Web3Service {
     this.executeTransaction = this.executeTransaction.bind(this);
   }
 
-  /**
-   * Initializes the Web3 provider and contract instance
-   * @param {Object} options - Configuration options
-   * @returns {Promise<boolean>} Initialization success
-   */
+  // Initialize the Web3 provider and contract
   async initialize(options = {}) {
     try {
       if (this.initialized && !options.force) {
@@ -111,7 +101,6 @@ class Web3Service {
         this.initialized = true;
         return true;
       } catch (error) {
-        // Handle user rejection - don't retry these
         if (error.code === 4001) {
           // User rejected
           throw new Web3Error(
@@ -132,11 +121,6 @@ class Web3Service {
     }
   }
 
-  /**
-   * Gets the contract instance, initializing if necessary
-   * @param {Object} options - Options for contract instantiation
-   * @returns {Promise<ethers.Contract>} Contract instance
-   */
   async getContract(options = {}) {
     if (!this.initialized || !this.contract || options.force) {
       await this.initialize({
@@ -156,12 +140,6 @@ class Web3Service {
     return this.contract;
   }
 
-  /**
-   * Executes a blockchain transaction with standardized error handling and retries
-   * @param {Function} txFunc - Transaction function to execute
-   * @param {Object} options - Transaction options
-   * @returns {Promise<any>} Transaction result
-   */
   async executeTransaction(txFunc, options = {}) {
     const {
       retries = this.MAX_RETRIES,
@@ -277,12 +255,7 @@ class Web3Service {
     throw this._formatError(lastError);
   }
 
-  /**
-   * Formats Web3 errors for consistent handling
-   * @param {Error} error - Original error
-   * @returns {Web3Error} Formatted error
-   * @private
-   */
+  // Format error for consistent handling
   _formatError(error) {
     // Already formatted
     if (error instanceof Web3Error) {
@@ -328,12 +301,6 @@ class Web3Service {
     );
   }
 
-  /**
-   * Extracts user-friendly error message
-   * @param {Error} error - Original error
-   * @returns {string} User-friendly error message
-   * @private
-   */
   _getErrorMessage(error) {
     if (error instanceof Web3Error) {
       return error.message;
@@ -359,10 +326,6 @@ class Web3Service {
     return error.message || "An error occurred during blockchain interaction";
   }
 
-  /**
-   * Get current account
-   * @returns {Promise<string|null>} Current account address
-   */
   async getAccount() {
     try {
       if (!this.initialized) {
@@ -380,11 +343,6 @@ class Web3Service {
     }
   }
 
-  /**
-   * Check if a specific network is supported
-   * @param {number|string} chainId - Chain ID to check
-   * @returns {boolean} Whether the network is supported
-   */
   isNetworkSupported(chainId) {
     // Convert to hex if numeric
     if (typeof chainId === "number") {
@@ -396,11 +354,6 @@ class Web3Service {
     );
   }
 
-  /**
-   * Get network details by chain ID
-   * @param {number|string} chainId - Chain ID
-   * @returns {Object|null} Network details
-   */
   getNetworkByChainId(chainId) {
     // Convert to hex if numeric
     if (typeof chainId === "number") {
@@ -414,11 +367,7 @@ class Web3Service {
     );
   }
 
-  /**
-   * Switch to a specific network
-   * @param {string} chainId - Target chain ID
-   * @returns {Promise<boolean>} Success status
-   */
+  // Switch network in MetaMask
   async switchNetwork(chainId) {
     try {
       if (!window.ethereum) {
@@ -476,20 +425,12 @@ class Web3Service {
     }
   }
 
-  /**
-   * Get health marketplace contract
-   * @returns {Promise<ethers.Contract>} Contract instance
-   */
+  // Get contract instance
   async getHealthMarketplaceContract() {
     return this.getContract({ useSigner: true });
   }
 
-  /**
-   * Listen for blockchain events
-   * @param {string} eventName - Event name
-   * @param {Function} callback - Event callback
-   * @returns {Function} Unlisten function
-   */
+  // Listen for events from the contract
   listenForEvents(eventName, callback) {
     if (!this.contract) {
       throw new Web3Error("Contract not initialized");
@@ -512,9 +453,7 @@ class Web3Service {
   }
 }
 
-// Create singleton instance
 const web3Service = new Web3Service();
 
-// Export service and error class
 export { web3Service, Web3Error };
 export default web3Service;

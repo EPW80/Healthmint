@@ -12,15 +12,7 @@ import {
   List,
 } from "lucide-react";
 
-/**
- * HIPAA Compliant Data Viewer Component
- *
- * Displays health data with proper HIPAA compliance measures:
- * - Audit logging of all data access with field-level tracking
- * - Consent verification
- * - PHI protection
- * - De-identification where needed
- */
+// Render the HIPAA compliant data viewer component
 const HipaaCompliantDataViewer = ({
   dataId,
   dataType,

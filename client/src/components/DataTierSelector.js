@@ -4,12 +4,8 @@ import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
-/**
- * DataTierSelector Component
- *
- * Allows users to select different data tiers (Basic, Standard, Complete)
- * with corresponding record counts and prices.
- */
+// This component allows users to select a data tier for purchasing datasets.
+// It displays different tiers with their respective prices and record counts.
 const DataTierSelector = ({
   datasetId,
   datasetName,

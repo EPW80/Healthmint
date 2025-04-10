@@ -1,12 +1,4 @@
 // src/services/paymentProvider.js
-
-/**
- * Payment Service Provider
- *
- * A service facade that provides a unified interface for payment operations.
- * Can switch between mock and real implementations based on configuration.
- */
-
 import { mockPaymentService } from "./mockPaymentService.js";
 // In the future, this would be imported: import { realPaymentService } from './paymentService';
 

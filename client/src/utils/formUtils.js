@@ -1,12 +1,4 @@
 // client/src/utils/formUtils.js
-
-/**
- * Safely converts values for React input elements to prevent NaN warnings
- *
- * @param {any} value - The value to sanitize
- * @param {string} type - The input type (number, text, etc.)
- * @returns {string|number} A safe value for the input
- */
 export const sanitizeInputValue = (value, type = "text") => {
   // Return empty string for undefined/null values
   if (value === undefined || value === null) {
@@ -32,12 +24,6 @@ export const sanitizeInputValue = (value, type = "text") => {
   return String(value);
 };
 
-/**
- * Ensures a form state object has valid values for all fields
- *
- * @param {Object} formState - The form state object to sanitize
- * @returns {Object} Sanitized form state
- */
 export const sanitizeFormState = (formState) => {
   if (!formState || typeof formState !== "object") {
     return {};

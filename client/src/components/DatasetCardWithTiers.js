@@ -17,12 +17,6 @@ import {
 } from "lucide-react";
 import DataTierSelector from "./DataTierSelector";
 
-/**
- * Enhanced Dataset Card Component with Tier Selection
- *
- * Displays dataset information and allows selecting different tiers for purchase
- * with improved accessibility, error handling, and user experience
- */
 const DatasetCardWithTiers = ({
   id,
   title,

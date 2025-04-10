@@ -1,47 +1,40 @@
 // src/mockData/mockHealthRecords.js
 
-/**
- * Mock health records to use when API fails or for development
- * Provides 25 diverse health records with controlled verification status
- */
-
+// This file generates mock health records for testing and demonstration purposes.
 const generateMockHealthRecords = () => {
   // Data formats
   const formats = ["PDF", "CSV", "JSON", "DICOM", "HL7", "FHIR"];
 
-  // Generate varied dates over the past 2 years
+  // Generate varied dates over the past 5 years
   const getRandomDate = () => {
     const now = new Date();
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setFullYear(now.getFullYear() - 2);
+    const fiveYearsAgo = new Date();
+    fiveYearsAgo.setFullYear(now.getFullYear() - 5);
 
     const randomTimestamp =
-      twoYearsAgo.getTime() +
-      Math.random() * (now.getTime() - twoYearsAgo.getTime());
+      fiveYearsAgo.getTime() +
+      Math.random() * (now.getTime() - fiveYearsAgo.getTime());
     return new Date(randomTimestamp).toISOString();
   };
 
-  // Generate varied record sizes
+  // Generate varied record counts using a logarithmic scale for realism
   const getRandomRecordCount = () => {
-    const sizes = [
-      // Small records (under 1000)
-      () => Math.floor(Math.random() * 1000),
-      // Medium records (1000-10000)
-      () => Math.floor(Math.random() * 9000) + 1000,
-      // Large records (10000+)
-      () => Math.floor(Math.random() * 90000) + 10000,
-    ];
-
-    return sizes[Math.floor(Math.random() * sizes.length)]();
+    const min = 10;
+    const max = 1000000;
+    const exponent = 2; // Adjusts skewness
+    const randomValue = Math.random();
+    return Math.floor(min * Math.pow(max / min, randomValue ** exponent));
   };
 
-  // Generate random price below 0.7 ETH
-  const getRandomPrice = () => {
-    // Generate a random number between 0.01 and 0.5
-    return (Math.random() * 0.49 + 0.01).toFixed(4);
+  // Generate price based on record count and verification status
+  const getRandomPrice = (recordCount, verified) => {
+    const basePrice = 0.01; // Minimum price in ETH
+    const multiplier = verified ? 1.5 : 1.0; // Verified records are more expensive
+    const price = basePrice + (recordCount / 1000000) * multiplier;
+    return Math.min(price, 0.7).toFixed(4); // Cap at 0.7 ETH
   };
 
-  // Templates for health records
+  // Expanded templates for health records
   const recordTemplates = [
     {
       title: "Annual Physical Examination",
@@ -49,212 +42,288 @@ const generateMockHealthRecords = () => {
       description:
         "Comprehensive annual physical examination including vitals, general assessment, and preventative screening recommendations.",
       tags: ["annual", "physical", "screening", "preventative"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "low",
     },
     {
       title: "Complete Blood Count (CBC)",
       category: "Laboratory",
       description:
-        "Analysis of red blood cells, white blood cells, and platelets to assess overall health and detect a wide range of disorders.",
+        "Analysis of red blood cells, white blood cells, and platelets to assess overall health and detect disorders.",
       tags: ["blood", "test", "CBC", "hematology"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "Lipid Panel Results",
       category: "Laboratory",
       description:
-        "Measurement of cholesterol levels including HDL, LDL, and triglycerides to assess cardiovascular health.",
+        "Measurement of cholesterol levels (HDL, LDL, triglycerides) to assess cardiovascular health.",
       tags: ["cholesterol", "lipids", "heart", "cardiovascular"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "Blood Pressure Monitoring",
       category: "Cardiology",
       description:
-        "Periodic measurements of blood pressure readings over a 24-hour period to detect hypertension patterns.",
+        "24-hour blood pressure readings to detect hypertension patterns.",
       tags: ["blood pressure", "hypertension", "monitoring"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "low",
     },
     {
       title: "Electrocardiogram (ECG)",
       category: "Cardiology",
       description:
-        "Recording of the electrical activity of the heart to detect cardiac abnormalities and assess heart function.",
+        "Recording of heart electrical activity to detect abnormalities and assess function.",
       tags: ["ECG", "heart", "electrical", "cardiac"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "high",
     },
     {
       title: "COVID-19 Vaccination",
       category: "Immunization",
       description:
-        "Record of COVID-19 vaccination including date, manufacturer, lot number, and administration site.",
+        "Record of COVID-19 vaccination with date, manufacturer, lot number, and site.",
       tags: ["COVID-19", "vaccine", "immunization", "pandemic"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "Influenza Vaccination",
       category: "Immunization",
       description:
-        "Annual influenza vaccination record with batch number and administration details.",
+        "Annual flu vaccination record with batch number and administration details.",
       tags: ["flu", "vaccine", "seasonal", "influenza"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "low",
     },
     {
       title: "Allergy Skin Test Results",
       category: "Allergy",
       description:
-        "Comprehensive skin test results for environmental and food allergens with reaction severity measurements.",
+        "Skin test results for environmental and food allergens with severity measurements.",
       tags: ["allergy", "skin test", "allergens", "reactivity"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "medium",
     },
     {
       title: "Dental X-Rays",
       category: "Dental",
       description:
-        "Full set of dental radiographs including bitewing and panoramic images for comprehensive dental assessment.",
+        "Full set of dental radiographs (bitewing and panoramic) for assessment.",
       tags: ["dental", "x-ray", "radiographs", "teeth"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "high",
     },
     {
       title: "Eye Examination",
       category: "Ophthalmology",
       description:
-        "Comprehensive eye examination including visual acuity, refraction assessment, and ocular health evaluation.",
+        "Eye exam including visual acuity, refraction, and ocular health evaluation.",
       tags: ["vision", "eye", "refraction", "acuity"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "low",
     },
     {
       title: "Genetic Risk Assessment",
       category: "Genetics",
       description:
-        "Analysis of genetic markers associated with disease risk factors and pharmaceutical response variations.",
+        "Analysis of genetic markers for disease risk and pharmaceutical response.",
       tags: ["genetics", "DNA", "risk", "hereditary"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "high",
     },
     {
       title: "Mental Health Assessment",
       category: "Psychology",
       description:
-        "Standardized psychological evaluation using validated assessment tools to measure mood, anxiety, and cognitive function.",
+        "Psychological evaluation measuring mood, anxiety, and cognitive function.",
       tags: ["mental health", "psychology", "assessment", "cognitive"],
-      verified: false, // Never verified
+      verified: false,
+      sensitivity: "high",
     },
     {
       title: "Nutrition Consultation",
       category: "Nutrition",
       description:
-        "Dietary assessment and personalized nutrition recommendations based on health goals and medical conditions.",
+        "Dietary assessment and personalized nutrition recommendations.",
       tags: ["diet", "nutrition", "consultation", "dietary"],
-      verified: false, // Never verified
+      verified: false,
+      sensitivity: "low",
     },
     {
       title: "Bone Density Scan",
       category: "Orthopedics",
       description:
-        "DEXA scan results measuring bone mineral density to assess osteoporosis risk and bone health.",
+        "DEXA scan results assessing bone mineral density and osteoporosis risk.",
       tags: ["bone", "density", "DEXA", "osteoporosis"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "MRI - Lumbar Spine",
       category: "Orthopedics",
-      description:
-        "Magnetic resonance imaging of the lumbar spine with radiologist interpretation and findings.",
+      description: "MRI of the lumbar spine with radiologist interpretation.",
       tags: ["MRI", "spine", "lumbar", "imaging"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "high",
     },
     {
       title: "Pulmonary Function Test",
       category: "Pulmonology",
       description:
-        "Comprehensive assessment of lung function including spirometry, lung volumes, and diffusion capacity.",
+        "Lung function assessment including spirometry and diffusion capacity.",
       tags: ["pulmonary", "lungs", "spirometry", "breathing"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "medium",
     },
     {
       title: "Thyroid Function Panel",
       category: "Endocrinology",
       description:
-        "Measurement of thyroid hormones (TSH, T3, T4) to assess thyroid function and detect disorders.",
+        "Measurement of thyroid hormones (TSH, T3, T4) to assess function.",
       tags: ["thyroid", "hormones", "endocrine", "TSH"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "Skin Cancer Screening",
       category: "Dermatology",
       description:
-        "Full-body skin examination to detect suspicious lesions and assess skin cancer risk.",
+        "Full-body skin exam to detect lesions and assess cancer risk.",
       tags: ["skin", "cancer", "screening", "dermatology"],
-      verified: false, // Never verified
+      verified: false,
+      sensitivity: "high",
     },
     {
       title: "Neurological Examination",
       category: "Neurology",
       description:
-        "Comprehensive assessment of neurological function including reflexes, sensation, and cognitive status.",
+        "Assessment of neurological function including reflexes and cognition.",
       tags: ["neurological", "brain", "nervous system", "cognitive"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "high",
     },
     {
       title: "Physical Therapy Evaluation",
       category: "Physical Therapy",
       description:
-        "Initial assessment of functional mobility, strength, and rehabilitation needs with treatment recommendations.",
+        "Assessment of mobility, strength, and rehabilitation needs.",
       tags: ["PT", "rehabilitation", "mobility", "therapy"],
-      verified: false, // Never verified
+      verified: false,
+      sensitivity: "medium",
     },
     {
       title: "Dietary Log Analysis",
       category: "Nutrition",
-      description:
-        "Two-week food diary analysis with macronutrient breakdown and dietary pattern observations.",
+      description: "Two-week food diary analysis with macronutrient breakdown.",
       tags: ["diet", "food log", "nutrition", "macronutrients"],
-      verified: false, // Never verified
+      verified: false,
+      sensitivity: "low",
     },
     {
       title: "Hemoglobin A1C Test",
       category: "Endocrinology",
       description:
-        "Measurement of average blood glucose levels over the past three months to monitor diabetes management.",
+        "Measurement of average blood glucose over three months for diabetes monitoring.",
       tags: ["diabetes", "glucose", "A1C", "blood sugar"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "Sports Injury Assessment",
       category: "Sports Medicine",
       description:
-        "Evaluation of sports-related injury including mechanism, severity, and rehabilitation protocol.",
+        "Evaluation of sports injury with severity and rehabilitation protocol.",
       tags: ["sports", "injury", "athletic", "rehabilitation"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "low",
     },
     {
       title: "Vitamin D Level Test",
       category: "Laboratory",
       description:
-        "Measurement of serum vitamin D levels to assess deficiency and bone health status.",
+        "Serum vitamin D measurement to assess deficiency and bone health.",
       tags: ["vitamin D", "supplement", "deficiency", "blood test"],
-      verified: true, // Always verified
+      verified: true,
+      sensitivity: "medium",
     },
     {
       title: "Sleep Study Results",
       category: "Neurology",
       description:
-        "Polysomnography results showing sleep patterns, oxygen levels, and potential sleep disorders.",
+        "Polysomnography results showing sleep patterns and disorders.",
       tags: ["sleep", "apnea", "polysomnography", "rest"],
-      verified: null, // Random determination
+      verified: null,
+      sensitivity: "high",
+    },
+    // New templates for diversity
+    {
+      title: "Pediatric Growth Chart",
+      category: "Pediatrics",
+      description:
+        "Longitudinal record of child growth (height, weight, head circumference).",
+      tags: ["pediatric", "growth", "development", "child"],
+      verified: true,
+      sensitivity: "high",
+    },
+    {
+      title: "Prenatal Ultrasound",
+      category: "Obstetrics",
+      description:
+        "Ultrasound imaging to monitor fetal development during pregnancy.",
+      tags: ["pregnancy", "ultrasound", "fetal", "obstetrics"],
+      verified: true,
+      sensitivity: "high",
+    },
+    {
+      title: "Cancer Screening Panel",
+      category: "Oncology",
+      description:
+        "Screening tests for cancer including blood markers and imaging.",
+      tags: ["cancer", "screening", "oncology", "tumor markers"],
+      verified: true,
+      sensitivity: "high",
+    },
+    {
+      title: "Liver Function Tests",
+      category: "Hepatology",
+      description: "Blood tests assessing liver health (enzymes, bilirubin).",
+      tags: ["liver", "enzymes", "bilirubin", "hepatology"],
+      verified: true,
+      sensitivity: "medium",
+    },
+    {
+      title: "Renal Function Panel",
+      category: "Nephrology",
+      description:
+        "Tests evaluating kidney function (creatinine, BUN, electrolytes).",
+      tags: ["kidney", "renal", "creatinine", "electrolytes"],
+      verified: true,
+      sensitivity: "medium",
     },
   ];
 
-  // Generate 25 mock health records
+  // Generate 30 mock health records
   return recordTemplates.map((template, index) => {
-    // Determine if record is anonymized (80% chance)
-    const anonymized = Math.random() > 0.2;
+    // Anonymization based on sensitivity
+    const anonymizationChance = {
+      low: 0.3, // 30% chance
+      medium: 0.6, // 60% chance
+      high: 0.9, // 90% chance
+    };
+    const anonymized =
+      Math.random() < anonymizationChance[template.sensitivity];
 
-    // Determine if record is verified - respect explicit settings if provided
+    // Verification respects explicit settings or defaults to 70% chance
     const verified =
-      template.verified !== null ? template.verified : Math.random() > 0.3; // 70% chance if not explicitly set
+      template.verified !== null ? template.verified : Math.random() > 0.3;
 
-    // Create the final record
+    const recordCount = getRandomRecordCount();
+    const price = getRandomPrice(recordCount, verified);
+
     return {
       id: `record-${Date.now()}-${index}`,
       title: template.title,
@@ -262,29 +331,35 @@ const generateMockHealthRecords = () => {
       description: template.description,
       uploadDate: getRandomDate(),
       ipfsHash: `ipfs-${Math.random().toString(36).substring(2, 15)}`,
-      price: getRandomPrice().toString(),
+      price: price.toString(),
       format: formats[Math.floor(Math.random() * formats.length)],
-      recordCount: getRandomRecordCount(),
+      recordCount: recordCount,
       verified: verified,
       anonymized: anonymized,
-      shared: Math.random() > 0.7, // 30% chance of being shared
-      owner: "0xe169...6041", // Match the address from your screenshot
+      shared: Math.random() > 0.7, // 30% chance
+      owner: `0x${Math.random().toString(16).substring(2, 10)}`, // Random address
       tags: template.tags,
       studyType:
-        Math.random() > 0.7
+        template.category === "Laboratory" || template.category === "Genetics"
           ? "Observational"
           : Math.random() > 0.5
             ? "Clinical Trial"
             : "Longitudinal",
       metadata: {
         patientAge: anonymized
-          ? `${Math.floor(Math.random() * 70) + 18}`
-          : null,
+          ? null
+          : `${Math.floor(Math.random() * 70) + 18}`,
         recordType: template.category,
         dataQuality:
-          Math.random() > 0.8 ? "High" : Math.random() > 0.5 ? "Medium" : "Low",
+          recordCount > 10000 ? "High" : recordCount > 1000 ? "Medium" : "Low",
         completeness: `${Math.floor(Math.random() * 30) + 70}%`, // 70-100%
-        processingSteps: ["Collected", "Validated", "Anonymized", "Encrypted"],
+        processingSteps: anonymized
+          ? ["Collected", "Validated", "Anonymized", "Encrypted"]
+          : ["Collected", "Validated", "Encrypted"],
+        collectionMethod: Math.random() > 0.5 ? "Clinical" : "Self-reported",
+        region: ["North America", "Europe", "Asia", "Africa", "South America"][
+          Math.floor(Math.random() * 5)
+        ],
       },
     };
   });

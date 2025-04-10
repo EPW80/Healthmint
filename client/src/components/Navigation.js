@@ -15,6 +15,7 @@ import {
   X,
   ChevronDown,
   AlertTriangle,
+  ShoppingCart,
 } from "lucide-react";
 import useNavigation from "../hooks/useNavigation.js";
 
@@ -111,12 +112,20 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
         icon: Upload,
       });
     } else if (userRole === "researcher") {
-      // Add Browse Data option only for researchers - insert after Home
-      baseItems.splice(1, 0, {
-        to: "/browse",
-        label: "Browse Data",
-        icon: Search,
-      });
+      baseItems.splice(
+        1,
+        0,
+        {
+          to: "/browse",
+          label: "Browse Data",
+          icon: Search,
+        },
+        {
+          to: "/marketplace",
+          label: "Portal",
+          icon: ShoppingCart,
+        }
+      );
     }
 
     return baseItems;

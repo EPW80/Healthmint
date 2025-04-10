@@ -1,16 +1,8 @@
 // src/services/mockPaymentService.js
-/**
- * Mock Payment Service
- *
- * Provides mock implementations of blockchain and payment interactions
- * for testing and development without requiring actual blockchain connections.
- * Enhanced to support tiered data purchasing.
- */
-
 class MockPaymentService {
   constructor() {
     this.isInitialized = false;
-    this.mockBalance = "10.0"; // Increased default mock balance for more purchasing power
+    this.mockBalance = "10.0";
     this.mockTransactions = [];
     this.pendingTransactions = [];
     this.MIN_BALANCE = 1.0; // Minimum balance to maintain
@@ -20,9 +12,6 @@ class MockPaymentService {
     this._generateMockTransactions();
   }
 
-  /**
-   * Initialize the provider - always succeeds in mock implementation
-   */
   async initializeProvider() {
     console.log("Initializing mock payment service...");
 
@@ -35,10 +24,6 @@ class MockPaymentService {
     return { success: true };
   }
 
-  /**
-   * Get wallet balance - always returns the mock balance
-   * @returns {Promise<string>} The mocked wallet balance
-   */
   async getBalance() {
     // Ensure the service is initialized
     if (!this.isInitialized) {
@@ -57,11 +42,6 @@ class MockPaymentService {
     return this.mockBalance;
   }
 
-  /**
-   * Refill wallet balance - useful when testing many purchases
-   * @param {number} amount - Amount to add (default: refill to 10 ETH)
-   * @returns {Promise<string>} The new balance
-   */
   async refillBalance(amount = null) {
     // If amount is null, refill to 10 ETH
     if (amount === null) {
@@ -94,23 +74,13 @@ class MockPaymentService {
     return this.mockBalance;
   }
 
-  /**
-   * Set auto-refill option
-   * @param {boolean} enabled - Whether to enable auto-refill
-   */
+  // Set auto-refill option
   setAutoRefill(enabled) {
     this.AUTO_REFILL = enabled;
     console.log(`Auto-refill ${enabled ? "enabled" : "disabled"}`);
   }
 
-  /**
-   * Purchase a dataset with mock transaction, with support for tiered purchasing
-   * @param {string} datasetId - ID of the dataset to purchase
-   * @param {string|number} amount - Amount to pay for the dataset
-   * @param {string} tier - Optional tier (basic, standard, complete)
-   * @param {number} recordCount - Optional record count for the tier
-   * @returns {Promise<Object>} Transaction result
-   */
+  // Get auto-refill status
   async purchaseDataset(
     datasetId,
     amount,
@@ -192,19 +162,12 @@ class MockPaymentService {
       gasUsed,
       gasCost: gasCost.toFixed(6),
       timestamp: transaction.timestamp,
-      tier, // Return tier information
-      recordCount, // Return record count
-      amount, // Return amount paid
+      tier,
+      recordCount,
+      amount,
     };
   }
 
-  /**
-   * Get payment history with tier information
-   * @param {Object} filters - Optional filters for transactions
-   * @param {string} filters.tier - Filter by tier
-   * @param {string} filters.datasetId - Filter by dataset ID
-   * @returns {Promise<Array>} List of transactions
-   */
   async getPaymentHistory(filters = {}) {
     // Ensure the service is initialized
     if (!this.isInitialized) {
@@ -231,10 +194,6 @@ class MockPaymentService {
     return transactions;
   }
 
-  /**
-   * Get pending transactions
-   * @returns {Promise<Array>} List of pending transactions
-   */
   async getPendingTransactions() {
     // Ensure the service is initialized
     if (!this.isInitialized) {
@@ -244,10 +203,6 @@ class MockPaymentService {
     return [...this.pendingTransactions];
   }
 
-  /**
-   * Generate mock transaction history with tier information
-   * @private
-   */
   _generateMockTransactions() {
     const categories = [
       "General Health",
@@ -272,20 +227,15 @@ class MockPaymentService {
       const date = new Date();
       date.setDate(date.getDate() - Math.floor(Math.random() * 90));
 
-      // Random amount between 0.01 and 0.5 ETH (ensuring it's below 0.7 ETH)
       const amount = (Math.random() * 0.49 + 0.01).toFixed(4);
 
-      // Random dataset ID
       const datasetId = `ds_${Math.floor(Math.random() * 1000)}`;
 
-      // Random category
       const category =
         categories[Math.floor(Math.random() * categories.length)];
 
-      // Random tier
       const tier = tiers[Math.floor(Math.random() * tiers.length)];
 
-      // Random record count
       const baseRecordCount = 1000 + Math.floor(Math.random() * 9000);
       const recordCount = Math.round(baseRecordCount * (tier.percentage / 100));
 
@@ -317,6 +267,5 @@ class MockPaymentService {
   }
 }
 
-// Create and export a singleton instance
 const mockPaymentService = new MockPaymentService();
 export default mockPaymentService;

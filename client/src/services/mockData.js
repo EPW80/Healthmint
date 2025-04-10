@@ -1,15 +1,6 @@
 // client/src/services/mockData.js
-
-/**
- * Mock data service for transaction history
- * Provides mock data for both researcher and patient roles
- */
 const mockData = {
-  /**
-   * Generate mock researcher transactions (purchases of health data)
-   * @param {string} address - Wallet address
-   * @returns {Array} - Array of transaction objects
-   */
+  // Mock data for demonstration purposes
   getResearcherTransactions: (address) => {
     // Create some mock transactions with realistic data
     return [
@@ -130,22 +121,13 @@ const mockData = {
     ];
   },
 
-  /**
-   * Get a specific researcher transaction by ID
-   * @param {string} transactionId - Transaction ID
-   * @param {string} address - Wallet address
-   * @returns {Object|null} - Transaction object or null if not found
-   */
+  // Get a specific researcher transaction by ID
   getResearcherTransactionById: (transactionId, address) => {
     const transactions = mockData.getResearcherTransactions(address);
     return transactions.find((tx) => tx.id === transactionId) || null;
   },
 
-  /**
-   * Generate mock patient transactions (data sharing, consent, uploads)
-   * @param {string} address - Wallet address
-   * @returns {Array} - Array of transaction objects
-   */
+  // Get all researcher transactions for a specific address
   getPatientTransactions: (address) => {
     // Create some mock transactions with realistic data
     return [
@@ -274,12 +256,6 @@ const mockData = {
     ];
   },
 
-  /**
-   * Get a specific patient transaction by ID
-   * @param {string} transactionId - Transaction ID
-   * @param {string} address - Wallet address
-   * @returns {Object|null} - Transaction object or null if not found
-   */
   getPatientTransactionById: (transactionId, address) => {
     const transactions = mockData.getPatientTransactions(address);
     return transactions.find((tx) => tx.id === transactionId) || null;

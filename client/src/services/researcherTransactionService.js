@@ -1,17 +1,8 @@
 // client/src/services/researcherTransactionService.js
 import mockData from "./mockData";
 
-/**
- * Service for handling researcher-specific transactions
- * - Fetches purchased data history
- * - Handles purchasing new data sets
- */
 const researcherTransactionService = {
-  /**
-   * Get all transactions for a researcher
-   * @param {string} address - Wallet address of the researcher
-   * @returns {Promise<Object>} - Transaction data or error
-   */
+  //  Example: Fetching researcher transactions
   getTransactions: async (address) => {
     if (!address) {
       return {
@@ -48,12 +39,6 @@ const researcherTransactionService = {
     }
   },
 
-  /**
-   * Get details of a specific purchased dataset
-   * @param {string} transactionId - ID of the transaction
-   * @param {string} address - Wallet address of the researcher
-   * @returns {Promise<Object>} - Dataset details or error
-   */
   getDatasetDetails: async (transactionId, address) => {
     if (!transactionId || !address) {
       return {
@@ -100,12 +85,7 @@ const researcherTransactionService = {
     }
   },
 
-  /**
-   * Purchase a new dataset
-   * @param {Object} purchaseDetails - Details of the purchase
-   * @param {string} address - Wallet address of the researcher
-   * @returns {Promise<Object>} - Result of the purchase
-   */
+  // Purchase a dataset
   purchaseDataset: async (purchaseDetails, address) => {
     if (!purchaseDetails || !address) {
       return {

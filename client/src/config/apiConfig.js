@@ -1,10 +1,4 @@
 // client/src/config/apiConfig.js
-/**
- * API Configuration Module
- *
- * Provides centralized configuration for API endpoints and mode selection
- * to switch between mock data and real backend integration.
- */
 
 // Environment configuration
 const ENV = {
@@ -17,7 +11,6 @@ const ENV = {
 
 // API endpoints
 const ENDPOINTS = {
-  // Authentication
   AUTH: {
     LOGIN: "/api/auth/login",
     CHALLENGE: "/api/auth/challenge",
@@ -67,10 +60,6 @@ const ENDPOINTS = {
   },
 };
 
-/**
- * Determines if the application should use mock data
- * @returns {boolean} Whether to use mock data
- */
 const shouldUseMockData = () => {
   // Always use real data in production
   if (ENV.NODE_ENV === "production") {
@@ -81,16 +70,9 @@ const shouldUseMockData = () => {
   return ENV.USE_MOCK_DATA;
 };
 
-/**
- * Constructs a full API URL from an endpoint
- * @param {string} endpoint - The API endpoint
- * @returns {string} The complete URL
- */
 const getApiUrl = (endpoint) => {
-  // Remove starting slash if present
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
-
-  // Remove trailing slash from API_URL if present
+  // Remove trailing slash from API URL if it exists
   const baseUrl = ENV.API_URL.endsWith("/")
     ? ENV.API_URL.slice(0, -1)
     : ENV.API_URL;
@@ -98,9 +80,6 @@ const getApiUrl = (endpoint) => {
   return `${baseUrl}/${cleanEndpoint}`;
 };
 
-/**
- * API configuration object
- */
 const apiConfig = {
   ENV,
   ENDPOINTS,

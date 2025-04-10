@@ -7,15 +7,6 @@ import { clearWalletConnection } from "../redux/slices/walletSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * Handles complete logout flow with proper redirect to login page
- *
- * @param {Object} options - Options for logout
- * @param {boolean} options.showNotification - Whether to show a notification
- * @param {Function} options.onLogoutStart - Callback before logout starts
- * @param {Function} options.onLogoutComplete - Callback after logout completes
- * @returns {Promise<boolean>} Whether logout was successful
- */
 export const handleLogout = async (options = {}) => {
   const { showNotification = true, onLogoutStart, onLogoutComplete } = options;
 
@@ -56,7 +47,6 @@ export const handleLogout = async (options = {}) => {
       // Continue with logout process
     }
 
-    // ENHANCED: Clear localStorage completely first
     try {
       localStorage.clear();
     } catch (clearError) {
@@ -78,7 +68,6 @@ export const handleLogout = async (options = {}) => {
       console.error("Local storage clearing error:", storageError);
     }
 
-    // ENHANCED: Clear sessionStorage completely
     try {
       sessionStorage.clear();
     } catch (sessionClearError) {
@@ -96,7 +85,6 @@ export const handleLogout = async (options = {}) => {
       console.error("Session storage clearing error:", sessionError);
     }
 
-    // ENHANCED: Set a flag to force wallet reconnect on next login
     try {
       sessionStorage.setItem("force_wallet_reconnect", "true");
     } catch (flagError) {
@@ -127,10 +115,8 @@ export const handleLogout = async (options = {}) => {
       }
     }
 
-    // ENHANCED: Give a small delay to ensure state clearing is complete
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // ENHANCED: Redirect to login page - CRITICAL STEP
     console.log("Redirecting to login page...");
     window.location.href = "/login";
 
@@ -168,7 +154,6 @@ export const handleLogout = async (options = {}) => {
       }
     }
 
-    // ENHANCED: Even on error, try to force a clean state and redirect to login page
     try {
       // Completely clear localStorage and sessionStorage
       localStorage.clear();
@@ -190,12 +175,6 @@ export const handleLogout = async (options = {}) => {
   }
 };
 
-/**
- * Creates a force logout function that can be used in case of auth errors
- *
- * @param {Object} options - Options for forced logout
- * @returns {Function} Force logout function
- */
 export const createForceLogout = (options = {}) => {
   return async () => {
     try {

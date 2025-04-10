@@ -43,22 +43,22 @@ const NotificationsContainer = () => {
     (state) => state.notifications.notifications
   );
 
-  // Auto-dismiss notifications after 5 seconds by default
+  // Auto-dismiss notifications after a specified duration
   useEffect(() => {
-    const timer = {};
+    const timers = {};
 
     notifications.forEach((notification) => {
-      // Set timeout for auto-dismissal if not already being tracked
-      if (!timer[notification.id] && !notification.persistent) {
-        timer[notification.id] = setTimeout(() => {
+      // Only set timer if not persistent and timer doesn't already exist
+      if (!notification.persistent && !timers[notification.id]) {
+        timers[notification.id] = setTimeout(() => {
           dispatch(removeNotification(notification.id));
-        }, notification.duration || 5000);
+        }, notification.duration || 5000); // Default to 5 seconds
       }
     });
 
-    // Cleanup timers on unmount
+    // Cleanup timers on unmount or when notifications change
     return () => {
-      Object.values(timer).forEach(clearTimeout);
+      Object.values(timers).forEach(clearTimeout);
     };
   }, [notifications, dispatch]);
 
@@ -73,23 +73,25 @@ const NotificationsContainer = () => {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full">
       {notifications.map((notification) => (
         <div
           key={notification.id}
           className={`rounded-lg shadow-lg overflow-hidden ${getBackgroundColor(notification.type)} transform transition-all duration-500 animate-slideIn`}
           style={{ maxWidth: "calc(100vw - 48px)" }}
+          role="alert"
+          aria-live="assertive"
         >
-          <div className="flex items-center p-3">
+          <div className="flex items-center p-4">
             <div className="flex-shrink-0 mr-3">
               <NotificationIcon type={notification.type} />
             </div>
-            <div className="flex-1 mr-2">
+            <div className="flex-1 mr-4">
               <p className="text-white font-medium">{notification.message}</p>
             </div>
             <button
               onClick={() => handleClose(notification.id)}
-              className="flex-shrink-0 text-white hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-full"
+              className="flex-shrink-0 text-white hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-full p-1"
               aria-label="Close notification"
             >
               <X size={18} />

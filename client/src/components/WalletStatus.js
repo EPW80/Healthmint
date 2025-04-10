@@ -16,12 +16,7 @@ import LoadingSpinner from "./ui/LoadingSpinner.js";
 import useWalletConnect from "../hooks/useWalletConnect.js";
 import mockPaymentService from "../services/mockPaymentService.js";
 
-/**
- * WalletStatus Component
- *
- * Displays the current wallet connection status, balance, and network information
- * with options to copy address, view on explorer, and refresh balance
- */
+// WalletStatus: A component to display wallet connection status, balance, and network information
 const WalletStatus = ({
   showBalance = true,
   showNetwork = true,

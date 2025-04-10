@@ -1,20 +1,7 @@
 // client/src/utils/authUtils.js
-/**
- * Authentication and Registration Utilities
- *
- * Centralized utilities for managing user authentication, registration status,
- * and ensuring consistent auth state throughout the application.
- *
- * HIPAA Compliance Note: These functions maintain user authentication status
- * which is important for access control and audit trail requirements under
- * HIPAA Security Rule provisions for access management.
- */
-
-/**
- * Check if a user is a new user based on localStorage and profile state
- * @param {string} address - User wallet address
- * @returns {boolean} Whether the user is new
- */
+// This file contains utility functions for managing user authentication and registration status.
+// It includes functions to check if a user is new, needs registration, and to handle local storage for user profiles.
+// as well as functions to sanitize data for HIPAA compliance.
 export const isNewUser = (address) => {
   // Default to true if we can't determine
   if (!address) return true;
@@ -68,10 +55,6 @@ export const isNewUser = (address) => {
   }
 };
 
-/**
- * Force redirect to the appropriate page based on auth state
- * @param {Object} authState - Current auth state
- */
 export const redirectToAppropriateRoute = (authState) => {
   const { isConnected, needsRegistration, isRoleSelected } = authState;
   const currentPath = window.location.pathname;
@@ -111,12 +94,6 @@ export const redirectToAppropriateRoute = (authState) => {
   }
 };
 
-/**
- * Helper to determine if a user needs to complete registration
- * @param {Object} user - User object
- * @param {string} address - Wallet address
- * @returns {boolean} Whether registration is needed
- */
 export const needsRegistration = (user, address) => {
   // If no user or address, then yes need registration
   if (!user && !address) return true;
@@ -146,10 +123,6 @@ export const needsRegistration = (user, address) => {
   return profileIncomplete;
 };
 
-/**
- * Set up local storage for a new connection
- * @param {string} address - Wallet address
- */
 export const initializeNewConnection = (address) => {
   if (!address) return;
 
@@ -204,14 +177,6 @@ export const initializeNewConnection = (address) => {
   }
 };
 
-/**
- * Forces the system to recognize a user as registered and with a selected role
- * This should be called after successful registration to prevent redirect loops
- * @param {string} role - The selected role
- * @param {string} walletAddress - The user's wallet address
- * @param {Object} userData - User profile data
- * @returns {Object|null} The updated user profile or null if failed
- */
 export const forceRegistrationComplete = (
   role,
   walletAddress,
@@ -302,10 +267,6 @@ export const forceRegistrationComplete = (
   }
 };
 
-/**
- * Checks if registration bypass is active
- * @returns {boolean} Whether bypass is active
- */
 export const isRegistrationBypassActive = () => {
   const bypass = sessionStorage.getItem("bypass_registration_check");
   const bypassUntil = sessionStorage.getItem("bypass_registration_until");
@@ -318,10 +279,6 @@ export const isRegistrationBypassActive = () => {
   return false;
 };
 
-/**
- * Check if a user has completed registration
- * @returns {boolean} Whether registration is complete
- */
 export const isRegistrationComplete = () => {
   // Check for bypass first
   if (isRegistrationBypassActive()) {
@@ -370,11 +327,7 @@ export const isRegistrationComplete = () => {
   }
 };
 
-/**
- * Sanitize auth-related data to ensure HIPAA compliance
- * @param {Object} userData - User data to sanitize
- * @returns {Object} Sanitized user data
- */
+// Sanitize user data to remove sensitive information
 export const sanitizeAuthData = (userData) => {
   if (!userData) return {};
 
@@ -398,11 +351,6 @@ export const sanitizeAuthData = (userData) => {
   return sanitized;
 };
 
-/**
- * Create an audit log entry for authentication actions (HIPAA compliance)
- * @param {string} action - The auth action performed
- * @param {Object} details - Additional details about the action
- */
 export const logAuthAction = (action, details = {}) => {
   try {
     // In a real app, this would send to a secure audit logging service
@@ -435,10 +383,6 @@ export const logAuthAction = (action, details = {}) => {
   }
 };
 
-/**
- * Clear all authentication data (for logout)
- * Complies with HIPAA by ensuring proper session termination
- */
 export const clearAuthData = () => {
   try {
     // Log the logout action for HIPAA compliance
@@ -454,10 +398,7 @@ export const clearAuthData = () => {
       "healthmint_wallet_state",
       "healthmint_wallet_connection",
     ];
-
     authKeys.forEach((key) => localStorage.removeItem(key));
-
-    // Don't clear profile or role information - that persists across sessions
 
     // Clear any bypass flags
     sessionStorage.removeItem("bypass_registration_check");

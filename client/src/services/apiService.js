@@ -2,12 +2,6 @@
 import { ENV } from "../config/environmentConfig.js";
 import mockDataUtils from "../utils/mockDataUtils.js";
 
-/**
- * API Service
- *
- * Provides a consistent interface for API requests with
- * proper error handling and mock data capabilities.
- */
 class ApiService {
   constructor() {
     // Configuration
@@ -38,46 +32,26 @@ class ApiService {
     }
   }
 
-  /**
-   * Set the authentication token
-   * @param {string} token - JWT token
-   */
   setAuthToken(token) {
     this.authToken = token;
   }
 
-  /**
-   * Enable mock data mode
-   */
   enableMockData() {
     this.mockMode = true;
     localStorage.setItem("use_mock_data", "true");
     console.log("[API] Mock data mode enabled");
   }
 
-  /**
-   * Disable mock data mode
-   */
   disableMockData() {
     this.mockMode = false;
     localStorage.setItem("use_mock_data", "false");
     console.log("[API] Mock data mode disabled");
   }
 
-  /**
-   * Check if mock data mode is enabled
-   * @returns {boolean} Whether mock data is enabled
-   */
   isMockDataEnabled() {
     return this.mockMode;
   }
 
-  /**
-   * Create a complete URL from endpoint
-   * @param {string} endpoint - API endpoint
-   * @returns {string} Full URL
-   * @private
-   */
   _createUrl(endpoint) {
     // Remove leading slash if present
     const cleanEndpoint = endpoint.startsWith("/")
@@ -92,12 +66,6 @@ class ApiService {
     return `${cleanBaseUrl}/${cleanEndpoint}`;
   }
 
-  /**
-   * Get request headers including auth token if available
-   * @param {Object} customHeaders - Additional headers
-   * @returns {Object} Complete headers
-   * @private
-   */
   _getHeaders(customHeaders = {}) {
     const headers = { ...this.defaultHeaders, ...customHeaders };
 
@@ -108,13 +76,6 @@ class ApiService {
     return headers;
   }
 
-  /**
-   * Handle timeout for fetch requests
-   * @param {string} url - Request URL
-   * @param {Object} options - Fetch options
-   * @returns {Promise<Object>} Response
-   * @private
-   */
   async _fetchWithTimeout(url, options) {
     const controller = new AbortController();
     const { signal } = controller;
@@ -137,12 +98,6 @@ class ApiService {
     }
   }
 
-  /**
-   * Process response based on content type
-   * @param {Response} response - Fetch response
-   * @returns {Promise<Object>} Processed response data
-   * @private
-   */
   async _processResponse(response) {
     const contentType = response.headers.get("Content-Type") || "";
 
@@ -171,14 +126,6 @@ class ApiService {
     return { data, status: response.status, headers: response.headers };
   }
 
-  /**
-   * Handle mock responses
-   * @param {string} method - HTTP method
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request data
-   * @returns {Object|null} Mock response or null
-   * @private
-   */
   _getMockResponse(method, endpoint, data = {}) {
     if (!this.mockMode) return null;
 
@@ -362,15 +309,6 @@ class ApiService {
     };
   }
 
-  /**
-   * Make a HTTP request
-   * @param {string} method - HTTP method
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request data
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response
-   * @private
-   */
   async _request(method, endpoint, data, options = {}) {
     try {
       // Check for mock response
@@ -465,57 +403,22 @@ class ApiService {
     }
   }
 
-  /**
-   * Make a GET request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} params - Query parameters
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response
-   */
   async get(endpoint, params = {}, options = {}) {
     return this._request("get", endpoint, params, options);
   }
 
-  /**
-   * Make a POST request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request body
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response
-   */
   async post(endpoint, data = {}, options = {}) {
     return this._request("post", endpoint, data, options);
   }
 
-  /**
-   * Make a PUT request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request body
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response
-   */
   async put(endpoint, data = {}, options = {}) {
     return this._request("put", endpoint, data, options);
   }
 
-  /**
-   * Make a DELETE request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} options - Request options
-   * @returns {Promise<Object>} Response
-   */
   async delete(endpoint, options = {}) {
     return this._request("delete", endpoint, null, options);
   }
 
-  /**
-   * Upload a file with progress tracking
-   * @param {string} endpoint - Upload endpoint
-   * @param {File} file - File to upload
-   * @param {Function} onProgress - Progress callback
-   * @param {Object} metadata - Additional metadata
-   * @returns {Promise<Object>} Upload result
-   */
   async uploadFile(endpoint, file, onProgress = () => {}, metadata = {}) {
     try {
       // Return mock response in mock mode
@@ -650,13 +553,6 @@ class ApiService {
     }
   }
 
-  /**
-   * Download a file with progress tracking
-   * @param {string} endpoint - File endpoint
-   * @param {Function} onProgress - Progress callback
-   * @param {Object} options - Download options
-   * @returns {Promise<Object>} Download result with blob
-   */
   async downloadFile(endpoint, onProgress = () => {}, options = {}) {
     try {
       // Return mock response in mock mode
@@ -826,6 +722,5 @@ Anonymized: ${record.anonymized ? "Yes" : "No"}
   }
 }
 
-// Create singleton instance
 const apiService = new ApiService();
 export default apiService;

@@ -252,10 +252,7 @@ class HipaaComplianceService {
 
     // Using destructuring with _ prefix to indicate unused variable (to avoid ESLint warning)
     // eslint-disable-next-line no-unused-vars
-    const {
-      mode = "default",
-      excludeFields = [],
-    } = options;
+    const { mode = "default", excludeFields = [] } = options;
 
     // Return a deep copy to avoid modifying original
     const sanitized = JSON.parse(JSON.stringify(data));
