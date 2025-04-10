@@ -1,5 +1,5 @@
 // src/components/roles/RoleSelector.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { User, Microscope, Loader } from "lucide-react";
@@ -30,22 +30,36 @@ const RoleSelector = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Check logout and wallet connection status
+  // Refs to prevent infinite loops
+  const hasCheckedWalletRef = useRef(false);
+
+  // Check logout and wallet connection status - ONCE only
   useEffect(() => {
+    // Skip if already checked to prevent infinite loop
+    if (hasCheckedWalletRef.current) return;
+
+    // Mark as checked
+    hasCheckedWalletRef.current = true;
+
     if (isLogoutInProgress()) {
       console.log("RoleSelector: Logout in progress, redirecting to login");
       navigate("/login", { replace: true });
       return;
     }
 
-    const isWalletConnected = localStorage.getItem("healthmint_wallet_connection") === "true";
-    const hasWalletAddress = !!localStorage.getItem("healthmint_wallet_address");
+    const isWalletConnected =
+      localStorage.getItem("healthmint_wallet_connection") === "true";
+    const hasWalletAddress = !!localStorage.getItem(
+      "healthmint_wallet_address"
+    );
 
     if (!isWalletConnected || !hasWalletAddress) {
       console.log("RoleSelector: No wallet connection, redirecting to login");
       navigate("/login", { replace: true });
     }
-  }, [navigate]);
+    // Intentionally omitting dependencies to run only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Check for existing role and redirect if found
   useEffect(() => {
@@ -96,10 +110,14 @@ const RoleSelector = () => {
 
   // Validate wallet address
   useEffect(() => {
-    const localStorageAddress = localStorage.getItem("healthmint_wallet_address");
+    const localStorageAddress = localStorage.getItem(
+      "healthmint_wallet_address"
+    );
     if (!walletAddress && !localStorageAddress) {
       setError("Wallet address not found. Please reconnect your wallet.");
-    } else if (error === "Wallet address not found. Please reconnect your wallet.") {
+    } else if (
+      error === "Wallet address not found. Please reconnect your wallet."
+    ) {
       setError(null);
     }
   }, [walletAddress, error]);
@@ -128,7 +146,9 @@ const RoleSelector = () => {
         const currentWalletAddress =
           walletAddress || localStorage.getItem("healthmint_wallet_address");
         if (!currentWalletAddress) {
-          throw new Error("Wallet address not found. Please reconnect your wallet.");
+          throw new Error(
+            "Wallet address not found. Please reconnect your wallet."
+          );
         }
 
         const userData = authService.getCurrentUser() || {};
@@ -146,7 +166,9 @@ const RoleSelector = () => {
           updatedUserData
         );
         if (!registrationSuccess) {
-          console.error("RoleSelector: Registration via authUtils failed, using fallback");
+          console.error(
+            "RoleSelector: Registration via authUtils failed, using fallback"
+          );
           authService.completeRegistration(updatedUserData);
         }
 
@@ -164,7 +186,10 @@ const RoleSelector = () => {
           })
         );
 
-        navigate("/dashboard", { replace: true, state: { roleJustSelected: true } });
+        navigate("/dashboard", {
+          replace: true,
+          state: { roleJustSelected: true },
+        });
       } catch (err) {
         console.error("RoleSelector: Role selection error:", err);
         setError(err.message || "Failed to set role. Please try again.");
@@ -193,9 +218,7 @@ const RoleSelector = () => {
       onClick={() => !isLoading && handleRoleSelect(role)}
     >
       <div className="p-8 flex flex-col items-center gap-4 h-full">
-        <div className={`bg-${color}-50 p-4 rounded-full`}>
-          {icon}
-        </div>
+        <div className={`bg-${color}-50 p-4 rounded-full`}>{icon}</div>
         <h2 className="text-2xl font-semibold text-gray-800">
           {role === "patient" ? "Patient" : "Researcher"}
         </h2>
