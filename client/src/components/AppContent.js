@@ -34,7 +34,14 @@ import TransactionsPage from "../pages/TransactionPage.js";
 import DataMarketplace from "../pages/DataMarketplace.js";
 import DataContributionPortal from "../pages/DataContributionPortal.js";
 import AccessHistoryPage from "../pages/AccessHistoryPage.js"; // Add Access History import
-import { HipaaGuide, DataSharingBenefits, PrivacyBestPractices } from "../pages/resources"; // Add Resource imports
+import { 
+  HipaaGuide, 
+  DataSharingBenefits, 
+  PrivacyBestPractices, 
+  CitationGuidelines, 
+  ResearchEthics, 
+  CollaborationNetwork 
+} from "../pages/resources"; // Add Resource imports
 
 // Logout Confirmation Dialog
 const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
@@ -516,6 +523,49 @@ const AppContent = () => {
                   <Navigate to="/select-role" replace />
                 ) : (
                   <PrivacyBestPractices />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          {/* Researcher-specific Resource Routes */}
+          <Route
+            path="/resources/citation-guidelines"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <CitationGuidelines />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/resources/research-ethics"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <ResearchEthics />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/network/join"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <CollaborationNetwork />
                 )}
               </ProtectedRoute>
             }
