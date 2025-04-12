@@ -3,7 +3,6 @@ import express from "express";
 import {
   validateAddress,
   validateProfileUpdate,
-  validateConsent,
 } from "../middleware/validation.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENDPOINTS } from "../config/networkConfig.js";
@@ -14,18 +13,10 @@ import authMiddleware, { authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Remove redundant HIPAA middleware - now handled in server.js
-// router.use(hipaaCompliance.validatePHI);
-// router.use(hipaaCompliance.auditLog);
-
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
 
-/**
- * @route   GET /profile
- * @desc    Get user profile with HIPAA compliance
- * @access  Private
- */
+// Middleware to check if user is authenticated
 router.get(
   ENDPOINTS.USERS.PROFILE,
   rateLimiters.api,
@@ -87,11 +78,7 @@ router.get(
   })
 );
 
-/**
- * @route   PUT /profile
- * @desc    Update user profile with HIPAA compliance
- * @access  Private
- */
+// Create new user
 router.put(
   ENDPOINTS.USERS.PROFILE,
   rateLimiters.api,
@@ -160,11 +147,7 @@ router.put(
   })
 );
 
-/**
- * @route   POST /role
- * @desc    Set or update user role
- * @access  Private (Self only or Admin)
- */
+// Update user role
 router.post(
   "/role",
   rateLimiters.api,
@@ -234,16 +217,12 @@ router.post(
       success: true,
       message: `Role updated to ${role}`,
       user: sanitizedUser,
-      roles: [role], // Return array of roles for consistency with auth
+      roles: [role],
     });
   })
 );
 
-/**
- * @route   GET /access-log
- * @desc    Get user access log
- * @access  Private (Admin or Self)
- */
+// Update user consent
 router.get(
   ENDPOINTS.USERS.ACCESS_LOG,
   rateLimiters.api,
@@ -302,11 +281,7 @@ router.get(
   })
 );
 
-/**
- * @route   GET /settings
- * @desc    Get user settings
- * @access  Private (Self only)
- */
+// Retrieve user settings
 router.get(
   ENDPOINTS.USERS.SETTINGS,
   rateLimiters.api,

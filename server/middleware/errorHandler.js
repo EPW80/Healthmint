@@ -101,7 +101,7 @@ const handleDuplicateError = (err, res, errorId) => {
 };
 
 // Handle authentication errors
-const handleAuthError = (err, res, errorId) => {
+const handleAuthError = (res, errorId) => {
   return res.status(401).json({
     success: false,
     message: "Authentication Error",
@@ -158,7 +158,7 @@ const sanitizeFieldName = (field) => {
   return field;
 };
 
-const errorHandler = async (err, req, res, next) => {
+const errorHandler = async (err, req, res) => {
   try {
     // Generate error ID for tracking
     const errorId = generateErrorId();
@@ -217,6 +217,5 @@ const errorHandler = async (err, req, res, next) => {
   }
 };
 
-// Export using ES module syntax
 export { errorHandler, HIPAAError };
 export default errorHandler;

@@ -142,10 +142,8 @@ export const developmentLogger = (req, res, next) => {
   next();
 };
 
-// Named exports
 export { sanitizeRequest };
 
-// Default export object for backward compatibility
 export default {
   setupRequestContext,
   requestLogger,

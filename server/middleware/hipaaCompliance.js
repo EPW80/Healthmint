@@ -287,6 +287,5 @@ const hipaaCompliance = {
   },
 };
 
-// ✅ Use ES Module Export
 export default hipaaCompliance;
 export { HIPAAComplianceError };

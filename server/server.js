@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import fs from "fs";
 
 // Import standardized error handling
 import { errorHandler } from "./utils/errorUtils.js";
@@ -18,6 +19,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
+// Validate critical environment variables
+const REQUIRED_ENV_VARS = ["ENCRYPTION_KEY", "JWT_SECRET"];
+const missingVars = REQUIRED_ENV_VARS.filter(
+  (varName) => !process.env[varName]
+);
+if (missingVars.length > 0) {
+  console.error(
+    `❌ CRITICAL ERROR: Missing required environment variables: ${missingVars.join(", ")}`
+  );
+  console.error("Server cannot start securely without these variables.");
+  process.exit(1);
+}
+
 // Configure environment variables
 const NODE_ENV = process.env.NODE_ENV || "development";
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
@@ -27,6 +41,17 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
       "http://localhost:5000",
       "https://healthmint.com",
     ];
+
+// Setup logging directory
+const logDir = path.join(__dirname, "logs");
+if (!fs.existsSync(logDir)) {
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+    console.log("✅ Created logs directory");
+  } catch (err) {
+    console.warn("⚠️ Could not create logs directory:", err.message);
+  }
+}
 
 // Initialize service dependencies first individually
 import hipaaComplianceService from "./services/hipaaComplianceService.js";
@@ -51,8 +76,10 @@ try {
   console.log("✅ Services initialized successfully");
 } catch (error) {
   console.error("❌ Error initializing services:", error);
+  process.exit(1);
 }
 
+// Initialize Express app
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
@@ -72,8 +99,18 @@ const corsOptions = {
   },
   credentials: true, // Allow cookies and authentication headers
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
-  exposedHeaders: ["Content-Length", "X-Request-ID"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Request-ID",
+    "X-Access-Purpose",
+  ],
+  exposedHeaders: [
+    "Content-Length",
+    "X-Request-ID",
+    "X-HIPAA-Compliant",
+    "X-Download-Purpose",
+  ],
   maxAge: 86400, // 24 hours - how long the browser should cache preflight results
 };
 
@@ -83,30 +120,71 @@ app.options("*", cors(corsOptions));
 // Apply CORS middleware to all routes
 app.use(cors(corsOptions));
 
-// Basic Security middleware
+// Enhanced Security middleware
 app.use(
   helmet({
-    // Configure Content Security Policy as needed
-    contentSecurityPolicy: NODE_ENV === "production" ? undefined : false,
+    contentSecurityPolicy: NODE_ENV === "production",
+    crossOriginEmbedderPolicy: NODE_ENV === "production",
+    hsts: {
+      maxAge: 15552000, // 180 days
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   })
 );
 
-// Parse JSON requests
-app.use(express.json({ limit: "50mb" }));
+// Add security headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+});
 
-// Parse URL-encoded requests (forms)
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// Parse JSON requests - set reasonable size limits
+app.use(express.json({ limit: "10mb" }));
+
+// Parse URL-encoded requests - set reasonable size limits
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Request logging
-app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
+const morganFormat =
+  NODE_ENV === "production"
+    ? morgan("combined", {
+        skip: (req) =>
+          req.path === "/health" || req.path.startsWith("/metrics"),
+        stream: fs.createWriteStream(path.join(logDir, "access.log"), {
+          flags: "a",
+        }),
+      })
+    : morgan("dev");
+
+app.use(morganFormat);
 
 // Import Routes with Error Handling
-let authRoutes, dataRoutes, profileRoutes, usersRoutes;
+let authRoutes, dataRoutes, profileRoutes, usersRoutes, datasetsRoutes;
 try {
   authRoutes = (await import("./routes/auth.js")).default;
   dataRoutes = (await import("./routes/data.js")).default;
   profileRoutes = (await import("./routes/profile.js")).default;
   usersRoutes = (await import("./routes/users.js")).default;
+
+  // Try to import datasets routes - add with graceful fallback
+  try {
+    datasetsRoutes = (await import("./routes/datasets.js")).default;
+    console.log("✅ Datasets routes loaded successfully");
+  } catch (err) {
+    console.warn("⚠️ Datasets routes not found:", err.message);
+    // Create a minimal response to prevent 404 errors
+    datasetsRoutes = express.Router();
+    datasetsRoutes.get("/:id/download", (req, res) => {
+      res.status(501).json({
+        success: false,
+        message: "Dataset download functionality not yet implemented",
+        datasetId: req.params.id,
+      });
+    });
+  }
 } catch (err) {
   console.error("❌ Failed to import routes:", err.message);
   process.exit(1); // Stops the server if routes fail to load
@@ -118,6 +196,7 @@ app.get("/", (_req, res) => {
     success: true,
     message: "Healthmint API Server",
     timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || "1.0.0",
   });
 });
 
@@ -128,6 +207,7 @@ app.get("/health", (_req, res) => {
     message: "Service is operational",
     timestamp: new Date().toISOString(),
     environment: NODE_ENV,
+    uptime: process.uptime(),
   });
 });
 
@@ -153,6 +233,9 @@ apiRouter.use("/profile", profileRoutes);
 console.log("Mounting users routes at /api/users");
 apiRouter.use("/users", usersRoutes);
 
+console.log("Mounting datasets routes at /api/datasets");
+apiRouter.use("/datasets", datasetsRoutes);
+
 // Mount the API Router to the app
 app.use("/api", apiRouter);
 
@@ -168,19 +251,61 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 // Graceful Shutdown Handling
-process.on("SIGINT", () => {
-  console.log("\n🔴 Server shutting down gracefully...");
-  process.exit(0);
+let server;
+const gracefulShutdown = () => {
+  console.log("\n🔴 Graceful shutdown initiated...");
+
+  // Close server first, stop accepting new connections
+  if (server) {
+    server.close(() => {
+      console.log("✅ HTTP server closed");
+
+      // Add any other cleanup tasks here (e.g., database connections)
+
+      console.log("✅ Shutdown complete");
+      process.exit(0);
+    });
+
+    // If shutdown takes too long, force exit
+    setTimeout(() => {
+      console.error("❌ Forced shutdown after timeout");
+      process.exit(1);
+    }, 30000); // 30 seconds timeout
+  } else {
+    process.exit(0);
+  }
+};
+
+// Handle different termination signals
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGUSR2", gracefulShutdown); // For Nodemon restarts
+
+// Handle uncaught exceptions and unhandled rejections
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+  gracefulShutdown();
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Promise Rejection:", reason);
+  gracefulShutdown();
 });
 
 // Start Server
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running and accessible at http://0.0.0.0:${PORT}`);
-  console.log(`🌐 Environment: ${NODE_ENV}`);
-  console.log("Available routes:");
-  console.log("  GET  /");
-  console.log("  GET  /health");
-  console.log("  POST /api/auth/wallet/connect");
-});
+try {
+  server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server running and accessible at http://0.0.0.0:${PORT}`);
+    console.log(`🌐 Environment: ${NODE_ENV}`);
+    console.log("Available routes:");
+    console.log("  GET  /");
+    console.log("  GET  /health");
+    console.log("  POST /api/auth/wallet/connect");
+    console.log("  GET  /api/datasets/:id/download");
+  });
+} catch (err) {
+  console.error("❌ Failed to start server:", err);
+  process.exit(1);
+}
 
 export default app;

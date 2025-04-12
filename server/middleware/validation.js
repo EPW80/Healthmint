@@ -32,9 +32,6 @@ export const validateProfileUpdate = (data) => {
   if (!data || typeof data !== "object") {
     throw new ValidationError("Valid update data is required", "INVALID_DATA");
   }
-
-  // Add validation for specific fields as needed
-
   return data;
 };
 
@@ -46,9 +43,6 @@ export const validateConsent = (consentSettings) => {
       "INVALID_CONSENT"
     );
   }
-
-  // Add validation for specific consent fields as needed
-
   return consentSettings;
 };
 
@@ -301,7 +295,6 @@ export const validateConsentUpdate = (req, res, next) => {
   }
 };
 
-// Named exports for internal validators
 export {
   validateName,
   validateAge,
@@ -310,7 +303,6 @@ export {
   validateEmergencyContact,
 };
 
-// Default export
 export default {
   validateRegistration,
   validateDataAccess,

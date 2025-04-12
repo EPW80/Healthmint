@@ -257,5 +257,4 @@ router.get(
 
 router.use("/browse", browseRoutes);
 
-// Export the router for use in the main server.js file
 export default router;
