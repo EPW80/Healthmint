@@ -39,6 +39,7 @@ import { selectRole } from "../../redux/slices/roleSlice.js";
 import useHealthData from "../../hooks/useHealthData.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import useAsyncOperation from "../../hooks/useAsyncOperation.js";
+import useAnalyticsNavigation from "../../hooks/useAnalyticsNavigation.js";
 import ErrorDisplay from "../ui/ErrorDisplay.js";
 import LoadingSpinner from "../ui/LoadingSpinner.js";
 
@@ -176,7 +177,7 @@ const Dashboard = ({ onNavigate }) => {
           message: "New health record uploaded",
           timestamp: now.toLocaleDateString(),
           category: "Records",
-          status: "success"
+          status: "success",
         },
         {
           id: "act-002",
@@ -184,7 +185,7 @@ const Dashboard = ({ onNavigate }) => {
           message: "Dr. Smith viewed your medical history",
           timestamp: yesterday.toLocaleDateString(),
           category: "Access",
-          status: "success"
+          status: "success",
         },
         {
           id: "act-003",
@@ -192,7 +193,7 @@ const Dashboard = ({ onNavigate }) => {
           message: "Research Institute requested data access",
           timestamp: twoDaysAgo.toLocaleDateString(),
           category: "Requests",
-          status: "pending"
+          status: "pending",
         },
         {
           id: "act-004",
@@ -200,8 +201,8 @@ const Dashboard = ({ onNavigate }) => {
           message: "Downloaded vaccination records",
           timestamp: threeDaysAgo.toLocaleDateString(),
           category: "Downloads",
-          status: "success"
-        }
+          status: "success",
+        },
       ];
     } else {
       // Researcher activities
@@ -212,7 +213,7 @@ const Dashboard = ({ onNavigate }) => {
           message: "Access requested for Diabetes Dataset 2023",
           timestamp: now.toLocaleDateString(),
           category: "Data Access",
-          status: "pending"
+          status: "pending",
         },
         {
           id: "act-r002",
@@ -220,7 +221,7 @@ const Dashboard = ({ onNavigate }) => {
           message: "Downloaded Heart Disease Dataset",
           timestamp: yesterday.toLocaleDateString(),
           category: "Downloads",
-          status: "success"
+          status: "success",
         },
         {
           id: "act-r003",
@@ -228,7 +229,7 @@ const Dashboard = ({ onNavigate }) => {
           message: "Updated COVID-19 Outcomes Study",
           timestamp: twoDaysAgo.toLocaleDateString(),
           category: "Studies",
-          status: "success"
+          status: "success",
         },
         {
           id: "act-r004",
@@ -236,8 +237,8 @@ const Dashboard = ({ onNavigate }) => {
           message: "Published findings to Medical Journal",
           timestamp: threeDaysAgo.toLocaleDateString(),
           category: "Publications",
-          status: "success"
-        }
+          status: "success",
+        },
       ];
     }
   };
@@ -412,6 +413,16 @@ const Dashboard = ({ onNavigate }) => {
   const handleClosePreview = useCallback(() => {
     setPreviewOpen(false);
   }, []);
+
+  // Analytics navigation setup - moved after handleViewDataset is defined
+  const {
+    navigateToVisualization,
+    navigateToStatistics,
+    navigateToPopulationStudies,
+    startDataFiltering,
+  } = useAnalyticsNavigation({
+    onStartFiltering: handleViewDataset,
+  });
 
   // Activity status & icon helpers
   const getActivityIcon = (type) => {
@@ -805,7 +816,7 @@ const Dashboard = ({ onNavigate }) => {
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-4 w-4"
                   fill="none"
-                  viewBox="0 0 24 24"
+                  viewBox="0 24 24"
                   stroke="currentColor"
                 >
                   <path
@@ -1318,19 +1329,33 @@ const Dashboard = ({ onNavigate }) => {
             insights.
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <button className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm">
+            <button
+              onClick={() => navigateToVisualization(userId, userRole)}
+              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+            >
               <BarChart size={16} />
               Data Visualization
             </button>
-            <button className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm">
+            <button
+              onClick={() => navigateToStatistics(userId, userRole)}
+              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+            >
               <Activity size={16} />
               Statistical Analysis
             </button>
-            <button className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm">
+            <button
+              onClick={() => navigateToPopulationStudies(userId, userRole)}
+              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+            >
               <Users size={16} />
               Population Studies
             </button>
-            <button className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm">
+            <button
+              onClick={() =>
+                startDataFiltering(selectedDataset || null, userId, userRole)
+              }
+              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+            >
               <Filter size={16} />
               Data Filtering
             </button>

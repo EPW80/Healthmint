@@ -34,14 +34,17 @@ import TransactionsPage from "../pages/TransactionPage.js";
 import DataMarketplace from "../pages/DataMarketplace.js";
 import DataContributionPortal from "../pages/DataContributionPortal.js";
 import AccessHistoryPage from "../pages/AccessHistoryPage.js"; // Add Access History import
-import { 
-  HipaaGuide, 
-  DataSharingBenefits, 
-  PrivacyBestPractices, 
-  CitationGuidelines, 
-  ResearchEthics, 
-  CollaborationNetwork 
+import {
+  HipaaGuide,
+  DataSharingBenefits,
+  PrivacyBestPractices,
+  CitationGuidelines,
+  ResearchEthics,
+  CollaborationNetwork,
 } from "../pages/resources"; // Add Resource imports
+import DataVisualization from "./analytics/DataVisualization.js";
+import StatisticalAnalysis from "./analytics/StatisticalAnalysis.js";
+import PopulationStudies from "./analytics/PopulationStudies.js";
 
 // Logout Confirmation Dialog
 const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
@@ -422,6 +425,49 @@ const AppContent = () => {
                   <Navigate to="/select-role" replace />
                 ) : (
                   <DataBrowser />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          {/* Analytics Tool Routes */}
+          <Route
+            path="/analysis/visualization"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <DataVisualization />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analysis/statistics"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <StatisticalAnalysis />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analysis/population-studies"
+            element={
+              <ProtectedRoute allowedRoles={["researcher"]}>
+                {isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <PopulationStudies />
                 )}
               </ProtectedRoute>
             }

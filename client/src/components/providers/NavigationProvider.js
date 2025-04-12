@@ -99,7 +99,9 @@ const NavigationProvider = ({ children }) => {
     ];
 
     return routes.filter(isRouteAvailable);
-  }, [isRouteAvailable, userRole]);
+  }, [isRouteAvailable]);
+
+  // Example useMemo hook
 
   // Create context value
   const value = {
