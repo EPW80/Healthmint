@@ -131,11 +131,14 @@ const Dashboard = ({ onNavigate }) => {
         timestamp: new Date().toISOString(),
       });
 
+      // Generate sample activities based on user role
+      const sampleActivities = generateSampleActivities(userRole);
+
       // Set appropriate dashboard data based on role
       setDashboardData((prevData) => ({
         ...prevData,
         securityScore: userProfile?.securityScore || 85,
-        recentActivity: [],
+        recentActivity: sampleActivities,
         availableDatasets: userRole === "researcher" ? healthData || [] : [],
       }));
 
@@ -154,6 +157,90 @@ const Dashboard = ({ onNavigate }) => {
       dispatch(setLoading(false));
     }
   }, [userRole, userId, dispatch, healthData, userProfile]);
+
+  // Add this function to generate sample activities
+  const generateSampleActivities = (role) => {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const threeDaysAgo = new Date(now);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    if (role === "patient") {
+      return [
+        {
+          id: "act-001",
+          type: "upload",
+          message: "New health record uploaded",
+          timestamp: now.toLocaleDateString(),
+          category: "Records",
+          status: "success"
+        },
+        {
+          id: "act-002",
+          type: "access",
+          message: "Dr. Smith viewed your medical history",
+          timestamp: yesterday.toLocaleDateString(),
+          category: "Access",
+          status: "success"
+        },
+        {
+          id: "act-003",
+          type: "request",
+          message: "Research Institute requested data access",
+          timestamp: twoDaysAgo.toLocaleDateString(),
+          category: "Requests",
+          status: "pending"
+        },
+        {
+          id: "act-004",
+          type: "download",
+          message: "Downloaded vaccination records",
+          timestamp: threeDaysAgo.toLocaleDateString(),
+          category: "Downloads",
+          status: "success"
+        }
+      ];
+    } else {
+      // Researcher activities
+      return [
+        {
+          id: "act-r001",
+          type: "access_request",
+          message: "Access requested for Diabetes Dataset 2023",
+          timestamp: now.toLocaleDateString(),
+          category: "Data Access",
+          status: "pending"
+        },
+        {
+          id: "act-r002",
+          type: "data_download",
+          message: "Downloaded Heart Disease Dataset",
+          timestamp: yesterday.toLocaleDateString(),
+          category: "Downloads",
+          status: "success"
+        },
+        {
+          id: "act-r003",
+          type: "study_update",
+          message: "Updated COVID-19 Outcomes Study",
+          timestamp: twoDaysAgo.toLocaleDateString(),
+          category: "Studies",
+          status: "success"
+        },
+        {
+          id: "act-r004",
+          type: "publication",
+          message: "Published findings to Medical Journal",
+          timestamp: threeDaysAgo.toLocaleDateString(),
+          category: "Publications",
+          status: "success"
+        }
+      ];
+    }
+  };
 
   // Fetch dashboard data on component mount
   useEffect(() => {

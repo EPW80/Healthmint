@@ -1030,14 +1030,13 @@ const DataBrowser = ({ className, mode = "browse" }) => {
       {/* Filtered Subset Creator */}
       {isFilteringMode && selectedDatasetForFiltering ? (
         <FilteredSubsetCreator
-          // Refined check: Ensure it's an object with an 'id' property before accessing .id, provide fallback
           datasetId={
             typeof selectedDatasetForFiltering === "string"
               ? selectedDatasetForFiltering
-              : (selectedDatasetForFiltering &&
-                  typeof selectedDatasetForFiltering === "object" &&
-                  selectedDatasetForFiltering.id) ||
-                "" // Fallback to empty string if ID is missing
+              : typeof selectedDatasetForFiltering === "object" &&
+                selectedDatasetForFiltering !== null
+                ? String(selectedDatasetForFiltering.id || "")
+                : ""
           }
           onSubsetCreated={handleSubsetCreated}
           onSubsetPurchase={handleSubsetPurchase}
