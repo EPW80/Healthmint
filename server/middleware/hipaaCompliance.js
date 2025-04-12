@@ -13,8 +13,41 @@ class HIPAAComplianceError extends Error {
   }
 }
 
+// Ensure audit log exists by creating a function
+const createAuditLog = async (action, details = {}) => {
+  try {
+    // Create the audit log entry
+    const auditEntry = {
+      action,
+      timestamp: new Date().toISOString(),
+      ...details,
+    };
+
+    // Log the entry
+    console.log(`[HIPAA AUDIT] ${action}:`, auditEntry);
+
+    // For production, store in a secure database
+    if (process.env.NODE_ENV === "production") {
+      try {
+        // Here we would call a service to persist the audit log
+        // await hipaaComplianceService.createAuditLog(action, auditEntry);
+      } catch (error) {
+        console.error("Failed to save programmatic audit log:", error);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Audit logging error:", error);
+    return false;
+  }
+};
+
 // HIPAA Compliance Middleware
 const hipaaCompliance = {
+  // Explicitly add the createAuditLog function
+  createAuditLog,
+
   // Middleware to validate PHI data in requests
   validatePHI: (req, res, next) => {
     try {
@@ -287,5 +320,8 @@ const hipaaCompliance = {
   },
 };
 
+// Add createAuditLog as a module-level function as well (belt and suspenders approach)
+hipaaCompliance.createAuditLog = createAuditLog;
+
 export default hipaaCompliance;
-export { HIPAAComplianceError };
+export { HIPAAComplianceError, createAuditLog };
