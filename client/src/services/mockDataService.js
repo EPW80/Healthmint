@@ -770,4 +770,230 @@ const mockDataService = {
   },
 };
 
-export default mockDataService;
+// Mock function to get dataset tiers
+const getDatasetConditions = async (datasetId) => {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
+
+    // Sample conditions - in a real app, these would come from an API
+    return [
+      { id: "hypertension", name: "Hypertension" },
+      { id: "diabetes", name: "Diabetes" },
+      { id: "asthma", name: "Asthma" },
+      { id: "copd", name: "COPD" },
+      { id: "arthritis", name: "Arthritis" },
+      { id: "depression", name: "Depression" },
+      { id: "cancer", name: "Cancer" },
+      { id: "heartdisease", name: "Heart Disease" },
+    ];
+  } catch (error) {
+    console.error("Error fetching dataset conditions:", error);
+    throw new Error("Failed to load medical conditions");
+  }
+};
+
+// Mock function to get dataset record types
+const getDatasetRecordTypes = async (datasetId) => {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
+
+    // Sample record types - in a real app, these would come from an API
+    return [
+      { id: "labresults", name: "Lab Results" },
+      { id: "medications", name: "Medications" },
+      { id: "vitals", name: "Vital Signs" },
+      { id: "imaging", name: "Imaging" },
+      { id: "procedures", name: "Procedures" },
+      { id: "allergies", name: "Allergies" },
+      { id: "immunizations", name: "Immunizations" },
+      { id: "visits", name: "Office Visits" },
+    ];
+  } catch (error) {
+    console.error("Error fetching dataset record types:", error);
+    throw new Error("Failed to load record types");
+  }
+};
+
+// Mock function to get dataset details
+const previewFilteredSubset = async (datasetId, filters) => {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate processing delay
+
+    // Get the original dataset to base calculations on
+    // Instead of relying on getDatasetDetails(), we'll fetch from localStorage or use defaults
+    let dataset;
+    try {
+      // Try to find the dataset in the mock health data in localStorage
+      const allDatasets = JSON.parse(
+        localStorage.getItem("healthmint_mock_health_data") || "[]"
+      );
+      dataset = allDatasets.find((d) => d.id === datasetId);
+    } catch (e) {
+      console.error("Error accessing mock data:", e);
+    }
+
+    // If dataset wasn't found, use default values
+    if (!dataset) {
+      dataset = {
+        recordCount: 10000,
+        title: "Unknown Dataset",
+        category: "General Health",
+        price: "0.05",
+      };
+    }
+
+    // Calculate a realistic record count based on filters
+    let recordCount = dataset.recordCount || 10000;
+    let patientCount = Math.ceil(recordCount / 12); // Assume 12 records per patient on average
+
+    // Apply age range filter
+    if (filters.ageRange.min || filters.ageRange.max) {
+      const ageRangeMin = parseInt(filters.ageRange.min) || 0;
+      const ageRangeMax = parseInt(filters.ageRange.max) || 100;
+      const ageSpan = ageRangeMax - ageRangeMin;
+      const fullAgeSpan = 100; // Assume original dataset has ages 0-100
+      const ageRatio = Math.min(ageSpan / fullAgeSpan, 1);
+      recordCount = Math.floor(recordCount * ageRatio * 0.9); // Apply a 0.9 factor to account for age distribution
+      patientCount = Math.floor(patientCount * ageRatio * 0.9);
+    }
+
+    // Apply gender filter
+    if (filters.gender && filters.gender !== "all") {
+      // Assume roughly even distribution of genders
+      recordCount = Math.floor(recordCount * 0.5);
+      patientCount = Math.floor(patientCount * 0.5);
+    }
+
+    // Apply time range filter
+    if (filters.timeRange.start || filters.timeRange.end) {
+      const start = filters.timeRange.start
+        ? new Date(filters.timeRange.start).getTime()
+        : new Date("2015-01-01").getTime();
+
+      const end = filters.timeRange.end
+        ? new Date(filters.timeRange.end).getTime()
+        : new Date().getTime();
+
+      const timeSpan = end - start;
+      const fullTimeSpan =
+        new Date().getTime() - new Date("2015-01-01").getTime();
+      const timeRatio = Math.min(timeSpan / fullTimeSpan, 1);
+
+      recordCount = Math.floor(recordCount * timeRatio);
+    }
+
+    // Apply conditions filter
+    if (filters.conditions && filters.conditions.length > 0) {
+      // Each condition selected narrows the dataset
+      const conditionRatio = 0.7 - 0.1 * (filters.conditions.length - 1);
+      recordCount = Math.floor(recordCount * Math.max(conditionRatio, 0.2));
+      patientCount = Math.floor(patientCount * Math.max(conditionRatio, 0.2));
+    }
+
+    // Apply record types filter
+    if (filters.recordTypes && filters.recordTypes.length > 0) {
+      // Selecting specific record types reduces dataset size
+      const typeRatio = filters.recordTypes.length / 8; // Assume 8 total record types
+      recordCount = Math.floor(recordCount * typeRatio);
+    }
+
+    // Random variance to make it look realistic
+    const variance = 0.9 + Math.random() * 0.2; // 0.9 to 1.1
+    recordCount = Math.max(10, Math.floor(recordCount * variance));
+    patientCount = Math.max(1, Math.floor(patientCount * variance));
+
+    // Return preview data
+    return {
+      parentDatasetId: datasetId,
+      recordCount: recordCount,
+      patientCount: patientCount,
+      appliedFilters: { ...filters },
+      estimatedSize: `${((recordCount * 0.5) / 1024).toFixed(1)} MB`,
+      previewGenerated: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Error previewing filtered subset:", error);
+    throw new Error("Failed to preview filtered subset");
+  }
+};
+
+// Mock function to create a filtered subset
+const createFilteredSubset = async (datasetId, subsetMetadata) => {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate processing delay
+
+    // Generate a unique ID for the subset
+    const subsetId = `subset-${datasetId}-${Date.now()}`;
+
+    // Create the subset object
+    const subset = {
+      id: subsetId,
+      parentDatasetId: datasetId,
+      name: subsetMetadata.name,
+      filters: subsetMetadata.filters,
+      recordCount: subsetMetadata.recordCount,
+      price: subsetMetadata.price,
+      createdAt: new Date().toISOString(),
+      userId: subsetMetadata.userId,
+      purchased: false,
+      metadata: {
+        generationTime: `${Math.floor(Math.random() * 60) + 10} seconds`,
+        processing: "complete",
+        parentDatasetName: subsetMetadata.parentDatasetName || "Parent Dataset",
+      },
+    };
+
+    // In a real app, this would be saved to a database
+    // Here we'll simulate by storing in localStorage
+    try {
+      const existingSubsets = JSON.parse(
+        localStorage.getItem("healthmint_filtered_subsets") || "[]"
+      );
+      existingSubsets.push(subset);
+      localStorage.setItem(
+        "healthmint_filtered_subsets",
+        JSON.stringify(existingSubsets)
+      );
+    } catch (e) {
+      console.error("Error saving subset to localStorage:", e);
+    }
+
+    return subset;
+  } catch (error) {
+    console.error("Error creating filtered subset:", error);
+    throw new Error("Failed to create filtered subset");
+  }
+};
+
+// Mock function to download a filtered subset
+const downloadSubset = async (subsetId, parentDatasetId) => {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate download delay
+
+    // Simulate a successful download
+    return {
+      success: true,
+      subsetId,
+      parentDatasetId,
+      downloadedAt: new Date().toISOString(),
+      format: "CSV",
+      fileSize: "12.4 MB",
+    };
+  } catch (error) {
+    console.error("Error downloading subset:", error);
+    throw new Error("Failed to download subset");
+  }
+};
+
+// Assign the object to a variable first
+const exportedService = {
+  ...mockDataService, // Spread the mockDataService object to expose all its methods
+  getDatasetConditions,
+  getDatasetRecordTypes,
+  previewFilteredSubset,
+  createFilteredSubset,
+  downloadSubset,
+};
+
+// Export the variable as default
+export default exportedService;
