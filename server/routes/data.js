@@ -3,7 +3,7 @@ import browseRoutes from "./data/browse.js";
 import {
   validateAddress,
   validateHealthData,
-} from "../services/validationService.js";
+} from "../validation/index.js"; // Updated import path
 import { ERROR_CODES } from "../config/hipaaConfig.js";
 import { asyncHandler, createError } from "../utils/errorUtils.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";

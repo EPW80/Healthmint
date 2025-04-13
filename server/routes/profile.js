@@ -4,15 +4,27 @@ import { profileService } from "../services/profileService.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import {
   validateAddress,
-  validateProfileUpdate,
-  validateHash,
-} from "../middleware/validation.js";
+  validateProfile as validateProfileUpdate,
+  validateIPFSHash as validateHash,
+} from "../validation/index.js"; // Updated import path and function names
 import { ENDPOINTS, ERROR_CODES } from "../config/networkConfig.js";
 import { asyncHandler, createError } from "../utils/errorUtils.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { logger } from "../config/loggerConfig.js";
 
 const router = express.Router();
+
+// Helper function to validate and normalize address while maintaining existing error format
+const validateAndNormalizeAddress = (address) => {
+  const result = validateAddress(address);
+  if (!result.isValid) {
+    throw createError.validation(
+      ERROR_CODES.VALIDATION_ERROR.code,
+      result.error
+    );
+  }
+  return result.normalizedAddress;
+};
 
 // Middleware to require access control
 const requireAccessControl = (accessLevel = "read") => {
@@ -33,7 +45,9 @@ router.get(
     }
 
     // Validate address (use requester's address if none provided)
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     logger.info("Profile stats request", {
       requestedBy,
@@ -118,7 +132,9 @@ router.put(
     }
 
     // Validate address and data
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     logger.info("Profile update request", {
       requestedBy,
@@ -131,7 +147,7 @@ router.put(
       // Enhanced validation with better error reporting
       const validationResult = validateProfileUpdate(updateData);
 
-      if (typeof validationResult === "object" && !validationResult.isValid) {
+      if (!validationResult.isValid) {
         throw createError.validation(
           ERROR_CODES.VALIDATION_ERROR.code,
           "Invalid profile data",
@@ -139,11 +155,8 @@ router.put(
         );
       }
 
-      // Either use validation result or the original data if validation just returns true
-      const validatedData =
-        typeof validationResult === "object"
-          ? validationResult.data || updateData
-          : updateData;
+      // Use the original update data since it's been validated
+      const validatedData = updateData;
 
       const requestMetadata = {
         ipAddress: req.ip,
@@ -218,7 +231,9 @@ router.put(
     }
 
     // Validate address and image hash
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     logger.info("Profile image update request", {
       requestedBy,
@@ -229,15 +244,15 @@ router.put(
     try {
       // Validate hash with detailed error handling
       const hashValidation = validateHash(imageHash);
-      if (typeof hashValidation === "object" && !hashValidation.isValid) {
+      if (!hashValidation.isValid) {
         throw createError.validation(
           ERROR_CODES.VALIDATION_ERROR.code,
-          hashValidation.error || "Invalid image hash format"
+          hashValidation.error?.message || "Invalid image hash format"
         );
       }
 
-      const validatedHash =
-        typeof hashValidation === "string" ? hashValidation : imageHash;
+      // Use the original hash since it's been validated
+      const validatedHash = imageHash;
 
       const requestMetadata = {
         ipAddress: req.ip,
@@ -309,7 +324,7 @@ router.get(
       );
     }
 
-    const normalizedAddress = validateAddress(address);
+    const normalizedAddress = validateAndNormalizeAddress(address);
 
     logger.info("Audit log request", {
       requestedBy,
@@ -403,7 +418,9 @@ router.delete(
     }
 
     // Validate address
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     logger.info("Profile deletion request", {
       requestedBy,

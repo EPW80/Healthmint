@@ -2,6 +2,7 @@
 import User from "../models/User.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { AUDIT_TYPES } from "../constants/index.js";
+import validation from '../validation/index.js';
 
 export class ProfileServiceError extends Error {
   constructor(message, code = "PROFILE_SERVICE_ERROR", details = {}) {
@@ -50,7 +51,7 @@ const profileService = {
       }
 
       // Add audit log
-      await user.addAuditLog(AUDIT_TYPES.UPDATE_PROFILE_IMAGE, address, {
+      await user.auditLog(AUDIT_TYPES.UPDATE_PROFILE_IMAGE, address, {
         ipAddress: requestDetails?.ipAddress,
         userAgent: requestDetails?.userAgent,
         timestamp: new Date(),
@@ -85,6 +86,11 @@ const profileService = {
     session.startTransaction();
 
     try {
+      // Validate address
+      if (!validation.validateAddress(address).isValid) {
+        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+      }
+
       // Remove sensitive or non-updatable fields
       const {
         _id,
@@ -158,6 +164,11 @@ const profileService = {
     session.startTransaction();
 
     try {
+      // Validate address
+      if (!validation.validateAddress(address).isValid) {
+        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+      }
+
       // Get user with session
       const user = await User.findOne({
         address: address.toLowerCase(),
@@ -205,6 +216,11 @@ const profileService = {
   // Get audit log with filtering and pagination
   async getAuditLog(address, requestDetails, options = {}) {
     try {
+      // Validate address
+      if (!validation.validateAddress(address).isValid) {
+        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+      }
+
       const user = await User.findOne({ address: address.toLowerCase() });
       if (!user) {
         throw new ProfileServiceError("User not found", "USER_NOT_FOUND");
@@ -246,6 +262,11 @@ const profileService = {
     session.startTransaction();
 
     try {
+      // Validate address
+      if (!validation.validateAddress(address).isValid) {
+        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+      }
+
       const user = await User.findOne({
         address: address.toLowerCase(),
       }).session(session);
@@ -335,8 +356,5 @@ const profileService = {
   },
 };
 
-// Export the service for use in other modules
 export { profileService };
-
-// Default export
 export default profileService;

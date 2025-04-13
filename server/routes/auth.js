@@ -8,7 +8,7 @@ import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import userService from "../services/userService.js";
 import { USER_ROLES, AUDIT_TYPES } from "../constants/index.js";
 import jwt from "jsonwebtoken";
-import { ENV } from "../config/networkConfig.js";
+import { validateAddress } from "../validation/index.js"; // Import from new validation module
 
 const router = express.Router();
 
@@ -26,17 +26,14 @@ const applyCorsHeaders = (res) => {
   );
 };
 
-// Validate Ethereum address format
-const validateAddress = (address) => {
-  if (!address) {
-    throw createError.validation("Wallet address is required");
+// Validate Ethereum address and throw appropriate error
+// Helper function to maintain compatibility with existing code
+const validateAndNormalizeAddress = (address) => {
+  const result = validateAddress(address);
+  if (!result.isValid) {
+    throw createError.validation(result.error, result.code);
   }
-
-  try {
-    return ethers.utils.getAddress(address.toLowerCase());
-  } catch (error) {
-    throw createError.validation("Invalid Ethereum address format");
-  }
+  return result.normalizedAddress;
 };
 
 // Generate JWT tokens for user authentication
@@ -83,7 +80,7 @@ router.post(
     applyCorsHeaders(res);
 
     const { address, chainId } = req.body;
-    const normalizedAddress = validateAddress(address);
+    const normalizedAddress = validateAndNormalizeAddress(address);
     const requestMetadata = {
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
@@ -188,7 +185,7 @@ router.post(
     }
 
     // Validate and normalize address
-    const normalizedAddress = validateAddress(address);
+    const normalizedAddress = validateAndNormalizeAddress(address);
 
     // Validate role
     const validRoles = Object.values(USER_ROLES).map((r) => r.toLowerCase());
@@ -306,7 +303,7 @@ router.get(
     const { address } = req.query;
 
     // Validate and normalize address
-    const normalizedAddress = validateAddress(address);
+    const normalizedAddress = validateAndNormalizeAddress(address);
 
     // Check if user exists
     let user = null;

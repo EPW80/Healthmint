@@ -1,6 +1,7 @@
 // middleware/hipaaCompliance.js
 import { createApiError } from "../utils/apiError.js";
 import crypto from "crypto";
+import validation from '../validation/index.js';
 
 // HIPAA Compliance Error Handling
 class HIPAAComplianceError extends Error {
@@ -317,6 +318,18 @@ const hipaaCompliance = {
 
       return sanitized;
     });
+  },
+
+  // Token validation
+  validateToken: (token) => {
+    const tokenValidation = validation.validateToken(token);
+    if (!tokenValidation.isValid) {
+      throw new HIPAAComplianceError(
+        tokenValidation.message || "Invalid token format",
+        tokenValidation.code || "INVALID_TOKEN"
+      );
+    }
+    return true;
   },
 };
 

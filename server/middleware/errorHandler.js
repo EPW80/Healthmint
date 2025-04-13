@@ -1,4 +1,5 @@
 import hipaaCompliance from "./hipaaCompliance.js";
+import validation from "../validation/index.js";
 
 export class HIPAAError extends Error {
   constructor(message, code = "HIPAA_ERROR", details = {}) {
@@ -185,6 +186,11 @@ const errorHandler = async (err, req, res) => {
       error: err.message,
       stack: sanitizedStack,
     });
+
+    // Validate error code
+    if (!validation.validateErrorCode(err.code).isValid) {
+      err.code = "UNKNOWN_ERROR";
+    }
 
     // Handle different types of errors
     if (err instanceof HIPAAError) {

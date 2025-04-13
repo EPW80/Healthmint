@@ -6,6 +6,7 @@ import crypto from "crypto";
 import apiService from "./apiService.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENV } from "../config/networkConfig.js";
+import validation from '../validation/index.js';
 
 // Error handling
 class SecureStorageError extends Error {
@@ -98,24 +99,13 @@ class SecureStorageService {
   /// Upload a file to IPFS and return the IPFS hash
   async validateFile(file) {
     try {
-      if (!file) {
-        throw new SecureStorageError("No file provided", "INVALID_INPUT");
-      }
-
-      if (file.size > this.MAX_FILE_SIZE) {
+      const fileValidationResult = validation.validateFile(file, this.MAX_FILE_SIZE, this.ALLOWED_MIME_TYPES);
+      if (!fileValidationResult.isValid) {
         throw new SecureStorageError(
-          `File size exceeds maximum limit of ${
-            this.MAX_FILE_SIZE / (1024 * 1024)
-          }MB`,
-          "SIZE_EXCEEDED"
+          fileValidationResult.message,
+          fileValidationResult.code,
+          fileValidationResult.details
         );
-      }
-
-      if (!this.ALLOWED_MIME_TYPES.includes(file.type)) {
-        throw new SecureStorageError("File type not allowed", "INVALID_TYPE", {
-          allowedTypes: this.ALLOWED_MIME_TYPES,
-          providedType: file.type,
-        });
       }
 
       // Check filename for suspicious patterns
@@ -960,10 +950,7 @@ class SecureStorageService {
   }
 }
 
-// Create singleton instance
 const secureStorageService = new SecureStorageService();
 
-// Export class and instance
 export { SecureStorageService, secureStorageService };
-
 export default secureStorageService;

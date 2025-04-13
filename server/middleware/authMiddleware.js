@@ -5,13 +5,21 @@ import User from "../models/User.js";
 import { logger } from "../config/loggerConfig.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { AUDIT_TYPES, SECURITY_SETTINGS } from "../constants/index.js";
+import validation from "../validation/index.js";
 
 const extractToken = (req) => {
   try {
     // Check Authorization header first (Bearer token)
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
-      return authHeader.split(" ")[1];
+      const token = authHeader.split(" ")[1];
+      const tokenValidation = validation.validateToken(token);
+      if (!tokenValidation.isValid) {
+        logger.debug("Invalid token format in Authorization header", { 
+          code: tokenValidation.code 
+        });
+      }
+      return token;
     }
 
     // Check for token in cookie as fallback
@@ -34,6 +42,12 @@ const extractToken = (req) => {
 // Verify JWT token and decode payload
 const verifyToken = (token) => {
   try {
+    // Validate token format first
+    const tokenValidation = validation.validateToken(token);
+    if (!tokenValidation.isValid) {
+      throw new Error(tokenValidation.message || "Invalid token format");
+    }
+    
     // Get JWT secret from environment variables with fallback
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
@@ -112,6 +126,17 @@ const authMiddleware = async (req, res, next) => {
 
       if (needsVerification) {
         try {
+          // Validate address format
+          const addressValidation = validation.validateAddress(req.user.address);
+          if (!addressValidation.isValid) {
+            return next(
+              new ApiError(
+                ERROR_CODES.UNAUTHORIZED.code,
+                addressValidation.message || "Invalid wallet address"
+              )
+            );
+          }
+
           // Fetch user from database to verify existence and current roles
           const user = await User.findByAddress(req.user.address);
 

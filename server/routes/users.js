@@ -2,8 +2,8 @@
 import express from "express";
 import {
   validateAddress,
-  validateProfileUpdate,
-} from "../middleware/validation.js";
+  validateProfile as validateProfileUpdate,
+} from "../validation/index.js"; // Updated import
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENDPOINTS } from "../config/networkConfig.js";
 import { asyncHandler, createError } from "../utils/errorUtils.js";
@@ -15,6 +15,15 @@ const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
+
+// Helper function to validate and normalize address while maintaining existing error format
+const validateAndNormalizeAddress = (address) => {
+  const result = validateAddress(address);
+  if (!result.isValid) {
+    throw createError.validation(result.error, result.code);
+  }
+  return result.normalizedAddress;
+};
 
 // Middleware to check if user is authenticated
 router.get(
@@ -28,7 +37,9 @@ router.get(
       throw createError.unauthorized("Authentication required");
     }
 
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     // Check if user is requesting their own profile or has admin access
     const isSelf = normalizedAddress === requestedBy;
@@ -90,10 +101,20 @@ router.put(
       throw createError.unauthorized("Authentication required");
     }
 
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     // Validate update data
-    const validatedData = validateProfileUpdate(updateData);
+    const validateResult = validateProfileUpdate(updateData);
+    if (!validateResult.isValid) {
+      throw createError.validation(
+        "Profile validation failed",
+        "PROFILE_VALIDATION_ERROR",
+        { errors: validateResult.errors }
+      );
+    }
+    const validatedData = updateData; // We've validated it, but keep the original data
 
     // Check if user is updating their own profile or has admin access
     const isSelf = normalizedAddress === requestedBy;
@@ -166,7 +187,7 @@ router.post(
 
     // Determine which address to update - defaults to requesting user
     const targetAddress = address || requestedBy;
-    const normalizedAddress = validateAddress(targetAddress);
+    const normalizedAddress = validateAndNormalizeAddress(targetAddress);
 
     // Only self or admin can update roles
     const isSelf = normalizedAddress === requestedBy;
@@ -235,7 +256,9 @@ router.get(
       throw createError.unauthorized("Authentication required");
     }
 
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     // Admin can view any log, user can only view their own
     const isSelf = normalizedAddress === requestedBy;
@@ -249,34 +272,32 @@ router.get(
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
       timestamp: new Date(),
-      action: "update_consent",
+      action: "view_access_log", // Changed from update_consent to view_access_log
       requestedBy,
     };
 
-    const result = await userService.updateConsent(
+    // This endpoint seems to mix getting access logs with updating consent
+    // There seems to be a bug here - validatedConsent is not defined
+    // Let's fix this by getting access logs instead
+    const accessLogs = await userService.getUserAccessLogs(
       normalizedAddress,
-      validatedConsent,
       requestMetadata
     );
 
     // Create audit log for HIPAA compliance
-    await hipaaCompliance.createAuditLog("CONSENT_UPDATE", {
+    await hipaaCompliance.createAuditLog("VIEW_ACCESS_LOG", {
       address: normalizedAddress,
       timestamp: new Date(),
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
-      consentsUpdated: Object.keys(validatedConsent),
+      requestId: req.id,
     });
 
     res.json({
       success: true,
-      message: "Consent settings updated successfully",
+      message: "Access logs retrieved successfully",
       timestamp: new Date(),
-      details: {
-        consentUpdated: true,
-        consentVersion: result.consentVersion,
-        lastUpdated: result.timestamp,
-      },
+      accessLogs: await hipaaCompliance.sanitizeResponse(accessLogs),
     });
   })
 );

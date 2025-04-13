@@ -5,6 +5,8 @@ import { logger } from "../config/loggerConfig.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { USER_ROLES, AUDIT_TYPES } from "../constants/index.js";
 import { sanitizeUserData } from "../utils/sanitizers.js";
+import validation from '../validation/index.js';
+import { ValidationError } from '../validation/errors.js';
 
 const sendResponse = (res, statusCode, success, message, data = null) => {
   try {
@@ -45,84 +47,6 @@ const sendResponse = (res, statusCode, success, message, data = null) => {
   }
 };
 
-// Utility function to validate Ethereum wallet address
-const validateWalletAddress = (address) => {
-  if (!address || typeof address !== "string") return false;
-
-  try {
-    // Use ethers.js to validate and checksum the address
-    ethers.utils.getAddress(address);
-    return true;
-  } catch (error) {
-    logger.debug("Address validation failed", { error: error.message });
-    return false;
-  }
-};
-
-// Utility function to validate user data
-const validateUserData = (userData) => {
-  const errors = [];
-
-  // Check required fields
-  const requiredFields = ["address", "name", "age", "role"];
-  const missingFields = requiredFields.filter((field) => !userData[field]);
-
-  if (missingFields.length > 0) {
-    errors.push({
-      field: "required",
-      message: `Missing required fields: ${missingFields.join(", ")}`,
-    });
-  }
-
-  // Validate address if present
-  if (userData.address && !validateWalletAddress(userData.address)) {
-    errors.push({
-      field: "address",
-      message: "Invalid wallet address format",
-    });
-  }
-
-  // Validate age if present
-  if (userData.age !== undefined) {
-    const parsedAge = parseInt(userData.age);
-    if (isNaN(parsedAge) || parsedAge < 18 || parsedAge > 120) {
-      errors.push({
-        field: "age",
-        message: "Age must be between 18 and 120",
-      });
-    }
-  }
-
-  // Validate role if present
-  if (userData.role) {
-    const validRoles = Object.values(USER_ROLES).map((role) =>
-      role.toLowerCase()
-    );
-    if (!validRoles.includes(userData.role.toLowerCase())) {
-      errors.push({
-        field: "role",
-        message: `Invalid role. Must be one of: ${validRoles.join(", ")}`,
-      });
-    }
-  }
-
-  // Validate email if present
-  if (userData.email) {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(userData.email)) {
-      errors.push({
-        field: "email",
-        message: "Invalid email format",
-      });
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
-
 // Utility function to log request information
 const logRequestInfo = (req, context) => {
   // Create a sanitized request body that masks sensitive information
@@ -158,19 +82,17 @@ const logRequestInfo = (req, context) => {
 // Utility function to mask Ethereum address
 const maskAddress = (address) => {
   if (!address || typeof address !== "string") return "[INVALID]";
-
-  try {
-    // Normalize and validate the address first
-    const normalizedAddress = ethers.utils.getAddress(address).toLowerCase();
-
-    // Show only first 6 and last 4 characters
-    if (normalizedAddress.length >= 10) {
-      return `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`;
-    }
-    return "[MASKED]";
-  } catch (error) {
-    return "[INVALID]";
+  
+  const addressValidation = validation.validateAddress(address);
+  if (!addressValidation.isValid) return "[INVALID]";
+  
+  const normalizedAddress = address.toLowerCase();
+  
+  // Show only first 6 and last 4 characters
+  if (normalizedAddress.length >= 10) {
+    return `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`;
   }
+  return "[MASKED]";
 };
 
 // Utility function to sanitize user data
@@ -189,73 +111,85 @@ const userController = {
 
       const { address, chainId } = req.body;
 
-      // Validate wallet address
-      if (!validateWalletAddress(address)) {
-        return sendResponse(res, 400, false, "Invalid wallet address format");
-      }
-
-      // Normalize address
-      const normalizedAddress = address.toLowerCase();
-
-      // Create audit metadata
-      const auditMetadata = {
-        ipAddress: req.ip,
-        userAgent: req.get("User-Agent"),
-        timestamp: new Date(),
-        chainId,
-      };
-
       try {
-        // Check if user exists
-        const user = await userService.getUserByAddress(normalizedAddress);
-        requestLogger.debug("User lookup completed", {
-          address: maskAddress(normalizedAddress),
-          found: !!user,
-        });
-
-        if (user) {
-          // Update last login for existing user
-          const updateData = {
-            lastLogin: new Date(),
-            lastChainId: chainId,
-          };
-
-          const updatedUser = await userService.updateUser(
-            normalizedAddress,
-            updateData
-          );
-
-          // Create HIPAA-compliant audit log for login
-          await hipaaCompliance.createAuditLog(AUDIT_TYPES.LOGIN, {
-            userId: updatedUser.id,
-            address: normalizedAddress,
-            ...auditMetadata,
-          });
-
-          // Return sanitized user data
-          return sendResponse(res, 200, true, "Wallet connected successfully", {
-            user: await hipaaCompliance.sanitizeResponse(updatedUser),
-            isNewUser: false,
-          });
+        // Validate wallet address
+        const addressValidation = validation.validateAddress(address);
+        if (!addressValidation.isValid) {
+          return sendResponse(res, 400, false, addressValidation.message || "Invalid wallet address format");
         }
 
-        // Create audit log for connection attempt by new user
-        await hipaaCompliance.createAuditLog(
-          "WALLET_CONNECTION_ATTEMPT",
-          auditMetadata
-        );
+        // Normalize address
+        const normalizedAddress = address.toLowerCase();
 
-        return sendResponse(res, 200, true, "Registration required", {
-          isNewUser: true,
-        });
-      } catch (dbError) {
-        requestLogger.error("Database error in connectWallet", {
-          error: dbError.message,
-          stack: dbError.stack,
-          address: maskAddress(normalizedAddress),
-        });
+        // Create audit metadata
+        const auditMetadata = {
+          ipAddress: req.ip,
+          userAgent: req.get("User-Agent"),
+          timestamp: new Date(),
+          chainId,
+        };
 
-        return sendResponse(res, 500, false, "Database operation failed");
+        try {
+          // Check if user exists
+          const user = await userService.getUserByAddress(normalizedAddress);
+          requestLogger.debug("User lookup completed", {
+            address: maskAddress(normalizedAddress),
+            found: !!user,
+          });
+
+          if (user) {
+            // Update last login for existing user
+            const updateData = {
+              lastLogin: new Date(),
+              lastChainId: chainId,
+            };
+
+            const updatedUser = await userService.updateUser(
+              normalizedAddress,
+              updateData
+            );
+
+            // Create HIPAA-compliant audit log for login
+            await hipaaCompliance.createAuditLog(AUDIT_TYPES.LOGIN, {
+              userId: updatedUser.id,
+              address: normalizedAddress,
+              ...auditMetadata,
+            });
+
+            // Return sanitized user data
+            return sendResponse(res, 200, true, "Wallet connected successfully", {
+              user: await hipaaCompliance.sanitizeResponse(updatedUser),
+              isNewUser: false,
+            });
+          }
+
+          // Create audit log for connection attempt by new user
+          await hipaaCompliance.createAuditLog(
+            "WALLET_CONNECTION_ATTEMPT",
+            auditMetadata
+          );
+
+          return sendResponse(res, 200, true, "Registration required", {
+            isNewUser: true,
+          });
+        } catch (dbError) {
+          requestLogger.error("Database error in connectWallet", {
+            error: dbError.message,
+            stack: dbError.stack,
+            address: maskAddress(normalizedAddress),
+          });
+
+          return sendResponse(res, 500, false, "Database operation failed");
+        }
+      } catch (error) {
+        // Add specific validation error handling
+        if (error instanceof ValidationError) {
+          return sendResponse(res, 400, false, error.message, {
+            code: error.code,
+            details: error.details
+          });
+        }
+        throw error; // Re-throw other errors to be caught by outer catch block
       }
     } catch (error) {
       logger.error("Error in connectWallet", {
@@ -285,63 +219,73 @@ const userController = {
         return sendResponse(res, 400, false, "Request body is required");
       }
 
-      // Validate user data
-      const validation = validateUserData(req.body);
-      if (!validation.isValid) {
-        return sendResponse(res, 400, false, "Validation failed", {
-          errors: validation.errors,
-        });
-      }
-
-      const { address, name, age, email, role } = req.body;
-
-      // Normalize address
-      const normalizedAddress = address.toLowerCase();
-
       try {
-        // Check for existing user
-        const existingUser =
-          await userService.getUserByAddress(normalizedAddress);
-        if (existingUser) {
-          return sendResponse(res, 400, false, "User already exists");
+        // Validate user data
+        const userValidation = validation.validateProfile(req.body);
+        if (!userValidation.isValid) {
+          return sendResponse(res, 400, false, "Validation failed", {
+            errors: userValidation.errors || [{ message: userValidation.message }],
+          });
         }
 
-        // Sanitize and prepare user data
-        const userData = sanitizeUserData({
-          address: normalizedAddress,
-          name: name.trim(),
-          age: parseInt(age),
-          role: role.toLowerCase(),
-          createdAt: new Date(),
-          lastLogin: new Date(),
-          ...(email && { email: email.toLowerCase().trim() }),
-        });
+        const { address, name, age, email, role } = req.body;
 
-        // Create user
-        const user = await userService.createUser(userData);
+        // Normalize address
+        const normalizedAddress = address.toLowerCase();
 
-        // Create HIPAA-compliant audit log
-        await hipaaCompliance.createAuditLog(AUDIT_TYPES.CREATE, {
-          userId: user.id,
-          address: normalizedAddress,
-          role: userData.role,
-          ipAddress: req.ip,
-          userAgent: req.get("User-Agent"),
-          timestamp: new Date(),
-        });
+        try {
+          // Check for existing user
+          const existingUser =
+            await userService.getUserByAddress(normalizedAddress);
+          if (existingUser) {
+            return sendResponse(res, 400, false, "User already exists");
+          }
 
-        // Return sanitized user data
-        return sendResponse(res, 201, true, "User registered successfully", {
-          user: await hipaaCompliance.sanitizeResponse(user),
-        });
-      } catch (dbError) {
-        requestLogger.error("Database error in registerUser", {
-          error: dbError.message,
-          stack: dbError.stack,
-          address: maskAddress(normalizedAddress),
-        });
+          // Sanitize and prepare user data
+          const userData = sanitizeUserData({
+            address: normalizedAddress,
+            name: name.trim(),
+            age: parseInt(age),
+            role: role.toLowerCase(),
+            createdAt: new Date(),
+            lastLogin: new Date(),
+            ...(email && { email: email.toLowerCase().trim() }),
+          });
 
-        return sendResponse(res, 500, false, "Failed to create user account");
+          // Create user
+          const user = await userService.createUser(userData);
+
+          // Create HIPAA-compliant audit log
+          await hipaaCompliance.createAuditLog(AUDIT_TYPES.CREATE, {
+            userId: user.id,
+            address: normalizedAddress,
+            role: userData.role,
+            ipAddress: req.ip,
+            userAgent: req.get("User-Agent"),
+            timestamp: new Date(),
+          });
+
+          // Return sanitized user data
+          return sendResponse(res, 201, true, "User registered successfully", {
+            user: await hipaaCompliance.sanitizeResponse(user),
+          });
+        } catch (dbError) {
+          requestLogger.error("Database error in registerUser", {
+            error: dbError.message,
+            stack: dbError.stack,
+            address: maskAddress(normalizedAddress),
+          });
+
+          return sendResponse(res, 500, false, "Failed to create user account");
+        }
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          return sendResponse(res, 400, false, error.message, {
+            code: error.code,
+            details: error.details
+          });
+        }
+        throw error;
       }
     } catch (error) {
       logger.error("Error in registerUser", {
@@ -364,8 +308,9 @@ const userController = {
 
       const { address } = req.query;
 
-      if (!validateWalletAddress(address)) {
-        return sendResponse(res, 400, false, "Invalid wallet address format");
+      const addressValidation = validation.validateAddress(address);
+      if (!addressValidation.isValid) {
+        return sendResponse(res, 400, false, addressValidation.message || "Invalid wallet address format");
       }
 
       const normalizedAddress = address.toLowerCase();
@@ -418,8 +363,9 @@ const userController = {
       // Get address from params or authenticated user
       const address = req.params.address || req.user?.address;
 
-      if (!validateWalletAddress(address)) {
-        return sendResponse(res, 400, false, "Invalid wallet address format");
+      const addressValidation = validation.validateAddress(address);
+      if (!addressValidation.isValid) {
+        return sendResponse(res, 400, false, addressValidation.message || "Invalid wallet address format");
       }
 
       const normalizedAddress = address.toLowerCase();
@@ -492,8 +438,6 @@ const userController = {
 
 export {
   sendResponse,
-  validateWalletAddress,
-  validateUserData,
   logRequestInfo,
   maskAddress,
 };
