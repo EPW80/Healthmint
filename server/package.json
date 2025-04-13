@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "description": "Backend server for Healthmint API.",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
     "prestart": "npm install",

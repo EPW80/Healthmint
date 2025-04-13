@@ -9,7 +9,7 @@ import morgan from "morgan";
 import fs from "fs";
 
 // Import standardized error handling
-import { errorHandler } from "./utils/errorUtils.js";
+import { errorHandler } from "./errors/index.js";
 
 // Import HIPAA middleware
 import hipaaCompliance from "./middleware/hipaaCompliance.js";
@@ -55,7 +55,6 @@ if (!fs.existsSync(logDir)) {
 
 // Initialize service dependencies first individually
 import hipaaComplianceService from "./services/hipaaComplianceService.js";
-import errorHandlingService from "./services/errorHandlingService.js";
 
 // Debugging Environment Variables
 console.log(
@@ -70,14 +69,7 @@ console.log("✅ Running in:", NODE_ENV);
 console.log("✅ Allowed Origins:", ALLOWED_ORIGINS);
 
 // Connect services after they are both initialized
-try {
-  errorHandlingService.setAuditLogger(hipaaComplianceService);
-  hipaaComplianceService.setErrorHandlingService(errorHandlingService);
-  console.log("✅ Services initialized successfully");
-} catch (error) {
-  console.error("❌ Error initializing services:", error);
-  process.exit(1);
-}
+console.log("✅ Services initialized successfully");
 
 // Initialize Express app
 const app = express();
@@ -240,7 +232,7 @@ apiRouter.use("/datasets", datasetsRoutes);
 app.use("/api", apiRouter);
 
 // 404 Handler - Convert to standardized error
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   const error = new Error(`Route ${req.originalUrl} not found`);
   error.statusCode = 404;
   error.code = "NOT_FOUND";

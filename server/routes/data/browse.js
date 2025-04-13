@@ -2,11 +2,11 @@
 import express from "express";
 import hipaaCompliance from "../../middleware/hipaaCompliance.js";
 import { ERROR_CODES } from "../../config/hipaaConfig.js";
-import { ApiError } from "../../utils/apiError.js";
+import { createError } from "../../errors/index.js";
 import secureStorageService from "../../services/secureStorageService.js";
 import userService from "../../services/userService.js";
 import { rateLimiters } from "../../middleware/rateLimiter.js";
-import { asyncHandler } from "../../utils/errorUtils.js";
+import { asyncHandler } from "../../errors/index.js";
 
 const router = express.Router();
 
@@ -18,10 +18,9 @@ router.use(hipaaCompliance.auditLog);
 const requireAuthentication = (req) => {
   const requestedBy = req.user?.address;
   if (!requestedBy) {
-    throw new ApiError(
-      ERROR_CODES.UNAUTHORIZED.code,
-      "Authentication required"
-    );
+    throw createError.unauthorized("Authentication required", {
+      code: "AUTH_ERROR",
+    });
   }
   return requestedBy;
 };
@@ -71,10 +70,9 @@ router.get(
       parsedMaxAge !== undefined &&
       parsedMinAge > parsedMaxAge
     ) {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR.code,
-        "Invalid age range: minAge cannot be greater than maxAge"
-      );
+      throw createError.validation("Invalid age range: minAge cannot be greater than maxAge", {
+        code: ERROR_CODES.VALIDATION_ERROR.code,
+      });
     }
 
     // Create request metadata for audit logging
@@ -120,19 +118,17 @@ router.get(
     // Validate data ID
     const { id } = req.params;
     if (!id || typeof id !== "string") {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR.code,
-        "Valid data ID is required"
-      );
+      throw createError.validation("Valid data ID is required", {
+        code: ERROR_CODES.VALIDATION_ERROR.code,
+      });
     }
 
     // Validate access purpose
     const accessPurpose = req.headers["x-access-purpose"];
     if (!accessPurpose) {
-      throw new ApiError(
-        ERROR_CODES.VALIDATION_ERROR.code,
-        "Access purpose is required in x-access-purpose header"
-      );
+      throw createError.validation("Access purpose is required in x-access-purpose header", {
+        code: ERROR_CODES.VALIDATION_ERROR.code,
+      });
     }
 
     // Create request metadata
@@ -150,7 +146,9 @@ router.get(
 
     // Check if data exists
     if (!result) {
-      throw new ApiError(ERROR_CODES.NOT_FOUND.code, "Health data not found");
+      throw createError.notFound("Health data not found", {
+        code: ERROR_CODES.NOT_FOUND.code,
+      });
     }
 
     // Return sanitized response

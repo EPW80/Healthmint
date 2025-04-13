@@ -2,31 +2,25 @@
 import apiService from "./apiService.js";
 import transactionService from "./transactionService.js";
 import hipaaConfig from "../config/hipaaConfig.js";
+import { logger } from "../config/loggerConfig.js";
 
-/**
- * Initializes all services in the correct order
- * This helps resolve circular dependencies and ensures proper initialization
- */
 const initializeServices = async () => {
   console.log("Initializing services...");
 
   try {
-    // First check environment variables and HIPAA config
+    // Validate environment variables
     hipaaConfig.validate();
     console.log("✅ HIPAA config validated");
 
-    // Initialize basic services first (these should have no dependencies)
     console.log("Initializing API service...");
     if (!apiService) {
       throw new Error("API service failed to initialize");
     }
 
     // Connect services that depend on each other
-    console.log("Connecting interdependent services...");
+    console.log("✅ Error handling system initialized");
 
-    // We handle these in server.js now to avoid circular dependencies
-    // errorHandlingService.setAuditLogger(hipaaComplianceService);
-    // hipaaComplianceService.setErrorHandlingService(errorHandlingService);
+    hipaaComplianceService.setLogger(logger); // If needed
 
     // Optional: Check if blockchain connection is working
     if (transactionService) {

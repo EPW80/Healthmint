@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { ApiError } from "../utils/apiError.js";
+import { createError } from "../errors/index.js";
 import { ERROR_CODES } from "../config/networkConfig.js";
 import User from "../models/User.js";
 import { logger } from "../config/loggerConfig.js";
@@ -94,7 +94,7 @@ const authMiddleware = async (req, res, next) => {
       });
 
       return next(
-        new ApiError(ERROR_CODES.UNAUTHORIZED.code, "Authentication required")
+        createError.unauthorized("Authentication required", { code: ERROR_CODES.UNAUTHORIZED.code })
       );
     }
 
@@ -130,10 +130,7 @@ const authMiddleware = async (req, res, next) => {
           const addressValidation = validation.validateAddress(req.user.address);
           if (!addressValidation.isValid) {
             return next(
-              new ApiError(
-                ERROR_CODES.UNAUTHORIZED.code,
-                addressValidation.message || "Invalid wallet address"
-              )
+              createError.unauthorized(addressValidation.message || "Invalid wallet address", { code: ERROR_CODES.UNAUTHORIZED.code })
             );
           }
 
@@ -154,10 +151,7 @@ const authMiddleware = async (req, res, next) => {
             });
 
             return next(
-              new ApiError(
-                ERROR_CODES.UNAUTHORIZED.code,
-                "User account not found"
-              )
+              createError.unauthorized("User account not found", { code: ERROR_CODES.UNAUTHORIZED.code })
             );
           }
 
@@ -172,10 +166,7 @@ const authMiddleware = async (req, res, next) => {
             });
 
             return next(
-              new ApiError(
-                ERROR_CODES.FORBIDDEN.code,
-                `Account locked. Try again after ${new Date(user.security.lockoutUntil).toLocaleString()}`
-              )
+              createError.forbidden(`Account locked. Try again after ${new Date(user.security.lockoutUntil).toLocaleString()}`, { code: ERROR_CODES.FORBIDDEN.code })
             );
           }
 
@@ -222,10 +213,7 @@ const authMiddleware = async (req, res, next) => {
     });
 
     return next(
-      new ApiError(
-        ERROR_CODES.SERVER_ERROR.code,
-        "Authentication processing error"
-      )
+      createError.serverError("Authentication processing error", { code: ERROR_CODES.SERVER_ERROR.code })
     );
   }
 };
@@ -286,11 +274,7 @@ const handleJwtError = (error, req, next, logger) => {
     logger.info("Token expired", { exp: error.expiredAt });
 
     return next(
-      new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Authentication token expired",
-        { expiredAt: error.expiredAt }
-      )
+      createError.unauthorized("Authentication token expired", { expiredAt: error.expiredAt, code: ERROR_CODES.UNAUTHORIZED.code })
     );
   }
 
@@ -310,10 +294,7 @@ const handleJwtError = (error, req, next, logger) => {
       );
 
     return next(
-      new ApiError(
-        ERROR_CODES.UNAUTHORIZED.code,
-        "Invalid authentication token"
-      )
+      createError.unauthorized("Invalid authentication token", { code: ERROR_CODES.UNAUTHORIZED.code })
     );
   }
 
@@ -321,7 +302,7 @@ const handleJwtError = (error, req, next, logger) => {
     logger.warn("Token not yet valid", { nbf: error.date });
 
     return next(
-      new ApiError(ERROR_CODES.UNAUTHORIZED.code, "Token not yet valid")
+      createError.unauthorized("Token not yet valid", { code: ERROR_CODES.UNAUTHORIZED.code })
     );
   }
 
@@ -332,10 +313,7 @@ const handleJwtError = (error, req, next, logger) => {
   });
 
   return next(
-    new ApiError(
-      ERROR_CODES.UNAUTHORIZED.code,
-      "Authentication failed: " + error.message
-    )
+    createError.unauthorized("Authentication failed: " + error.message, { code: ERROR_CODES.UNAUTHORIZED.code })
   );
 };
 
@@ -356,7 +334,7 @@ export const authorize = (roles, options = {}) => {
   return (req, res, next) => {
     if (!req.user) {
       return next(
-        new ApiError(ERROR_CODES.UNAUTHORIZED.code, "Authentication required")
+        createError.unauthorized("Authentication required", { code: ERROR_CODES.UNAUTHORIZED.code })
       );
     }
 
@@ -410,7 +388,7 @@ export const authorize = (roles, options = {}) => {
           logger.error("Failed to create audit log", { error: e.message })
         );
 
-      return next(new ApiError(ERROR_CODES.FORBIDDEN.code, errorMessage));
+      return next(createError.forbidden(errorMessage, { code: ERROR_CODES.FORBIDDEN.code }));
     }
 
     // Create audit log for successful authorization
@@ -447,7 +425,7 @@ export const requirePermission = (permissions, options = {}) => {
     // Ensure user is authenticated
     if (!req.user) {
       return next(
-        new ApiError(ERROR_CODES.UNAUTHORIZED.code, "Authentication required")
+        createError.unauthorized("Authentication required", { code: ERROR_CODES.UNAUTHORIZED.code })
       );
     }
 
@@ -476,10 +454,7 @@ export const requirePermission = (permissions, options = {}) => {
 
     if (!hasPermission) {
       return next(
-        new ApiError(
-          ERROR_CODES.FORBIDDEN.code,
-          options.errorMessage || "Missing required permissions"
-        )
+        createError.forbidden(options.errorMessage || "Missing required permissions", { code: ERROR_CODES.FORBIDDEN.code })
       );
     }
 

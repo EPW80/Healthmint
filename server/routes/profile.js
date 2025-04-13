@@ -8,7 +8,7 @@ import {
   validateIPFSHash as validateHash,
 } from "../validation/index.js"; // Updated import path and function names
 import { ENDPOINTS, ERROR_CODES } from "../config/networkConfig.js";
-import { asyncHandler, createError } from "../utils/errorUtils.js";
+import { asyncHandler, createError } from "../errors/index.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { logger } from "../config/loggerConfig.js";
 

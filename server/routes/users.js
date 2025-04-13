@@ -6,7 +6,7 @@ import {
 } from "../validation/index.js"; // Updated import
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENDPOINTS } from "../config/networkConfig.js";
-import { asyncHandler, createError } from "../utils/errorUtils.js";
+import { asyncHandler, createError } from "../errors/index.js"; // Updated import
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { userService } from "../services/userService.js";
 import authMiddleware, { authorize } from "../middleware/authMiddleware.js";

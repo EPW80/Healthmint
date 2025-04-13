@@ -1,7 +1,7 @@
 // Function to create a new health data entry
 import express from "express";
 import ethers from "ethers";
-import { asyncHandler, createError } from "../utils/errorUtils.js";
+import { asyncHandler, createError } from "../errors/index.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { logger } from "../config/loggerConfig.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";

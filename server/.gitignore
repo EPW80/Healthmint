@@ -17,6 +17,7 @@ package-lock.json
 /client/build
 /server/build
 /dist
+/logs
 
 # Truffle build data
 /build/contracts
