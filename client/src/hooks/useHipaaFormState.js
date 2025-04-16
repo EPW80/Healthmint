@@ -1,17 +1,7 @@
 // client/src/hooks/useHipaaFormState.js
 import { useState, useCallback, useEffect, useRef } from "react";
 
-/**
- * Custom hook for managing HIPAA compliant form state with audit logging
- *
- * @param {Object} initialState - Initial form state
- * @param {Object} options - Additional options
- * @param {Function} options.sanitizeField - Function to sanitize field values for HIPAA compliance
- * @param {Function} options.logFieldChange - Function to log field changes for HIPAA compliance
- * @param {Function} options.validate - Function to validate form state
- * @param {Object} options.hipaaService - HIPAA compliance service for logging
- * @returns {Object} Form state management utilities
- */
+// Custom hook for managing form state with HIPAA compliance
 const useHipaaFormState = (initialState = {}, options = {}) => {
   const {
     sanitizeField,
@@ -22,26 +12,13 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
     formType = "profile",
   } = options;
 
-  // Store form state
   const [formState, setFormState] = useState(initialState);
-
-  // Track initial state for comparison
   const [initialFormState, setInitialFormState] = useState(initialState);
-
-  // Track validation errors
   const [errors, setErrors] = useState({});
-
-  // Track form dirty state
   const [isDirty, setIsDirty] = useState(false);
-
-  // Track fields accessed/modified for HIPAA audit trail
   const [accessedFields, setAccessedFields] = useState(new Set());
-
-  // Use a ref to track whether initialState update should trigger state reset
   const didMountRef = useRef(false);
 
-  // Update the initial state only on the first render
-  // This prevents unnecessary form resets during re-renders
   useEffect(() => {
     if (!didMountRef.current) {
       setInitialFormState(initialState);
@@ -50,15 +27,12 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
     }
   }, [initialState]);
 
-  // Check if form is dirty (values changed from initial)
   useEffect(() => {
-    // Simple deep comparison to check if values changed
     const isChanged =
       JSON.stringify(formState) !== JSON.stringify(initialFormState);
     setIsDirty(isChanged);
   }, [formState, initialFormState]);
 
-  // Log field access for HIPAA compliance
   const trackFieldAccess = useCallback(
     (fieldPath) => {
       setAccessedFields((prev) => {
@@ -155,7 +129,7 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
             timestamp: new Date().toISOString(),
             userId: userIdentifier,
             formType,
-            valueChanged: true, // Don't log the actual value for privacy
+            valueChanged: true,
           });
         }
       }
@@ -237,7 +211,6 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
     [logFieldChange, errors, formType, userIdentifier, trackFieldAccess]
   );
 
-  // Specialized handler for array fields (like publications)
   const handleArrayFieldChange = useCallback(
     (fieldName, newArray) => {
       // Track field access
@@ -261,7 +234,6 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
         });
       }
 
-      // Clear validation error for this field
       if (errors[fieldName]) {
         setErrors((prev) => {
           const newErrors = { ...prev };
@@ -273,7 +245,6 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
     [logFieldChange, errors, formType, userIdentifier, trackFieldAccess]
   );
 
-  // Reset form to specified state (or initial state if not provided)
   const resetForm = useCallback(
     (newState = null) => {
       const stateToUse = newState || initialFormState;

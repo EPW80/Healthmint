@@ -1,12 +1,4 @@
 // src/config/environmentConfig.js
-/**
- * Centralized Environment Configuration
- *
- * This module provides a single source of truth for all environment-specific
- * configurations, ensuring consistent usage throughout the application.
- */
-
-// Default environments
 export const ENVIRONMENTS = {
   DEVELOPMENT: "development",
   PRODUCTION: "production",
@@ -36,7 +28,7 @@ export const ENV = {
   ERROR_MONITORING_ENABLED: process.env.REACT_APP_ERROR_MONITORING === "true",
 };
 
-// Export IS_DEV for backward compatibility
+// Environment-specific configurations
 export const IS_DEV = ENV.IS_DEVELOPMENT;
 
 // API Configuration

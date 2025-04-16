@@ -1,10 +1,4 @@
-/**
- * Auth Loop Prevention Utilities
- * - Detects verification loops
- * - Handles secure logout
- * - Ensures state cleanup and redirect
- */
-
+// This module provides utilities to prevent authentication loops in a web application.
 let verificationAttempts = 0;
 let lastVerifyTime = 0;
 const MAX_ATTEMPTS = 5;

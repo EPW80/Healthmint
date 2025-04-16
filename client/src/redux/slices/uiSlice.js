@@ -1,17 +1,13 @@
 // src/redux/slices/uiSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
-/**
- * Initial state for the UI slice
- * Manages application UI state like loading indicators, modals, and appearance settings
- */
 const initialState = {
   loading: false,
   error: null,
   theme: "light",
   modal: {
     isOpen: false,
-    type: null, // 'purchase', 'upload', 'error', etc.
+    type: null,
     data: null,
   },
   searchQuery: "",
@@ -23,52 +19,27 @@ const initialState = {
   },
 };
 
-/**
- * UI slice reducer
- * Controls UI-related state like modals, loading states, and theme
- */
 const uiSlice = createSlice({
   name: "ui",
   initialState,
   reducers: {
-    /**
-     * Set the global loading state
-     * @param {boolean} action.payload - Loading state
-     */
     setLoading: (state, action) => {
       state.loading = action.payload;
     },
 
-    /**
-     * Set the global error state
-     * @param {string|null} action.payload - Error message
-     */
     setError: (state, action) => {
       state.error = action.payload;
       state.loading = false;
     },
 
-    /**
-     * Clear the global error state
-     */
     clearError: (state) => {
       state.error = null;
     },
 
-    /**
-     * Set the application theme
-     * @param {string} action.payload - Theme name (e.g., 'light', 'dark')
-     */
     setTheme: (state, action) => {
       state.theme = action.payload;
     },
 
-    /**
-     * Open a modal dialog
-     * @param {Object} action.payload - Modal configuration
-     * @param {string} action.payload.type - Modal type
-     * @param {Object} action.payload.data - Modal data
-     */
     openModal: (state, action) => {
       state.modal = {
         isOpen: true,
@@ -77,9 +48,6 @@ const uiSlice = createSlice({
       };
     },
 
-    /**
-     * Close the currently open modal
-     */
     closeModal: (state) => {
       state.modal = {
         isOpen: false,
@@ -88,41 +56,22 @@ const uiSlice = createSlice({
       };
     },
 
-    /**
-     * Set the search query
-     * @param {string} action.payload - Search query
-     */
     setSearchQuery: (state, action) => {
       state.searchQuery = action.payload;
     },
 
-    /**
-     * Set the sort field
-     * @param {string} action.payload - Sort field
-     */
     setSortBy: (state, action) => {
       state.sortBy = action.payload;
     },
 
-    /**
-     * Set the sort order
-     * @param {string} action.payload - Sort order ('asc' or 'desc')
-     */
     setSortOrder: (state, action) => {
       state.sortOrder = action.payload;
     },
 
-    /**
-     * Toggle the sidebar visibility
-     */
     toggleSidebar: (state) => {
       state.sidebar.isOpen = !state.sidebar.isOpen;
     },
 
-    /**
-     * Set the active sidebar tab
-     * @param {string} action.payload - Tab name
-     */
     setActiveTab: (state, action) => {
       state.sidebar.activeTab = action.payload;
     },
@@ -144,11 +93,6 @@ export const {
   setActiveTab,
 } = uiSlice.actions;
 
-/**
- * Thunk action creator to set error and show notification
- * Use this to display errors to the user via both error state and notification
- * @param {string} errorMessage - Error message to display
- */
 export const setErrorWithNotification =
   (errorMessage) => (dispatch, getState) => {
     // Import at function level to avoid circular dependencies
@@ -167,8 +111,6 @@ export const setErrorWithNotification =
     );
   };
 
-// Export these for backward compatibility
-// These will use the notification slice internally
 export const addNotification = (payload) => (dispatch) => {
   const { addNotification } = require("../slices/notificationSlice");
   dispatch(addNotification(payload));
@@ -193,6 +135,4 @@ export const selectSearchQuery = (state) => state.ui.searchQuery;
 export const selectSortBy = (state) => state.ui.sortBy;
 export const selectSortOrder = (state) => state.ui.sortOrder;
 export const selectSidebar = (state) => state.ui.sidebar;
-
-// Export reducer
 export default uiSlice.reducer;

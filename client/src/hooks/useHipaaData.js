@@ -3,21 +3,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import useAsyncOperation from "./useAsyncOperation.js";
 
-/**
- * Custom hook for HIPAA-compliant data fetching with optimized dependency handling
- *
- * @param {Object} options - Configuration options
- * @param {Function} options.fetchFunction - The function to fetch data
- * @param {Array} options.dependencies - Dependencies that should trigger refetching (shallow compared)
- * @param {boolean} options.loadOnMount - Whether to load data when component mounts
- * @param {string} options.dataType - Type of data being fetched (for HIPAA logging)
- * @param {string} options.userId - User identifier for HIPAA logging
- * @param {string} options.accessPurpose - Purpose for accessing this data
- * @param {Object} options.initialData - Initial data to use before fetch completes
- * @param {Function} options.onSuccess - Callback when fetch succeeds
- * @param {number} options.pollingInterval - Interval in ms to poll for updates (0 = no polling)
- * @returns {Object} Data state and control functions
- */
 const useHipaaData = (options) => {
   const {
     fetchFunction,

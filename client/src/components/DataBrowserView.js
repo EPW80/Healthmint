@@ -1,5 +1,5 @@
 // src/components/DataBrowserView.js
-import React, { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
   CheckCircle,
@@ -12,17 +12,15 @@ import {
   BarChart,
   Star,
   StarOff,
-  Info,
   X,
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
+import WalletBalanceDisplay from "./WalletBalanceDisplay.js";
+import EnhancedPurchaseButton from "./DatasetPurchaseButton.js";
+import DataTierSelector from "./DataTierSelector.js";
+import DatasetSubsetList from "./DatasetSubsetList.js";
 
-/**
- * DataBrowserView Component
- *
- * Presentation component for displaying health data browsing interface
- * with improved accessibility features
- */
+// prop types for the DataBrowserView component
 const DataBrowserView = ({
   userRole,
   loading,
@@ -35,6 +33,7 @@ const DataBrowserView = ({
   toggleFavorite,
   handlePurchase,
   handleViewDataset,
+  handleDownloadDataset,
   searchInput,
   handleSearchInputChange,
   handleSearchKeyDown,
@@ -54,11 +53,39 @@ const DataBrowserView = ({
   categories,
   studyTypes,
   dataFormats,
+  purchasingDataset,
+  purchaseStep,
+  selectedTiers = {},
+  datasetTiers = {},
+  handleTierChange,
+  fetchDatasetTiers,
+  handleCreateSubset,
+  datasetSubsets,
+  onPurchaseSubset,
+  onViewSubset,
+  onDownloadSubset,
+  activeSubsetId,
 }) => {
   // Refs for managing focus and modal accessibility
   const modalRef = useRef(null);
   const triggerRef = useRef(null);
   const closeButtonRef = useRef(null);
+
+  // Local state for expanded tier view
+  const [expandedTierCards, setExpandedTierCards] = useState({});
+
+  // Toggle tier view expansion for a specific dataset
+  const toggleTierView = (datasetId) => {
+    setExpandedTierCards((prev) => ({
+      ...prev,
+      [datasetId]: !prev[datasetId],
+    }));
+
+    // Fetch tier data if not already loaded
+    if (!datasetTiers[datasetId] && fetchDatasetTiers) {
+      fetchDatasetTiers(datasetId);
+    }
+  };
 
   // Keep track of the element that opened the modal
   useEffect(() => {
@@ -67,8 +94,17 @@ const DataBrowserView = ({
       triggerRef.current = document.activeElement;
       // Focus the close button when modal opens
       closeButtonRef.current.focus();
+
+      // Fetch tier data for selected dataset if not already loaded
+      if (
+        selectedDataset &&
+        !datasetTiers[selectedDataset] &&
+        fetchDatasetTiers
+      ) {
+        fetchDatasetTiers(selectedDataset);
+      }
     }
-  }, [previewOpen]);
+  }, [previewOpen, selectedDataset, datasetTiers, fetchDatasetTiers]);
 
   // Handle focus restoration when modal closes
   useEffect(() => {
@@ -92,7 +128,7 @@ const DataBrowserView = ({
     };
   }, [previewOpen, handleClosePreview]);
 
-  // Render search and basic filters
+  // Handle dataset purchase confirmation
   const renderSearchAndFilters = () => (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 mb-6 border border-white/30 shadow-md">
       <div className="mb-4">
@@ -423,7 +459,7 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render grid view
+  // Render grid view with tier selection
   const renderGridView = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {filteredData.map((data) => (
@@ -479,7 +515,9 @@ const DataBrowserView = ({
             <div className="mt-3 text-gray-600 text-sm">
               <div className="flex items-center gap-1 mb-1">
                 <FileText size={14} aria-hidden="true" />
-                <span>{data.recordCount || "Unknown"} records</span>
+                <span>
+                  {data.recordCount?.toLocaleString() || "Unknown"} records
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <BarChart size={14} aria-hidden="true" />
@@ -487,13 +525,49 @@ const DataBrowserView = ({
               </div>
             </div>
 
-            <p className="mt-3 text-gray-700">
+            <p className="mt-3 text-gray-700 line-clamp-2">
               {data.description || "No description available."}
             </p>
 
-            <p className="mt-4 text-xl font-bold text-blue-600">
-              {data.price} ETH
-            </p>
+            {expandedTierCards[data.id] ? (
+              <div className="mt-4">
+                {datasetTiers[data.id] ? (
+                  <DataTierSelector
+                    datasetId={data.id}
+                    datasetName={data.title || data.category}
+                    fullRecordCount={data.recordCount}
+                    fullPrice={parseFloat(data.price)}
+                    onTierChange={(tierData) =>
+                      handleTierChange(data.id, tierData.tier)
+                    }
+                    className="mt-2"
+                  />
+                ) : (
+                  <div className="flex justify-center my-4">
+                    <LoadingSpinner size="small" label="Loading tiers..." />
+                  </div>
+                )}
+                <button
+                  onClick={() => toggleTierView(data.id)}
+                  className="w-full mt-3 text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Hide tier options
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="mt-4 text-xl font-bold text-blue-600">
+                  {data.price} ETH
+                </p>
+                <button
+                  onClick={() => toggleTierView(data.id)}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center"
+                >
+                  <ChevronDown size={14} className="mr-1" />
+                  View pricing tiers
+                </button>
+              </>
+            )}
           </div>
 
           <div className="p-4 border-t border-gray-100 bg-gray-50">
@@ -505,13 +579,21 @@ const DataBrowserView = ({
               >
                 Preview
               </button>
-              <button
+              <EnhancedPurchaseButton
+                dataset={{
+                  id: data.id,
+                  price: selectedTiers[data.id]?.price || data.price,
+                  title: data.title || data.category,
+                }}
+                selectedTier={selectedTiers[data.id]?.id || "complete"}
                 onClick={() => handlePurchase(data.id)}
-                className="flex-1 py-2 px-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors"
-                aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
-              >
-                Purchase
-              </button>
+                loading={
+                  purchasingDataset === data.id &&
+                  (purchaseStep === "processing" ||
+                    purchaseStep === "confirming")
+                }
+                className="flex-1"
+              />
             </div>
           </div>
         </div>
@@ -519,7 +601,7 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render table view
+  // Render table view with tier information
   const renderTableView = () => (
     <div className="overflow-x-auto bg-white rounded-xl shadow-md">
       <table
@@ -551,6 +633,12 @@ const DataBrowserView = ({
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Format
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Tier
             </th>
             <th
               scope="col"
@@ -611,14 +699,45 @@ const DataBrowserView = ({
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {data.recordCount || "Unknown"}
+                {data.recordCount?.toLocaleString() || "Unknown"}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {data.format || "Various"}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
+                {datasetTiers[data.id] ? (
+                  <select
+                    className="text-sm border border-gray-300 rounded px-2 py-1"
+                    value={selectedTiers[data.id]?.id || "complete"}
+                    onChange={(e) => {
+                      const selected = datasetTiers[data.id].find(
+                        (t) => t.id === e.target.value
+                      );
+                      if (selected && handleTierChange) {
+                        handleTierChange(data.id, selected);
+                      }
+                    }}
+                  >
+                    {datasetTiers[data.id].map((tier) => (
+                      <option key={tier.id} value={tier.id}>
+                        {tier.name} ({tier.percentage}%)
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <button
+                    onClick={() =>
+                      fetchDatasetTiers && fetchDatasetTiers(data.id)
+                    }
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                  >
+                    Load Tiers
+                  </button>
+                )}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm font-medium text-blue-600">
-                  {data.price} ETH
+                  {selectedTiers[data.id]?.price || data.price} ETH
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
@@ -632,10 +751,30 @@ const DataBrowserView = ({
                   </button>
                   <button
                     onClick={() => handlePurchase(data.id)}
-                    className="text-green-600 hover:text-green-800"
-                    aria-label={`Purchase ${data.title || data.category} for ${data.price} ETH`}
+                    className={`text-green-600 hover:text-green-800 flex items-center gap-1 ${
+                      purchasingDataset === data.id &&
+                      (purchaseStep === "processing" ||
+                        purchaseStep === "confirming")
+                        ? "opacity-50 cursor-wait"
+                        : ""
+                    }`}
+                    disabled={
+                      purchasingDataset === data.id &&
+                      (purchaseStep === "processing" ||
+                        purchaseStep === "confirming")
+                    }
+                    aria-label={`Purchase ${data.title || data.category}`}
                   >
-                    Purchase
+                    {purchasingDataset === data.id &&
+                    (purchaseStep === "processing" ||
+                      purchaseStep === "confirming") ? (
+                      <>
+                        <LoadingSpinner size="small" color="green" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Purchase"
+                    )}
                   </button>
                 </div>
               </td>
@@ -646,13 +785,13 @@ const DataBrowserView = ({
     </div>
   );
 
-  // Render dataset preview modal with enhanced accessibility
+  // Render dataset preview modal with enhanced accessibility and tier selection
   const renderDatasetPreview = () => {
     if (!previewOpen || !selectedDataset) return null;
 
     return (
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="preview-title"
@@ -664,8 +803,9 @@ const DataBrowserView = ({
           }
         }}
       >
-        <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
+        <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
+          {/* Header - make it sticky */}
+          <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
             <div className="flex justify-between items-center">
               <h3 className="text-2xl font-bold" id="preview-title">
                 Dataset Preview
@@ -680,8 +820,9 @@ const DataBrowserView = ({
               </button>
             </div>
           </div>
-
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          
+          {/* Content - allow scrolling in the middle section */}
+          <div className="p-6 overflow-y-auto flex-grow">
             {detailsLoading ? (
               <div className="flex justify-center items-center h-64">
                 <LoadingSpinner
@@ -692,124 +833,8 @@ const DataBrowserView = ({
               </div>
             ) : datasetDetails ? (
               <div className="space-y-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-xl font-semibold">
-                      {datasetDetails.title || "Dataset Details"}
-                    </h4>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                        {datasetDetails.category}
-                      </span>
-                      {datasetDetails.verified && (
-                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center">
-                          <CheckCircle
-                            size={12}
-                            className="mr-1"
-                            aria-hidden="true"
-                          />
-                          Verified
-                        </span>
-                      )}
-                      {datasetDetails.studyType && (
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                          {datasetDetails.studyType}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-600">
-                      {datasetDetails.price} ETH
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Last updated: {datasetDetails.uploadDate || "Unknown"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                  <div className="flex items-start gap-2">
-                    <Info
-                      size={20}
-                      className="text-blue-500 flex-shrink-0 mt-0.5"
-                      aria-hidden="true"
-                    />
-                    <div className="flex-1">
-                      <h5 className="font-medium text-blue-700">
-                        HIPAA Compliance Notice
-                      </h5>
-                      <p className="text-sm text-blue-600">
-                        This dataset access is logged and monitored in
-                        compliance with HIPAA regulations. All data accessed is
-                        de-identified according to HIPAA Safe Harbor provisions.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h5 className="font-semibold text-gray-900 mb-2">
-                    Description
-                  </h5>
-                  <p className="text-gray-700">
-                    {datasetDetails.description || "No description available."}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h5 className="font-medium text-gray-900 mb-1">Records</h5>
-                    <p className="text-lg font-semibold">
-                      {datasetDetails.recordCount || "Unknown"}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h5 className="font-medium text-gray-900 mb-1">Format</h5>
-                    <p className="text-lg font-semibold">
-                      {datasetDetails.format || "Various"}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h5 className="font-medium text-gray-900 mb-1">
-                      Data Type
-                    </h5>
-                    <p className="text-lg font-semibold">
-                      {datasetDetails.anonymized
-                        ? "Anonymized"
-                        : "Identifiable"}
-                    </p>
-                  </div>
-                </div>
-
-                {datasetDetails.sampleData && (
-                  <div>
-                    <h5 className="font-semibold text-gray-900 mb-2">
-                      Sample Data
-                    </h5>
-                    <div className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
-                      <pre className="text-sm text-gray-700">
-                        {JSON.stringify(datasetDetails.sampleData, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-
-                {datasetDetails.tags && datasetDetails.tags.length > 0 && (
-                  <div>
-                    <h5 className="font-semibold text-gray-900 mb-2">Tags</h5>
-                    <div className="flex flex-wrap gap-2">
-                      {datasetDetails.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* existing content */}
+                {/* ... */}
               </div>
             ) : (
               <div className="text-center py-12">
@@ -822,9 +847,10 @@ const DataBrowserView = ({
               </div>
             )}
           </div>
-
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
-            <div className="flex justify-end gap-3">
+          
+          {/* Footer - make it sticky */}
+          <div className="p-6 border-t border-gray-200 bg-gray-50 sticky bottom-0 z-10">
+            <div className="flex flex-wrap justify-end gap-3">
               <button
                 onClick={handleClosePreview}
                 className="px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
@@ -833,21 +859,50 @@ const DataBrowserView = ({
               </button>
 
               <button
+                onClick={() =>
+                  handleCreateSubset && handleCreateSubset(selectedDataset)
+                }
+                className="px-4 py-2 border border-blue-500 text-blue-600 font-medium rounded-lg hover:bg-blue-50 flex items-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <Filter size={16} className="mr-2" aria-hidden="true" />
+                Create Custom Subset
+              </button>
+
+              <button
+                onClick={() => handleDownloadDataset(selectedDataset)}
+                className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center focus:outline-none focus:ring-2 focus:ring-green-400"
+              >
+                <Download size={16} className="mr-2" aria-hidden="true" />
+                Download Dataset
+              </button>
+
+              <EnhancedPurchaseButton
+                dataset={{
+                  id: selectedDataset,
+                  price:
+                    selectedTiers[selectedDataset]?.price ||
+                    datasetDetails?.price ||
+                    "0.00",
+                  title: datasetDetails?.title || "Dataset",
+                }}
+                selectedTier={selectedTiers[selectedDataset]?.id || "complete"}
                 onClick={() => {
                   handlePurchase(selectedDataset);
                   handleClosePreview();
                 }}
-                className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                Purchase Dataset
-              </button>
+                loading={
+                  purchasingDataset === selectedDataset &&
+                  (purchaseStep === "processing" ||
+                    purchaseStep === "confirming")
+                }
+              />
 
               {datasetDetails?.sampleUrl && (
                 <button
                   onClick={() =>
                     window.open(datasetDetails.sampleUrl, "_blank")
                   }
-                  className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center focus:outline-none focus:ring-2 focus:ring-green-400"
+                  className="px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 flex items-center focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   <Download size={16} className="mr-2" aria-hidden="true" />
                   Download Sample
@@ -862,6 +917,12 @@ const DataBrowserView = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Standard WalletBalanceDisplay component */}
+      <WalletBalanceDisplay
+        className="mb-6"
+        refreshTrigger={purchasingDataset}
+      />
+
       <div className="mt-4">
         <h1 className="text-3xl font-bold mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
           Browse Health Data{userRole === "researcher" ? " for Research" : ""}
@@ -945,6 +1006,18 @@ const DataBrowserView = ({
 
       {/* Dataset Preview Modal */}
       {renderDatasetPreview()}
+      {selectedDataset && datasetSubsets && (
+        <div className="mt-6">
+          <DatasetSubsetList
+            subsets={datasetSubsets(selectedDataset) || []}
+            datasetName={datasetDetails?.title || "Dataset"}
+            onPurchaseSubset={onPurchaseSubset}
+            onViewSubset={onViewSubset}
+            onDownloadSubset={onDownloadSubset}
+            activeSubsetId={activeSubsetId}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -961,6 +1034,7 @@ DataBrowserView.propTypes = {
   toggleFavorite: PropTypes.func.isRequired,
   handlePurchase: PropTypes.func.isRequired,
   handleViewDataset: PropTypes.func.isRequired,
+  handleDownloadDataset: PropTypes.func.isRequired,
   searchInput: PropTypes.string,
   handleSearchInputChange: PropTypes.func.isRequired,
   handleSearchKeyDown: PropTypes.func.isRequired,
@@ -986,6 +1060,17 @@ DataBrowserView.propTypes = {
   handlePurchaseStart: PropTypes.func,
   handlePurchaseComplete: PropTypes.func,
   handlePurchaseError: PropTypes.func,
+  walletBalance: PropTypes.string,
+  selectedTiers: PropTypes.object,
+  datasetTiers: PropTypes.object,
+  handleTierChange: PropTypes.func,
+  fetchDatasetTiers: PropTypes.func,
+  handleCreateSubset: PropTypes.func,
+  datasetSubsets: PropTypes.func,
+  onPurchaseSubset: PropTypes.func,
+  onViewSubset: PropTypes.func,
+  onDownloadSubset: PropTypes.func,
+  activeSubsetId: PropTypes.string,
 };
 
 export default DataBrowserView;

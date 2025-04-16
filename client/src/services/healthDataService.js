@@ -9,12 +9,6 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import { setLoading, setError } from "../redux/slices/uiSlice.js";
 import { setHealthRecords, setUserRecords } from "../redux/slices/dataSlice.js";
 
-/**
- * HealthDataService
- *
- * Centralized service for managing health data with HIPAA compliance,
- * authentication, and error handling.
- */
 class HealthDataService {
   constructor() {
     this.basePath = "/api/data";
@@ -23,11 +17,6 @@ class HealthDataService {
     this.cacheTTL = 5 * 60 * 1000; // 5 minutes cache TTL
   }
 
-  /**
-   * Fetch patient health records from the backend with caching
-   * @param {Object} options - Query options and filters
-   * @returns {Promise<Array>} Array of sanitized health records
-   */
   async fetchPatientRecords(options = {}) {
     const actionId = `fetchPatientRecords_${Date.now()}`;
     try {
@@ -112,11 +101,6 @@ class HealthDataService {
     }
   }
 
-  /**
-   * Fetch detailed data for a specific health record
-   * @param {string} recordId - Record ID to fetch
-   * @returns {Promise<Object|null>} Detailed health record or null on failure
-   */
   async fetchHealthRecordDetails(recordId) {
     const actionId = `fetchHealthRecordDetails_${recordId}`;
     try {
@@ -154,11 +138,6 @@ class HealthDataService {
     }
   }
 
-  /**
-   * Fetch health data for research purposes with filtering
-   * @param {Object} filters - Search and filter criteria
-   * @returns {Promise<{datasets: Array, total: number}>} Research datasets
-   */
   async fetchResearchData(filters = {}) {
     const actionId = `fetchResearchData_${Date.now()}`;
     try {
@@ -205,13 +184,6 @@ class HealthDataService {
     }
   }
 
-  /**
-   * Upload health data with HIPAA compliance
-   * @param {Object} data - Metadata for the health record
-   * @param {File} file - The file to upload
-   * @param {Function} onProgress - Progress callback
-   * @returns {Promise<Object>} Upload result
-   */
   async uploadHealthData(data, file, onProgress = () => {}) {
     const actionId = `uploadHealthData_${Date.now()}`;
     try {
@@ -283,12 +255,6 @@ class HealthDataService {
     }
   }
 
-  /**
-   * Purchase health data
-   * @param {string} dataId - The ID of the data to purchase
-   * @param {Object} options - Purchase options
-   * @returns {Promise<Object>} Purchase result
-   */
   async purchaseHealthData(dataId, options = {}) {
     const actionId = `purchaseHealthData_${dataId}`;
     try {
@@ -338,11 +304,6 @@ class HealthDataService {
     }
   }
 
-  /**
-   * Download a purchased health record
-   * @param {string} recordId - The ID of the record to download
-   * @returns {Promise<Object>} Download result with file data
-   */
   async downloadHealthRecord(recordId) {
     const actionId = `downloadHealthRecord_${recordId}`;
     try {
@@ -388,6 +349,5 @@ class HealthDataService {
   }
 }
 
-// Singleton instance
 const healthDataService = new HealthDataService();
 export default healthDataService;

@@ -4,27 +4,7 @@ import { setError } from "../redux/slices/uiSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { ENV } from "../config/environmentConfig.js";
 
-/**
- * Centralized Error Handling Service
- *
- * This service provides consistent error handling patterns across the application,
- * including error logging, notifications, and appropriate responses based on
- * environment settings.
- */
 class ErrorHandlingService {
-  /**
-   * Handle an error globally with consistent patterns
-   * @param {Error} error - The error object
-   * @param {Object} options - Error handling options
-   * @param {string} options.context - Context where the error occurred (e.g., 'Authentication', 'Data Upload')
-   * @param {boolean} options.showNotification - Whether to show a notification to the user
-   * @param {string} options.notificationType - Type of notification ('error', 'warning', etc.)
-   * @param {string} options.customMessage - Custom error message to display to the user
-   * @param {number} options.duration - Duration for the notification in ms
-   * @param {boolean} options.logToConsole - Whether to log the error to console
-   * @param {boolean} options.setGlobalError - Whether to set the global UI error state
-   * @returns {Error} The original error (for optional chaining in catch blocks)
-   */
   handleError(error, options = {}) {
     const {
       context = "Application",
@@ -65,12 +45,6 @@ class ErrorHandlingService {
     return standardError;
   }
 
-  /**
-   * Creates a standardized error object with consistent properties
-   * @param {Error|string} error - The original error or error message
-   * @param {string} context - The context where the error occurred
-   * @returns {Object} A standardized error object
-   */
   standardizeError(error, context = "Application") {
     // Initialize a standardized error object
     const standardError = {
@@ -96,12 +70,6 @@ class ErrorHandlingService {
     return standardError;
   }
 
-  /**
-   * Get a user-friendly error message for production
-   * @param {Error} error - The original error
-   * @param {string} context - The context where the error occurred
-   * @returns {string} A user-friendly error message
-   */
   getProductionErrorMessage(error, context) {
     // In production, give generic messages to avoid exposing sensitive info
     const genericMessages = {
@@ -121,12 +89,6 @@ class ErrorHandlingService {
     return genericMessages[context] || "An error occurred. Please try again.";
   }
 
-  /**
-   * Get a detailed error message for development
-   * @param {Error} error - The original error
-   * @param {string} context - The context where the error occurred
-   * @returns {string} A detailed error message
-   */
   getDevelopmentErrorMessage(error, context) {
     // In development, provide more detailed error information
     const errorCode = error?.code ? `[${error.code}]` : "";
@@ -136,11 +98,6 @@ class ErrorHandlingService {
     return `${context} Error ${errorCode}: ${errorMessage}`;
   }
 
-  /**
-   * Log the error to the appropriate destination
-   * @param {Object} standardError - The standardized error object
-   * @param {string} context - The context where the error occurred
-   */
   logError(standardError, context) {
     if (ENV.IS_PRODUCTION) {
       // In production, we might want to send errors to a monitoring service
@@ -163,10 +120,6 @@ class ErrorHandlingService {
     }
   }
 
-  /**
-   * Send error to external monitoring service (placeholder)
-   * @param {Object} standardError - The standardized error object
-   */
   sendToErrorMonitoring(standardError) {
     // This would be implemented based on your error monitoring solution
     // For example, Sentry, LogRocket, etc.
@@ -184,12 +137,6 @@ class ErrorHandlingService {
     }
   }
 
-  /**
-   * Create an async error handler that wraps a function with try/catch
-   * @param {Function} fn - The function to wrap
-   * @param {Object} options - Error handling options
-   * @returns {Function} The wrapped function
-   */
   createAsyncErrorHandler(fn, options = {}) {
     return async (...args) => {
       try {
@@ -206,6 +153,5 @@ class ErrorHandlingService {
   }
 }
 
-// Create singleton instance
 const errorHandlingService = new ErrorHandlingService();
 export default errorHandlingService;

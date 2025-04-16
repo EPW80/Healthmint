@@ -4,12 +4,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * Custom hook for HIPAA compliance functionality
- *
- * Provides a consistent way to handle HIPAA requirements across components
- * and connects to the HIPAA compliance service
- */
 const useHipaaCompliance = (options = {}) => {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
@@ -18,13 +12,6 @@ const useHipaaCompliance = (options = {}) => {
   // Get user from state to track access
   const userAddress = useSelector((state) => state.wallet.address);
   const userRole = useSelector((state) => state.role.role);
-
-  /**
-   * Request consent from user for a specific purpose
-   * @param {string} consentType - Type of consent required
-   * @param {string} purpose - Purpose of the consent request
-   * @returns {Promise<boolean>} Whether consent was granted
-   */
 
   // Function to request consent from the user
   const requestConsent = useCallback(
@@ -41,8 +28,6 @@ const useHipaaCompliance = (options = {}) => {
           userRole,
         });
 
-        // Prompt the user for consent
-        // This is a placeholder for the actual consent request logic
         const granted = window.confirm(
           `HIPAA Consent Required: ${purpose}\n\n` +
             `Do you consent to this operation? This consent will be recorded and audited.`
@@ -88,11 +73,6 @@ const useHipaaCompliance = (options = {}) => {
     [dispatch, userAddress, userRole]
   );
 
-  /**
-   * Verify if user has given necessary consent
-   * @param {string} consentType - Type of consent to verify
-   * @returns {Promise<boolean>} Whether consent is granted
-   */
   const verifyConsent = useCallback(
     async (consentType) => {
       try {
@@ -137,12 +117,6 @@ const useHipaaCompliance = (options = {}) => {
     }
   }, [options.requiredConsent, options.autoVerifyConsent, verifyConsent]);
 
-  /**
-   * Sanitize data according to HIPAA requirements
-   * @param {Object} data - Data to sanitize
-   * @param {Object} sanitizeOptions - Sanitization options
-   * @returns {Object} Sanitized data
-   */
   const sanitizeData = useCallback((data, sanitizeOptions = {}) => {
     try {
       return hipaaComplianceService.sanitizeData(data, sanitizeOptions);
@@ -153,13 +127,6 @@ const useHipaaCompliance = (options = {}) => {
     }
   }, []);
 
-  /**
-   * Log access to data for HIPAA compliance
-   * @param {string} dataId - ID of the data being accessed
-   * @param {string} purpose - Purpose of access
-   * @param {string} action - Type of action (view, modify, share, etc)
-   * @returns {Promise<boolean>} Success status
-   */
   const logDataAccess = useCallback(
     async (dataId, purpose, action = "VIEW") => {
       try {
@@ -187,12 +154,6 @@ const useHipaaCompliance = (options = {}) => {
     [userAddress, userRole]
   );
 
-  /**
-   * Verify if data access is permitted under HIPAA rules
-   * @param {string} dataType - Type of data being accessed
-   * @param {string} purpose - Purpose of access
-   * @returns {Object} Access validation result
-   */
   const validateDataAccess = useCallback(
     (dataType, purpose) => {
       try {
@@ -221,11 +182,6 @@ const useHipaaCompliance = (options = {}) => {
     [options.autoRequestConsent, requestConsent]
   );
 
-  /**
-   * Handles secure data encryption
-   * @param {string|Object} data - Data to encrypt
-   * @returns {string} Encrypted data or null if error
-   */
   const encryptData = useCallback((data) => {
     try {
       return hipaaComplianceService.encryptData(data);
@@ -236,11 +192,6 @@ const useHipaaCompliance = (options = {}) => {
     }
   }, []);
 
-  /**
-   * Handles secure data decryption
-   * @param {string} encryptedData - Data to decrypt
-   * @returns {string|Object} Decrypted data or null if error
-   */
   const decryptData = useCallback((encryptedData) => {
     try {
       return hipaaComplianceService.decryptData(encryptedData);
@@ -251,20 +202,10 @@ const useHipaaCompliance = (options = {}) => {
     }
   }, []);
 
-  /**
-   * Checks if a string contains potential PHI
-   * @param {string} text - Text to check
-   * @returns {Object} Results with PHI types found
-   */
   const checkForPHI = useCallback((text) => {
     return hipaaComplianceService.containsPHI(text);
   }, []);
 
-  /**
-   * Verifies that data is properly de-identified according to HIPAA
-   * @param {Object} data - Data to verify
-   * @returns {Object} Verification result with issues
-   */
   const verifyDeIdentification = useCallback((data) => {
     return hipaaComplianceService.verifyDeIdentification(data);
   }, []);

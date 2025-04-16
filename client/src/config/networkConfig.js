@@ -1,16 +1,4 @@
 // src/config/networkConfig.js
-/**
- * Centralized Network Configuration
- *
- * This module provides a single source of truth for all network configurations
- * and network-related utility functions for the Healthmint platform.
- *
- * HIPAA Compliance Note: While this file doesn't directly handle PHI,
- * it is part of the security infrastructure ensuring proper blockchain
- * connection for secure health data transactions.
- */
-
-// Default timeout and retry settings
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000;
@@ -146,9 +134,7 @@ export const REQUEST_CONFIG = {
   },
 };
 
-/**
- * Custom error class for network-related errors
- */
+// Default network for the application
 export class NetworkError extends Error {
   constructor(message, code = "NETWORK_ERROR", details = {}) {
     super(message);
@@ -161,15 +147,7 @@ export class NetworkError extends Error {
   }
 }
 
-/**
- * Network utility functions
- */
 export const networkUtils = {
-  /**
-   * Check if a specific network is supported by the application
-   * @param {string|number} chainId - The chain ID to check
-   * @returns {boolean} Whether the network is supported
-   */
   isNetworkSupported: (chainId) => {
     // Convert to hex if numeric
     if (typeof chainId === "number") {
@@ -181,11 +159,6 @@ export const networkUtils = {
     );
   },
 
-  /**
-   * Get network details by chain ID
-   * @param {string|number} chainId - The chain ID
-   * @returns {Object|null} The network details or null if not found
-   */
   getNetworkByChainId: (chainId) => {
     // Convert to hex if numeric
     if (typeof chainId === "number") {
@@ -198,11 +171,6 @@ export const networkUtils = {
     );
   },
 
-  /**
-   * Get RPC URL for a network
-   * @param {Object} network - The network object
-   * @returns {string} The RPC URL
-   */
   getRpcUrl: (network) => {
     const projectId = process.env.REACT_APP_INFURA_PROJECT_ID || "";
     if (projectId && network?.RPC_SUFFIX) {
@@ -213,21 +181,9 @@ export const networkUtils = {
       : `https://rpc.${network?.RPC_SUFFIX || ""}.org`;
   },
 
-  /**
-   * Get explorer URL for a transaction or address
-   * @param {Object} network - The network object
-   * @param {string} hash - Transaction or address hash
-   * @param {string} type - Type of hash (tx, address, token, etc.)
-   * @returns {string} The explorer URL
-   */
   getExplorerUrl: (network, hash, type = "tx") =>
     network?.EXPLORER_URL ? `${network.EXPLORER_URL}/${type}/${hash}` : "",
 
-  /**
-   * Get network name from chain ID
-   * @param {string} chainId - The chain ID
-   * @returns {string} The network name
-   */
   getNetworkName: (chainId) => {
     if (!chainId) return "Unknown Network";
 
@@ -244,24 +200,12 @@ export const networkUtils = {
   },
 };
 
-/**
- * MetaMask utility functions
- */
-
-/**
- * Checks if MetaMask is installed
- * @returns {boolean} Whether MetaMask is installed
- */
 export const isMetaMaskInstalled = () => {
   return (
     typeof window !== "undefined" && (window?.ethereum?.isMetaMask ?? false)
   );
 };
 
-/**
- * Checks if MetaMask is unlocked
- * @returns {Promise<boolean>} Whether MetaMask is unlocked
- */
 export const isMetaMaskUnlocked = async () => {
   try {
     return (await window?.ethereum?._metamask?.isUnlocked()) ?? false;
@@ -271,12 +215,6 @@ export const isMetaMaskUnlocked = async () => {
   }
 };
 
-/**
- * Switch to a specific network
- * @param {string} networkName - Name of the network to switch to
- * @param {Object} options - Options for switching network
- * @returns {Promise<boolean>} Whether the switch was successful
- */
 export const switchNetwork = async (
   networkName = NETWORKS.SEPOLIA.NAME,
   options = {}
@@ -382,10 +320,6 @@ export const switchNetwork = async (
   }
 };
 
-/**
- * Get current network details
- * @returns {Promise<Object>} Current network information
- */
 export const getCurrentNetwork = async () => {
   if (!isMetaMaskInstalled()) {
     throw new NetworkError("MetaMask is not installed", "METAMASK_NOT_FOUND");
@@ -423,11 +357,8 @@ export const getNetworkByChainId = networkUtils.getNetworkByChainId;
 export const getNetworkName = networkUtils.getNetworkName;
 export const getExplorerUrl = networkUtils.getExplorerUrl;
 export const getRpcUrl = networkUtils.getRpcUrl;
-
-// Default network for the application
 export const requiredNetwork = NETWORKS.SEPOLIA;
 
-// Create a config object for default export
 const networkConfig = {
   ENV,
   ENV_CONFIG,

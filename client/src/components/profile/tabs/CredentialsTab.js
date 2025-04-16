@@ -2,11 +2,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { Plus, X } from "lucide-react";
 
-/**
- * CredentialsTab Component
- *
- * Manages researcher professional credentials and publications
- */
+// Credentials tab component
 const CredentialsTab = ({
   formState,
   handleFormChange,

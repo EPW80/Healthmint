@@ -2,30 +2,30 @@
 import express from "express";
 import {
   validateAddress,
-  validateProfileUpdate,
-  validateConsent,
-} from "../middleware/validation.js";
+  validateProfile as validateProfileUpdate,
+} from "../validation/index.js"; // Updated import
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENDPOINTS } from "../config/networkConfig.js";
-import { asyncHandler, createError } from "../utils/errorUtils.js";
+import { asyncHandler, createError } from "../errors/index.js"; // Updated import
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { userService } from "../services/userService.js";
 import authMiddleware, { authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Remove redundant HIPAA middleware - now handled in server.js
-// router.use(hipaaCompliance.validatePHI);
-// router.use(hipaaCompliance.auditLog);
-
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
 
-/**
- * @route   GET /profile
- * @desc    Get user profile with HIPAA compliance
- * @access  Private
- */
+// Helper function to validate and normalize address while maintaining existing error format
+const validateAndNormalizeAddress = (address) => {
+  const result = validateAddress(address);
+  if (!result.isValid) {
+    throw createError.validation(result.error, result.code);
+  }
+  return result.normalizedAddress;
+};
+
+// Middleware to check if user is authenticated
 router.get(
   ENDPOINTS.USERS.PROFILE,
   rateLimiters.api,
@@ -37,7 +37,9 @@ router.get(
       throw createError.unauthorized("Authentication required");
     }
 
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     // Check if user is requesting their own profile or has admin access
     const isSelf = normalizedAddress === requestedBy;
@@ -87,11 +89,7 @@ router.get(
   })
 );
 
-/**
- * @route   PUT /profile
- * @desc    Update user profile with HIPAA compliance
- * @access  Private
- */
+// Create new user
 router.put(
   ENDPOINTS.USERS.PROFILE,
   rateLimiters.api,
@@ -103,10 +101,20 @@ router.put(
       throw createError.unauthorized("Authentication required");
     }
 
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     // Validate update data
-    const validatedData = validateProfileUpdate(updateData);
+    const validateResult = validateProfileUpdate(updateData);
+    if (!validateResult.isValid) {
+      throw createError.validation(
+        "Profile validation failed",
+        "PROFILE_VALIDATION_ERROR",
+        { errors: validateResult.errors }
+      );
+    }
+    const validatedData = updateData; // We've validated it, but keep the original data
 
     // Check if user is updating their own profile or has admin access
     const isSelf = normalizedAddress === requestedBy;
@@ -160,11 +168,7 @@ router.put(
   })
 );
 
-/**
- * @route   POST /role
- * @desc    Set or update user role
- * @access  Private (Self only or Admin)
- */
+// Update user role
 router.post(
   "/role",
   rateLimiters.api,
@@ -183,7 +187,7 @@ router.post(
 
     // Determine which address to update - defaults to requesting user
     const targetAddress = address || requestedBy;
-    const normalizedAddress = validateAddress(targetAddress);
+    const normalizedAddress = validateAndNormalizeAddress(targetAddress);
 
     // Only self or admin can update roles
     const isSelf = normalizedAddress === requestedBy;
@@ -234,16 +238,12 @@ router.post(
       success: true,
       message: `Role updated to ${role}`,
       user: sanitizedUser,
-      roles: [role], // Return array of roles for consistency with auth
+      roles: [role],
     });
   })
 );
 
-/**
- * @route   GET /access-log
- * @desc    Get user access log
- * @access  Private (Admin or Self)
- */
+// Update user consent
 router.get(
   ENDPOINTS.USERS.ACCESS_LOG,
   rateLimiters.api,
@@ -256,7 +256,9 @@ router.get(
       throw createError.unauthorized("Authentication required");
     }
 
-    const normalizedAddress = validateAddress(address || requestedBy);
+    const normalizedAddress = validateAndNormalizeAddress(
+      address || requestedBy
+    );
 
     // Admin can view any log, user can only view their own
     const isSelf = normalizedAddress === requestedBy;
@@ -270,43 +272,37 @@ router.get(
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
       timestamp: new Date(),
-      action: "update_consent",
+      action: "view_access_log", // Changed from update_consent to view_access_log
       requestedBy,
     };
 
-    const result = await userService.updateConsent(
+    // This endpoint seems to mix getting access logs with updating consent
+    // There seems to be a bug here - validatedConsent is not defined
+    // Let's fix this by getting access logs instead
+    const accessLogs = await userService.getUserAccessLogs(
       normalizedAddress,
-      validatedConsent,
       requestMetadata
     );
 
     // Create audit log for HIPAA compliance
-    await hipaaCompliance.createAuditLog("CONSENT_UPDATE", {
+    await hipaaCompliance.createAuditLog("VIEW_ACCESS_LOG", {
       address: normalizedAddress,
       timestamp: new Date(),
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
-      consentsUpdated: Object.keys(validatedConsent),
+      requestId: req.id,
     });
 
     res.json({
       success: true,
-      message: "Consent settings updated successfully",
+      message: "Access logs retrieved successfully",
       timestamp: new Date(),
-      details: {
-        consentUpdated: true,
-        consentVersion: result.consentVersion,
-        lastUpdated: result.timestamp,
-      },
+      accessLogs: await hipaaCompliance.sanitizeResponse(accessLogs),
     });
   })
 );
 
-/**
- * @route   GET /settings
- * @desc    Get user settings
- * @access  Private (Self only)
- */
+// Retrieve user settings
 router.get(
   ENDPOINTS.USERS.SETTINGS,
   rateLimiters.api,

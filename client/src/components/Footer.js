@@ -6,7 +6,7 @@ import { Github, Twitter, Mail, ExternalLink } from "lucide-react";
 const Footer = ({
   companyName = "Healthmint",
   githubUrl = "https://github.com/EPW80/Healthmint",
-  twitterUrl = "https://twitter.com/healthmint",
+  twitterUrl = "https://x.com/healthmint",
   contactEmail = "erikpw009@gmail.com",
 }) => {
   const currentYear = new Date().getFullYear();
@@ -47,7 +47,7 @@ const Footer = ({
 
   return (
     <footer
-      className="fixed bottom-0 w-full bg-white/70 backdrop-blur-md border-t border-white/30 py-3 shadow-[0_-10px_15px_rgba(0,0,0,0.05)] z-10"
+      className="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-white/30 py-3 shadow-[0_-10px_15px_rgba(0,0,0,0.05)] z-10 transition-all duration-300 hover:bg-white/60 hover:backdrop-blur-none group"
       role="contentinfo"
       aria-label="Site footer"
     >
@@ -56,7 +56,7 @@ const Footer = ({
           {/* Company info */}
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full"></div>
-            <p className="text-sm text-gray-600 font-medium">
+            <p className="text-sm text-gray-600 font-medium group-hover:text-gray-800">
               © {currentYear} {companyName}
             </p>
           </div>

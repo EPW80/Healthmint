@@ -19,11 +19,6 @@ import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import authService from "../services/authService.js";
 import useAuth from "../hooks/useAuth.js";
 
-/**
- * User Registration Component
- *
- * Handles new user registration with HIPAA compliant data collection
- */
 const UserRegistration = ({ walletAddress, onComplete }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -83,9 +78,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
     }));
   }, []);
 
-  // Move to next step
   const nextStep = useCallback(() => {
-    // Log the step transition for HIPAA compliance
     hipaaComplianceService.createAuditLog("REGISTRATION_STEP_CHANGE", {
       previousStep: step,
       nextStep: step + 1,
@@ -97,7 +90,6 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
 
   // Move to previous step
   const prevStep = useCallback(() => {
-    // Log the step transition for HIPAA compliance
     hipaaComplianceService.createAuditLog("REGISTRATION_STEP_CHANGE", {
       previousStep: step,
       nextStep: step - 1,
@@ -110,7 +102,6 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   // Create HIPAA consent
   const createHipaaConsent = useCallback(async () => {
     try {
-      // Log consent for HIPAA compliance
       await hipaaComplianceService.recordConsent(
         hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
         true,

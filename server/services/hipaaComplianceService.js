@@ -2,35 +2,20 @@
 
 import apiService from "./apiService.js";
 import CryptoJS from "crypto-js";
-
-class ServerHipaaComplianceError extends Error {
-  constructor(message, code = "HIPAA_COMPLIANCE_ERROR", details = {}) {
-    super(message);
-    this.name = "ServerHipaaComplianceError";
-    this.code = code;
-    this.details = details;
-    this.timestamp = new Date().toISOString();
-  }
-}
+import { createError, HIPAAError } from "../errors/index.js";
+import { logger } from "../config/loggerConfig.js";
 
 class ServerHipaaComplianceService {
   constructor() {
-    // We'll set up the connection to errorHandlingService after initialization
-    this.errorHandlingService = null;
+    // Replace error handling service with logger
+    this.logger = logger;
     console.log("✅ HipaaComplianceService initialized");
   }
 
-  // Method to be called after all services are initialized
-  setErrorHandlingService(service) {
-    if (!service) {
-      console.warn(
-        "⚠️ Null error handling service provided to HipaaComplianceService"
-      );
-      return;
-    }
-
-    this.errorHandlingService = service;
-    console.log("✅ Error handling service set in HipaaComplianceService");
+  // Replace error handling service setter with logger setter
+  setLogger(loggerService) {
+    this.logger = loggerService || logger;
+    console.log("✅ Logger set in HipaaComplianceService");
   }
 
   async createAuditLog(action, details = {}) {
@@ -44,17 +29,52 @@ class ServerHipaaComplianceService {
       const response = await apiService.post("/api/audit/log", logEntry);
       return response;
     } catch (error) {
-      // Create a new error instead of using errorHandlingService directly
-      const complianceError = new ServerHipaaComplianceError(
-        `Failed to create audit log: ${error.message}`,
-        "AUDIT_LOG_ERROR",
-        { action, details }
-      );
-      console.error(complianceError);
-      throw complianceError;
+      // Use new centralized error handling
+      throw createError.hipaa("AUDIT_LOG_ERROR", `Failed to create audit log: ${error.message}`, { 
+        action, 
+        details,
+        severity: "high" 
+      });
     }
   }
 
+  // Update error handling in recordConsent method
+  async recordConsent(consentType, granted, details = {}) {
+    try {
+      const consentData = {
+        consentType,
+        granted,
+        timestamp: new Date().toISOString(),
+        details,
+      };
+      const response = await apiService.post("/api/user/consent", consentData);
+
+      // Create audit log directly
+      try {
+        await this.createAuditLog(
+          granted ? "CONSENT_GRANTED" : "CONSENT_REVOKED",
+          {
+            consentType,
+            ...details,
+          }
+        );
+      } catch (auditError) {
+        this.logger.warn("Failed to create consent audit log:", auditError.message);
+      }
+
+      return response;
+    } catch (error) {
+      // Use new centralized error handling
+      throw createError.hipaa("CONSENT_RECORDING_ERROR", `Failed to record consent: ${error.message}`, {
+        consentType, 
+        granted, 
+        details,
+        severity: "medium"
+      });
+    }
+  }
+
+  // Keep other methods unchanged
   validateDataAccess(dataType, purpose) {
     const requiresSpecificConsent = ["genetic", "mentalHealth"].includes(
       dataType
@@ -113,42 +133,6 @@ class ServerHipaaComplianceService {
       THIRD_PARTY: "third_party",
       EMERGENCY: "emergency",
     };
-  }
-
-  async recordConsent(consentType, granted, details = {}) {
-    try {
-      const consentData = {
-        consentType,
-        granted,
-        timestamp: new Date().toISOString(),
-        details,
-      };
-      const response = await apiService.post("/api/user/consent", consentData);
-
-      // Create audit log directly
-      try {
-        await this.createAuditLog(
-          granted ? "CONSENT_GRANTED" : "CONSENT_REVOKED",
-          {
-            consentType,
-            ...details,
-          }
-        );
-      } catch (auditError) {
-        console.warn("Failed to create consent audit log:", auditError.message);
-      }
-
-      return response;
-    } catch (error) {
-      // Create a new error instead of using errorHandlingService
-      const consentError = new ServerHipaaComplianceError(
-        `Failed to record consent: ${error.message}`,
-        "CONSENT_RECORDING_ERROR",
-        { consentType, granted, details }
-      );
-      console.error(consentError);
-      throw consentError;
-    }
   }
 }
 

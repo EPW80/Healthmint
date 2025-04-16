@@ -1,11 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-/**
- * ProfileDetailsTab Component
- *
- * Displays and manages basic profile information
- */
 const ProfileDetailsTab = ({
   formState,
   handleFormChange,

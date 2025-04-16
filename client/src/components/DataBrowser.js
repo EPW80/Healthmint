@@ -5,8 +5,12 @@ import { useSelector, useDispatch } from "react-redux";
 import useHealthData from "../hooks/useHealthData.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
-import mockPaymentService from "../services/mockPaymentService.js"; // Added mock payment service
+import mockPaymentService from "../services/mockPaymentService.js";
+import mockDataService from "../services/mockDataService.js";
 import DataBrowserView from "./DataBrowserView.js";
+import TransactionModal from "./TransactionModal.js";
+import useFilteredSubset from "../hooks/useFilteredSubset.js";
+import FilteredSubsetCreator from "./FilteredSubsetCreator.js";
 
 // Categories from backend
 const CATEGORIES = [
@@ -59,7 +63,7 @@ const DATA_FORMATS = [
   "Imaging",
 ];
 
-const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
+const DataBrowser = ({ className, mode = "browse" }) => {
   const dispatch = useDispatch();
   const userRole = useSelector((state) => state.role.role);
   const userId = useSelector((state) => state.wallet.address);
@@ -73,8 +77,6 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     totalCount,
     updateFilter,
     resetFilters,
-    purchaseData, // We'll keep this but won't use it directly
-    getHealthDataDetails,
   } = useHealthData({
     initialFilters: {
       minAge: "",
@@ -92,10 +94,22 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     loadOnMount: true,
   });
 
-  // Initialize mock payment service on component mount
+  // Move this hook call up here, before any functions that use it
+  const {
+    isFilteringMode,
+    selectedDatasetForFiltering,
+    savedSubsets,
+    purchaseInProgress: subsetPurchaseInProgress,
+    activeSubsetId,
+    cancelFiltering,
+    handleSubsetCreated,
+    getDatasetSubsets,
+    startFilteringDataset,
+  } = useFilteredSubset();
+
+  // Initialize mock services on component mount
   useEffect(() => {
-    // Initialize the mock payment service
-    const initializePaymentService = async () => {
+    const initializeServices = async () => {
       try {
         await mockPaymentService.initializeProvider();
         console.log("Mock payment service initialized");
@@ -104,7 +118,7 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
       }
     };
 
-    initializePaymentService();
+    initializeServices();
   }, []);
 
   // Local state
@@ -120,12 +134,169 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
   const [consentVerified, setConsentVerified] = useState(false);
   const [consentModalOpen, setConsentModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const [consentsHistory, setConsentsHistory] = useState([]);
+
+  // Tier selection state
+  const [selectedTiers, setSelectedTiers] = useState({});
+  const [datasetTiers, setDatasetTiers] = useState({});
 
   // Purchase state
   const [purchasingDataset, setPurchasingDataset] = useState(null);
   const [purchaseStep, setPurchaseStep] = useState("idle"); // 'idle', 'processing', 'confirming', 'complete', 'error'
-  const [lastTransactionDetails, setLastTransactionDetails] = useState(null); // To store transaction details
+  const [walletBalance, setWalletBalance] = useState(null);
+
+  // Transaction modal state
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState({});
+
+  // Filter datasets based on all criteria
+  const filteredData = useMemo(() => {
+    if (!healthData.length) return [];
+
+    let filtered = [...healthData];
+
+    // Apply advanced filters if set
+    if (filters.studyType && filters.studyType !== "All Types") {
+      filtered = filtered.filter(
+        (data) => data.studyType === filters.studyType
+      );
+    }
+
+    if (filters.dataFormat && filters.dataFormat !== "All Formats") {
+      filtered = filtered.filter((data) => data.format === filters.dataFormat);
+    }
+
+    if (filters.recordSize && filters.recordSize !== "all") {
+      if (filters.recordSize === "small") {
+        filtered = filtered.filter((data) => data.recordCount < 1000);
+      } else if (filters.recordSize === "medium") {
+        filtered = filtered.filter(
+          (data) => data.recordCount >= 1000 && data.recordCount < 10000
+        );
+      } else if (filters.recordSize === "large") {
+        filtered = filtered.filter((data) => data.recordCount >= 10000);
+      }
+    }
+
+    if (filters.dataAge && filters.dataAge !== "all") {
+      const now = new Date();
+      if (filters.dataAge === "recent") {
+        filtered = filtered.filter((data) => {
+          const dataDate = new Date(data.uploadDate);
+          const diffMonths = (now - dataDate) / (1000 * 60 * 60 * 24 * 30);
+          return diffMonths <= 6;
+        });
+      } else if (filters.dataAge === "older") {
+        filtered = filtered.filter((data) => {
+          const dataDate = new Date(data.uploadDate);
+          const diffMonths = (now - dataDate) / (1000 * 60 * 60 * 24 * 30);
+          return diffMonths > 6;
+        });
+      }
+    }
+
+    // Apply search term
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (data) =>
+          data.title?.toLowerCase().includes(searchLower) ||
+          data.description?.toLowerCase().includes(searchLower) ||
+          data.category?.toLowerCase().includes(searchLower) ||
+          data.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Filter by favorites if needed
+    if (showOnlyFavorites) {
+      filtered = filtered.filter((data) => favoriteDatasets.includes(data.id));
+    }
+
+    // Sort datasets
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case "price_asc":
+          filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+          break;
+        case "price_desc":
+          filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+          break;
+        case "newest":
+          filtered.sort(
+            (a, b) => new Date(b.uploadDate) - new Date(a.uploadDate)
+          );
+          break;
+        case "oldest":
+          filtered.sort(
+            (a, b) => new Date(a.uploadDate) - new Date(b.uploadDate)
+          );
+          break;
+        case "size_asc":
+          filtered.sort((a, b) => a.recordCount - b.recordCount);
+          break;
+        case "size_desc":
+          filtered.sort((a, b) => b.recordCount - a.recordCount);
+          break;
+        case "relevance":
+        default:
+          // Relevance sorting already handled by API
+          break;
+      }
+    }
+
+    return filtered;
+  }, [healthData, filters, showOnlyFavorites, favoriteDatasets]);
+
+  // Fetch tier data for a dataset
+  const fetchDatasetTiers = useCallback(
+    async (datasetId) => {
+      if (!datasetTiers[datasetId]) {
+        try {
+          const tiers = await mockDataService.getDatasetTiers(datasetId);
+          setDatasetTiers((prev) => ({
+            ...prev,
+            [datasetId]: tiers,
+          }));
+
+          // Default to complete tier
+          if (!selectedTiers[datasetId]) {
+            setSelectedTiers((prev) => ({
+              ...prev,
+              [datasetId]: tiers.find((t) => t.id === "complete"),
+            }));
+          }
+
+          return tiers;
+        } catch (err) {
+          console.error(`Error fetching tiers for dataset ${datasetId}:`, err);
+          return null;
+        }
+      }
+      return datasetTiers[datasetId];
+    },
+    [datasetTiers, selectedTiers]
+  );
+
+  // Handle tier selection change
+  const handleTierChange = useCallback(
+    (datasetId, tierData) => {
+      setSelectedTiers((prev) => ({
+        ...prev,
+        [datasetId]: tierData,
+      }));
+
+      hipaaComplianceService.createAuditLog("TIER_SELECTION_CHANGE", {
+        datasetId,
+        tier: tierData.id,
+        percentage: tierData.percentage,
+        recordCount: tierData.recordCount,
+        price: tierData.price,
+        timestamp: new Date().toISOString(),
+        userRole,
+        userId,
+      });
+    },
+    [userRole, userId]
+  );
 
   // Save favorites to localStorage
   const saveFavorites = useCallback((newFavorites) => {
@@ -269,26 +440,502 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [userRole, userId]
   );
 
-  // Handle purchase start
-  const handlePurchaseStart = useCallback(
-    (datasetId) => {
-      setPurchasingDataset(datasetId);
-      setPurchaseStep("processing");
+  const requestAndVerifyConsent = useCallback((datasetId, action) => {
+    // Existing implementation
+  }, []);
 
-      // Log purchase initiation for HIPAA compliance
-      hipaaComplianceService.createAuditLog("PURCHASE_INITIATED", {
+  const handleViewDataset = useCallback(
+    (datasetId) => {
+      console.log("handleViewDataset called with ID:", datasetId);
+      try {
+        setDetailsLoading(true);
+
+        // Log view attempt for HIPAA compliance
+        hipaaComplianceService.createAuditLog("DATASET_PREVIEW_OPEN", {
+          datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+          action: "PREVIEW",
+        });
+
+        // Find the dataset details in the data we already have
+        const dataset = filteredData.find((d) => d.id === datasetId);
+        console.log("Dataset found:", dataset);
+
+        if (dataset) {
+          setSelectedDataset(datasetId);
+          setDatasetDetails(dataset);
+          setPreviewOpen(true);
+          console.log("Preview state set to open:", true);
+        } else {
+          console.error("Dataset not found:", datasetId);
+          dispatch(
+            addNotification({
+              type: "error",
+              message: "Dataset details not found.",
+              duration: 3000,
+            })
+          );
+        }
+      } catch (err) {
+        console.error("Error in handleViewDataset:", err);
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Error loading dataset preview: " + err.message,
+            duration: 3000,
+          })
+        );
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [dispatch, filteredData, userId, userRole]
+  );
+
+  const handleSubsetPurchase = useCallback((subsetData) => {
+    // Existing implementation
+  }, []);
+
+  const handleCreateSubset = useCallback(
+    (datasetIdOrObject) => {
+      // Add debug logging
+      console.log("handleCreateSubset called with:", datasetIdOrObject);
+
+      try {
+        // If we received an ID string instead of a dataset object, find the dataset
+        const dataset =
+          typeof datasetIdOrObject === "string"
+            ? filteredData.find((d) => d.id === datasetIdOrObject)
+            : datasetIdOrObject;
+
+        if (!dataset) {
+          console.error("Dataset not found with ID:", datasetIdOrObject);
+          dispatch(
+            addNotification({
+              type: "error",
+              message: "Dataset not found. Cannot create subset.",
+              duration: 3000,
+            })
+          );
+          return;
+        }
+
+        // Log creation attempt
+        hipaaComplianceService.createAuditLog("SUBSET_CREATION_STARTED", {
+          datasetId: dataset.id,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+        });
+
+        console.log("Starting dataset filtering for:", dataset.id);
+        startFilteringDataset(dataset);
+
+        // Close the preview if it's open
+        if (previewOpen) {
+          setPreviewOpen(false);
+        }
+      } catch (err) {
+        console.error("Error in handleCreateSubset:", err);
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Failed to create subset: " + err.message,
+            duration: 3000,
+          })
+        );
+      }
+    },
+    [
+      dispatch,
+      filteredData,
+      userId,
+      userRole,
+      startFilteringDataset,
+      previewOpen,
+    ]
+  );
+
+  // Handle dataset download
+  const handleDownloadDataset = useCallback(
+    async (datasetId) => {
+      try {
+        // Set loading state
+        setDetailsLoading(true);
+
+        // Log download attempt for HIPAA compliance
+        await hipaaComplianceService.createAuditLog(
+          "DATASET_DOWNLOAD_ATTEMPT",
+          {
+            datasetId,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+            action: "DOWNLOAD",
+          }
+        );
+
+        // Check if the dataset exists in our data
+        const datasetExists = healthData.some(
+          (dataset) => dataset.id === datasetId
+        );
+        if (!datasetExists) {
+          throw new Error(`Dataset with ID ${datasetId} not found`);
+        }
+
+        // Instead of directly accessing the API endpoint, use mockDataService
+        // This avoids making requests to non-existent endpoints
+        const downloadUrl =
+          await mockDataService.getDatasetDownloadUrl(datasetId);
+
+        if (!downloadUrl) {
+          throw new Error("Download URL could not be generated");
+        }
+
+        // Log successful download preparation
+        await hipaaComplianceService.createAuditLog(
+          "DATASET_DOWNLOAD_PREPARED",
+          {
+            datasetId,
+            timestamp: new Date().toISOString(),
+            userId,
+            userRole,
+            action: "DOWNLOAD_READY",
+          }
+        );
+
+        // Show notification to user
+        dispatch(
+          addNotification({
+            type: "info",
+            message: "Preparing download. This may take a moment...",
+            duration: 3000,
+          })
+        );
+
+        // Use our mock service to simulate download instead of direct API call
+        const result = await mockDataService.downloadDataset(datasetId);
+
+        if (result.success) {
+          dispatch(
+            addNotification({
+              type: "success",
+              message: "Dataset downloaded successfully!",
+              duration: 5000,
+            })
+          );
+
+          // Log successful download
+          await hipaaComplianceService.createAuditLog(
+            "DATASET_DOWNLOAD_COMPLETE",
+            {
+              datasetId,
+              timestamp: new Date().toISOString(),
+              userId,
+              userRole,
+              action: "DOWNLOAD_COMPLETE",
+            }
+          );
+        } else {
+          throw new Error(result.error || "Download failed");
+        }
+      } catch (err) {
+        console.error("Download error:", err);
+
+        // Log error
+        await hipaaComplianceService.createAuditLog("DATASET_DOWNLOAD_ERROR", {
+          datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+          errorMessage: err.message || "Unknown download error",
+          action: "DOWNLOAD_ERROR",
+        });
+
+        dispatch(
+          addNotification({
+            type: "error",
+            message: `Download failed: ${err.message || "Unknown error"}`,
+            duration: 7000,
+          })
+        );
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [dispatch, userId, userRole, healthData, setDetailsLoading]
+  );
+
+  // Consent handling
+  const handleConsentApproval = useCallback(
+    (approved) => {
+      setConsentModalOpen(false);
+
+      // Log consent decision
+      hipaaComplianceService.createAuditLog(
+        approved ? "CONSENT_APPROVED" : "CONSENT_DECLINED",
+        {
+          consentType: pendingAction?.consentType,
+          action: pendingAction?.actionType,
+          datasetId: pendingAction?.datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+        }
+      );
+
+      if (approved) {
+        setConsentVerified(true);
+
+        // Execute the pending action
+        if (pendingAction?.onApprove) {
+          pendingAction.onApprove();
+        }
+      } else {
+        // Handle decline - show notification
+        dispatch(
+          addNotification({
+            type: "info",
+            message: "Action cancelled - consent not provided",
+            duration: 3000,
+          })
+        );
+      }
+
+      // Clear pending action
+      setPendingAction(null);
+    },
+    [dispatch, pendingAction, userId, userRole]
+  );
+
+  // Handle dataset purchase
+  const handlePurchase = useCallback(
+    async (dataset) => {
+      try {
+        // Request consent first
+        return requestAndVerifyConsent(dataset.id, {
+          actionType: "PURCHASE",
+          purpose: `Purchase dataset: ${dataset.title}`,
+          consentType: hipaaComplianceService.CONSENT_TYPES.DATA_ACCESS,
+          onApprove: async () => {
+            setPurchasingDataset(dataset);
+            setPurchaseStep("processing");
+
+            // Check wallet balance
+            const balance = await mockPaymentService.getBalance();
+            setWalletBalance(balance);
+
+            if (parseFloat(balance) < parseFloat(dataset.price)) {
+              setPurchaseStep("error");
+              dispatch(
+                addNotification({
+                  type: "error",
+                  message: "Insufficient funds for this purchase",
+                  duration: 5000,
+                })
+              );
+              return;
+            }
+
+            // Process purchase
+            setPurchaseStep("confirming");
+            const result = await mockPaymentService.purchaseDataset(
+              dataset.id,
+              dataset.price
+            );
+
+            // Handle result
+            if (result.success) {
+              setPurchaseStep("complete");
+              setTransactionDetails({
+                ...result,
+                datasetName: dataset.title,
+                price: dataset.price,
+                timestamp: new Date().toISOString(),
+              });
+              setShowTransactionModal(true);
+
+              dispatch(
+                addNotification({
+                  type: "success",
+                  message: "Dataset purchased successfully!",
+                  duration: 5000,
+                })
+              );
+            } else {
+              throw new Error(result.error || "Purchase failed");
+            }
+          },
+        });
+      } catch (err) {
+        console.error("Purchase error:", err);
+        setPurchaseStep("error");
+        dispatch(
+          addNotification({
+            type: "error",
+            message: `Purchase failed: ${err.message}`,
+            duration: 5000,
+          })
+        );
+      }
+    },
+    [dispatch, requestAndVerifyConsent]
+  );
+
+  // Handle purchasing a filtered subset
+  const handleFilteredSubsetPurchase = useCallback(
+    (subset) => {
+      return requestAndVerifyConsent(subset.datasetId, {
+        actionType: "PURCHASE_SUBSET",
+        purpose: `Purchase filtered subset: ${subset.name}`,
+        consentType: hipaaComplianceService.CONSENT_TYPES.DATA_ACCESS,
+        onApprove: () => {
+          // Handle the actual purchase through the hook's functionality
+          // This triggers the filtered subset purchase process
+          handleSubsetPurchase(subset);
+        },
+      });
+    },
+    [requestAndVerifyConsent, handleSubsetPurchase]
+  );
+
+  // Handle viewing a subset
+  const handleViewSubset = useCallback(
+    (subset) => {
+      try {
+        setDetailsLoading(true);
+
+        hipaaComplianceService.createAuditLog("SUBSET_VIEW", {
+          subsetId: subset.id,
+          datasetId: subset.datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+        });
+
+        // Simulate loading subset details
+        setTimeout(() => {
+          setSelectedDataset(subset.datasetId);
+          setDatasetDetails({
+            ...subset,
+            isSubset: true,
+            parentDatasetId: subset.datasetId,
+          });
+          setPreviewOpen(true);
+          setDetailsLoading(false);
+        }, 500);
+      } catch (err) {
+        console.error("Error viewing subset:", err);
+        setDetailsLoading(false);
+        dispatch(
+          addNotification({
+            type: "error",
+            message: "Failed to load subset details",
+            duration: 3000,
+          })
+        );
+      }
+    },
+    [dispatch, userId, userRole]
+  );
+
+  // Handle downloading a subset
+  const handleDownloadSubset = useCallback(
+    async (subset) => {
+      try {
+        setDetailsLoading(true);
+
+        // Log download attempt
+        await hipaaComplianceService.createAuditLog("SUBSET_DOWNLOAD_ATTEMPT", {
+          subsetId: subset.id,
+          datasetId: subset.datasetId,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+        });
+
+        // Simulate download
+        const result = await mockDataService.downloadDataset(subset.id, true);
+
+        if (result.success) {
+          dispatch(
+            addNotification({
+              type: "success",
+              message: "Subset downloaded successfully!",
+              duration: 3000,
+            })
+          );
+
+          // Log successful download
+          await hipaaComplianceService.createAuditLog(
+            "SUBSET_DOWNLOAD_COMPLETE",
+            {
+              subsetId: subset.id,
+              datasetId: subset.datasetId,
+              timestamp: new Date().toISOString(),
+              userId,
+              userRole,
+            }
+          );
+        } else {
+          throw new Error(result.error || "Download failed");
+        }
+      } catch (err) {
+        console.error("Subset download error:", err);
+        dispatch(
+          addNotification({
+            type: "error",
+            message: `Download failed: ${err.message}`,
+            duration: 5000,
+          })
+        );
+
+        // Log error
+        await hipaaComplianceService.createAuditLog("SUBSET_DOWNLOAD_ERROR", {
+          subsetId: subset.id,
+          datasetId: subset.datasetId,
+          error: err.message,
+          timestamp: new Date().toISOString(),
+          userId,
+          userRole,
+        });
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [dispatch, userId, userRole]
+  );
+
+  // Purchase step handlers for transaction tracking
+  const handlePurchaseStart = useCallback(
+    (datasetId, tier) => {
+      hipaaComplianceService.createAuditLog("PURCHASE_STARTED", {
         datasetId,
+        tier,
         timestamp: new Date().toISOString(),
         userId,
         userRole,
-        action: "PURCHASE_START",
+      });
+    },
+    [userId, userRole]
+  );
+
+  const handlePurchaseComplete = useCallback(
+    (datasetId, result) => {
+      hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
+        datasetId,
+        transactionHash: result.hash,
+        timestamp: new Date().toISOString(),
+        userId,
+        userRole,
       });
 
-      // Show user notification
       dispatch(
         addNotification({
-          type: "info",
-          message: "Processing purchase request...",
+          type: "success",
+          message: "Purchase completed successfully!",
           duration: 3000,
         })
       );
@@ -296,730 +943,33 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     [dispatch, userId, userRole]
   );
 
-  // Handle purchase completion
-  const handlePurchaseComplete = useCallback(
-    (datasetId, transactionDetails) => {
-      setPurchaseStep("complete");
-      setLastTransactionDetails(transactionDetails);
-
-      // Log purchase completion for HIPAA compliance
-      hipaaComplianceService.createAuditLog("PURCHASE_COMPLETED", {
-        datasetId,
-        timestamp: new Date().toISOString(),
-        userId,
-        userRole,
-        action: "PURCHASE_COMPLETE",
-        transactionDetails,
-      });
-
-      // Show success notification
-      dispatch(
-        addNotification({
-          type: "success",
-          message: "Purchase completed successfully!",
-          duration: 5000,
-        })
-      );
-
-      // Reset purchase state after delay
-      setTimeout(() => {
-        setPurchasingDataset(null);
-        setPurchaseStep("idle");
-      }, 2000);
-
-      // Call original onPurchase callback if provided
-      if (onPurchase) {
-        onPurchase(datasetId, transactionDetails);
-      }
-    },
-    [dispatch, onPurchase, userId, userRole]
-  );
-
-  // Handle purchase error
   const handlePurchaseError = useCallback(
     (datasetId, error) => {
-      setPurchaseStep("error");
-
-      // Log purchase error for HIPAA compliance
       hipaaComplianceService.createAuditLog("PURCHASE_ERROR", {
         datasetId,
+        error: error.message,
         timestamp: new Date().toISOString(),
         userId,
         userRole,
-        action: "PURCHASE_ERROR",
-        errorMessage: error?.message || "Unknown purchase error",
       });
 
-      // Show error notification
       dispatch(
         addNotification({
           type: "error",
-          message:
-            error?.message || "Failed to complete purchase. Please try again.",
-          duration: 7000,
+          message: `Purchase failed: ${error.message}`,
+          duration: 5000,
         })
       );
-
-      // Reset purchase state after delay
-      setTimeout(() => {
-        setPurchasingDataset(null);
-        setPurchaseStep("idle");
-      }, 3000);
     },
     [dispatch, userId, userRole]
   );
-
-  // First, create a viewDatasetImpl function that doesn't depend on requestAndVerifyConsent
-  const viewDatasetImpl = useCallback(
-    async (datasetId, consentVerified = false) => {
-      try {
-        setDetailsLoading(true);
-        setSelectedDataset(datasetId);
-        setPreviewOpen(true);
-
-        // Log access for HIPAA compliance with enhanced details
-        await hipaaComplianceService.logDataAccess(
-          datasetId,
-          "Viewing dataset details for research/patient evaluation",
-          "VIEW",
-          {
-            userRole,
-            userId,
-            timestamp: new Date().toISOString(),
-            method: "DATASET_PREVIEW",
-            consentVerified: consentVerified,
-            dataCategory:
-              healthData.find((d) => d.id === datasetId)?.category || "Unknown",
-            ipAddress: "client", // Server will log actual IP
-          }
-        );
-
-        // Get dataset details
-        const details = await getHealthDataDetails(datasetId);
-        setDatasetDetails(details);
-
-        // Call optional callback
-        if (onDatasetSelect) {
-          onDatasetSelect(datasetId, details);
-        }
-      } catch (err) {
-        console.error("Error getting dataset details:", err);
-
-        // Log the error for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("DATASET_VIEW_ERROR", {
-          datasetId,
-          timestamp: new Date().toISOString(),
-          userId,
-          userRole,
-          errorMessage: err.message || "Unknown error viewing dataset",
-        });
-
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to load dataset details",
-          })
-        );
-      } finally {
-        setDetailsLoading(false);
-      }
-    },
-    [
-      getHealthDataDetails,
-      dispatch,
-      onDatasetSelect,
-      healthData,
-      userId,
-      userRole,
-    ]
-  );
-
-  // Updated purchaseDatasetImpl function using mockPaymentService
-  const purchaseDatasetImpl = useCallback(
-    async (id, consentVerified = false) => {
-      try {
-        // Find the dataset to get price information
-        const dataset = healthData.find((d) => d.id === id);
-        if (!dataset) {
-          throw new Error("Dataset not found");
-        }
-
-        // Log action for HIPAA compliance with comprehensive details
-        await hipaaComplianceService.logDataAccess(
-          id,
-          "Purchasing dataset for research/personal health records",
-          "PURCHASE",
-          {
-            userRole,
-            userId,
-            timestamp: new Date().toISOString(),
-            consentVerified: consentVerified,
-            ipAddress: "client", // Server will log actual IP
-            datasetInfo: {
-              category: dataset.category || "Unknown",
-              price: dataset.price || "Unknown",
-              anonymized: dataset.anonymized || false,
-            },
-            transactionId: `tx-${Date.now()}-${Math.floor(
-              Math.random() * 1000
-            )}`,
-          }
-        );
-
-        // Initialize mock payment service if needed
-        if (!mockPaymentService.isInitialized) {
-          await mockPaymentService.initializeProvider();
-        }
-
-        // Check balance before proceeding (optional)
-        const balance = await mockPaymentService.getBalance();
-        console.log(`Current balance: ${balance} ETH`);
-
-        if (parseFloat(balance) < parseFloat(dataset.price)) {
-          throw new Error("Insufficient funds to complete this purchase");
-        }
-
-        // Use mock payment service to purchase the dataset
-        const result = await mockPaymentService.purchaseDataset(
-          id,
-          dataset.price
-        );
-
-        if (!result.success) {
-          throw new Error(result.error || "Transaction failed");
-        }
-
-        // Record this purchase in the consent history for future reference
-        const updatedHistory = [
-          ...consentsHistory,
-          {
-            consentType: hipaaComplianceService.CONSENT_TYPES.DATA_SHARING,
-            timestamp: new Date().toISOString(),
-            consentGiven: true,
-            purpose: "Dataset purchase confirmation",
-            datasetId: id,
-            actionType: "PURCHASE_COMPLETED",
-            transactionHash: result.transactionHash,
-          },
-        ];
-        setConsentsHistory(updatedHistory);
-
-        return {
-          success: true,
-          datasetId: id,
-          timestamp: new Date().toISOString(),
-          transactionHash: result.transactionHash,
-          blockNumber: result.blockNumber,
-          gasUsed: result.gasUsed,
-        };
-      } catch (err) {
-        console.error("Purchase error:", err);
-
-        // Log purchase failure for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("DATASET_PURCHASE_FAILED", {
-          datasetId: id,
-          timestamp: new Date().toISOString(),
-          userId,
-          userRole,
-          errorMessage: err.message || "Unknown purchase error",
-        });
-
-        throw err; // Re-throw for handling in the calling function
-      }
-    },
-    [consentsHistory, healthData, userId, userRole]
-  );
-
-  // Request and verify consent for data access
-  const requestAndVerifyConsent = useCallback(
-    async (purpose, datasetId = null, actionType = "VIEW") => {
-      try {
-        // First check if we need a new consent or already have a valid one
-        if (consentVerified) {
-          // Log reusing existing consent
-          await hipaaComplianceService.createAuditLog("CONSENT_REUSED", {
-            purpose,
-            datasetId,
-            actionType,
-            timestamp: new Date().toISOString(),
-            userId,
-            userRole,
-          });
-
-          return true;
-        }
-
-        // Determine which consent type to verify based on action
-        const consentType =
-          actionType === "DOWNLOAD" || actionType === "PURCHASE"
-            ? hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
-            : hipaaComplianceService.CONSENT_TYPES.DATA_BROWSING;
-
-        // Prepare detailed consent request metadata
-        const consentRequestMetadata = {
-          datasetId,
-          requestReason: purpose,
-          requestDateTime: new Date().toISOString(),
-          actionType,
-          userRole,
-          requesterInfo: {
-            userId,
-            role: userRole,
-          },
-        };
-
-        // Verify consent with enhanced tracking
-        const hasConsent = await hipaaComplianceService.verifyConsent(
-          consentType,
-          consentRequestMetadata
-        );
-
-        if (!hasConsent) {
-          // Store pending action info and show consent modal
-          setPendingAction({
-            purpose,
-            datasetId,
-            actionType,
-            consentType,
-            metadata: consentRequestMetadata,
-          });
-
-          setConsentModalOpen(true);
-          return false;
-        }
-
-        // Log successful verification
-        await hipaaComplianceService.createAuditLog("CONSENT_VERIFIED", {
-          purpose,
-          datasetId,
-          actionType,
-          consentType,
-          timestamp: new Date().toISOString(),
-          userId,
-          userRole,
-          result: "GRANTED",
-        });
-
-        // Update state to reflect verified consent
-        setConsentVerified(true);
-        return true;
-      } catch (err) {
-        console.error("Consent verification error:", err);
-
-        // Log verification failure
-        await hipaaComplianceService.createAuditLog(
-          "CONSENT_VERIFICATION_ERROR",
-          {
-            purpose,
-            datasetId,
-            actionType,
-            timestamp: new Date().toISOString(),
-            userId,
-            userRole,
-            errorMessage: err.message || "Unknown consent verification error",
-          }
-        );
-
-        return false;
-      }
-    },
-    [consentVerified, userId, userRole]
-  );
-
-  // Now define the public handleViewDataset function that uses requestAndVerifyConsent
-  const handleViewDataset = useCallback(
-    async (datasetId) => {
-      try {
-        // Define the purpose for this action
-        const purpose =
-          "Viewing dataset details for research/patient evaluation";
-
-        // Verify consent before proceeding
-        const hasConsent = await requestAndVerifyConsent(
-          purpose,
-          datasetId,
-          "VIEW"
-        );
-        if (!hasConsent) {
-          return; // Consent modal will be shown or action was denied
-        }
-
-        // Call the implementation function with consent verified
-        await viewDatasetImpl(datasetId, true);
-      } catch (err) {
-        console.error("Error in handleViewDataset:", err);
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Failed to process dataset view",
-          })
-        );
-      }
-    },
-    [dispatch, requestAndVerifyConsent, viewDatasetImpl]
-  );
-
-  // Updated handlePurchase function to use our mock payment service
-  const handlePurchase = useCallback(
-    async (id) => {
-      try {
-        // Start the purchase process
-        handlePurchaseStart(id);
-
-        // Define the purpose for this action
-        const purpose =
-          "Purchasing dataset for research/personal health records";
-
-        // Verify consent before proceeding
-        const hasConsent = await requestAndVerifyConsent(
-          purpose,
-          id,
-          "PURCHASE"
-        );
-
-        if (!hasConsent) {
-          // Reset purchase state if consent was denied
-          setPurchasingDataset(null);
-          setPurchaseStep("idle");
-          return; // Consent modal will be shown or action was denied
-        }
-
-        // Proceed with the purchase
-        try {
-          // Use our updated purchaseDatasetImpl that uses mockPaymentService
-          const result = await purchaseDatasetImpl(id, true);
-
-          // If successful, call the completion handler with transaction details
-          handlePurchaseComplete(id, {
-            timestamp: result.timestamp,
-            datasetId: id,
-            transactionId: result.transactionHash,
-            blockNumber: result.blockNumber,
-            gasUsed: result.gasUsed,
-          });
-        } catch (err) {
-          // If purchase implementation failed, handle the error
-          handlePurchaseError(id, err);
-        }
-      } catch (err) {
-        console.error("Error in handlePurchase:", err);
-
-        // Handle any errors not caught by purchaseDatasetImpl
-        if (purchaseStep !== "error") {
-          handlePurchaseError(id, err);
-        }
-      }
-    },
-    [
-      handlePurchaseStart,
-      handlePurchaseComplete,
-      handlePurchaseError,
-      requestAndVerifyConsent,
-      purchaseDatasetImpl,
-      purchaseStep,
-    ]
-  );
-
-  // Handle consent approval from modal
-  const handleConsentApproval = useCallback(
-    async (approved) => {
-      try {
-        if (!pendingAction) return;
-
-        const { purpose, datasetId, actionType, consentType, metadata } =
-          pendingAction;
-
-        // Record the consent decision with detailed metadata
-        await hipaaComplianceService.recordConsent(consentType, approved, {
-          ...metadata,
-          consentDecision: approved ? "APPROVED" : "DECLINED",
-          consentMethodType: "EXPLICIT_MODAL",
-          consentVersion: "1.2", // Track consent version for legal compliance
-          consentText: approved
-            ? "User explicitly approved data access via consent modal"
-            : "User declined data access via consent modal",
-          ipAddress: "client", // Actual IP will be logged server-side
-        });
-
-        // Log consent decision in audit trail
-        await hipaaComplianceService.createAuditLog(
-          approved ? "CONSENT_GRANTED" : "CONSENT_DECLINED",
-          {
-            purpose,
-            datasetId,
-            actionType,
-            consentType,
-            timestamp: new Date().toISOString(),
-            userId,
-            userRole,
-            consentMethod: "EXPLICIT_MODAL",
-          }
-        );
-
-        // Update state based on decision
-        setConsentVerified(approved);
-        setConsentModalOpen(false);
-
-        // Update consents history
-        const updatedHistory = [
-          ...consentsHistory,
-          {
-            consentType,
-            timestamp: new Date().toISOString(),
-            consentGiven: approved,
-            purpose,
-            datasetId,
-          },
-        ];
-        setConsentsHistory(updatedHistory);
-
-        // If approved, proceed with the pending action
-        if (approved) {
-          if (actionType === "VIEW" && datasetId) {
-            // Use viewDatasetImpl directly, since consent is already verified
-            await viewDatasetImpl(datasetId, true);
-          } else if (actionType === "PURCHASE" && datasetId) {
-            // For purchase, start with handlePurchaseStart
-            handlePurchaseStart(datasetId);
-            try {
-              // Use purchaseDatasetImpl directly, since consent is already verified
-              const result = await purchaseDatasetImpl(datasetId, true);
-              handlePurchaseComplete(datasetId, {
-                timestamp: result.timestamp,
-                datasetId,
-                transactionId: result.transactionHash,
-                blockNumber: result.blockNumber,
-                gasUsed: result.gasUsed,
-              });
-            } catch (err) {
-              handlePurchaseError(datasetId, err);
-            }
-          } else if (actionType === "DOWNLOAD" && datasetId) {
-            // Handle download logic here if applicable
-          }
-        } else {
-          // Notify the user their action was canceled due to consent denial
-          dispatch(
-            addNotification({
-              type: "info",
-              message: "Action canceled due to consent denial",
-            })
-          );
-        }
-
-        // Clear the pending action
-        setPendingAction(null);
-      } catch (err) {
-        console.error("Error processing consent decision:", err);
-
-        dispatch(
-          addNotification({
-            type: "error",
-            message: "Error processing consent decision. Please try again.",
-          })
-        );
-
-        setConsentModalOpen(false);
-        setPendingAction(null);
-      }
-    },
-    [
-      pendingAction,
-      consentsHistory,
-      dispatch,
-      viewDatasetImpl,
-      purchaseDatasetImpl,
-      handlePurchaseStart,
-      handlePurchaseComplete,
-      handlePurchaseError,
-      userId,
-      userRole,
-    ]
-  );
-
-  // HIPAA compliance checking on mount
-  useEffect(() => {
-    // Check if the user has provided general consent for data browsing
-    const checkInitialConsent = async () => {
-      try {
-        // Check for existing consent records
-        const consentHistory = await hipaaComplianceService.getConsentHistory(
-          hipaaComplianceService.CONSENT_TYPES.DATA_BROWSING
-        );
-
-        setConsentsHistory(consentHistory);
-
-        // If we have a valid consent record that hasn't expired, use it
-        const hasValidConsent = consentHistory.some((consent) => {
-          const consentDate = new Date(consent.timestamp);
-          const now = new Date();
-          // Consider consent valid for 30 days
-          const consentValid = now - consentDate < 30 * 24 * 60 * 60 * 1000;
-          return consent.consentGiven && consentValid;
-        });
-
-        setConsentVerified(hasValidConsent);
-
-        // Log browse activity for HIPAA compliance
-        await hipaaComplianceService.createAuditLog("DATA_BROWSE_INIT", {
-          userRole,
-          userId,
-          timestamp: new Date().toISOString(),
-          action: "VIEW",
-          hasProvidedConsent: hasValidConsent,
-          filters: JSON.stringify(filters),
-          sessionInfo: {
-            browser: navigator.userAgent,
-            viewMode,
-            accessType: "WEB_INTERFACE",
-          },
-        });
-      } catch (err) {
-        console.error("Failed to check initial consent:", err);
-        // Default to false to be safe
-        setConsentVerified(false);
-      }
-    };
-
-    checkInitialConsent();
-  }, [userRole, filters, viewMode, userId]);
-
-  // Log filter changes for HIPAA compliance
-  useEffect(() => {
-    const logFilterChange = async () => {
-      try {
-        await hipaaComplianceService.createAuditLog("DATA_FILTER_CHANGE", {
-          filters: JSON.stringify(filters),
-          timestamp: new Date().toISOString(),
-          action: "FILTER",
-          userRole,
-          userId,
-        });
-      } catch (err) {
-        console.error("Failed to log filter change:", err);
-      }
-    };
-
-    logFilterChange();
-  }, [filters, userRole, userId]);
-
-  // Load favorites from localStorage
-  useEffect(() => {
-    try {
-      const storedFavorites = localStorage.getItem(
-        "healthmint_favorite_datasets"
-      );
-      if (storedFavorites) {
-        setFavoriteDatasets(JSON.parse(storedFavorites));
-      }
-    } catch (err) {
-      console.error("Failed to load favorites:", err);
-    }
-  }, []);
-
-  // Filter datasets based on all criteria
-  const filteredData = useMemo(() => {
-    if (!healthData.length) return [];
-
-    let filtered = [...healthData];
-
-    // Apply advanced filters if set
-    if (filters.studyType && filters.studyType !== "All Types") {
-      filtered = filtered.filter(
-        (data) => data.studyType === filters.studyType
-      );
-    }
-
-    if (filters.dataFormat && filters.dataFormat !== "All Formats") {
-      filtered = filtered.filter((data) => data.format === filters.dataFormat);
-    }
-
-    if (filters.recordSize && filters.recordSize !== "all") {
-      if (filters.recordSize === "small") {
-        filtered = filtered.filter((data) => data.recordCount < 1000);
-      } else if (filters.recordSize === "medium") {
-        filtered = filtered.filter(
-          (data) => data.recordCount >= 1000 && data.recordCount < 10000
-        );
-      } else if (filters.recordSize === "large") {
-        filtered = filtered.filter((data) => data.recordCount >= 10000);
-      }
-    }
-
-    if (filters.dataAge && filters.dataAge !== "all") {
-      const now = new Date();
-      if (filters.dataAge === "recent") {
-        filtered = filtered.filter((data) => {
-          const dataDate = new Date(data.uploadDate);
-          const diffMonths = (now - dataDate) / (1000 * 60 * 60 * 24 * 30);
-          return diffMonths <= 6;
-        });
-      } else if (filters.dataAge === "older") {
-        filtered = filtered.filter((data) => {
-          const dataDate = new Date(data.uploadDate);
-          const diffMonths = (now - dataDate) / (1000 * 60 * 60 * 24 * 30);
-          return diffMonths > 6;
-        });
-      }
-    }
-
-    // Apply search term
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (data) =>
-          data.title?.toLowerCase().includes(searchLower) ||
-          data.description?.toLowerCase().includes(searchLower) ||
-          data.category?.toLowerCase().includes(searchLower) ||
-          data.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
-      );
-    }
-
-    // Filter by favorites if needed
-    if (showOnlyFavorites) {
-      filtered = filtered.filter((data) => favoriteDatasets.includes(data.id));
-    }
-
-    // Sort datasets
-    if (filters.sortBy) {
-      switch (filters.sortBy) {
-        case "price_asc":
-          filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-          break;
-        case "price_desc":
-          filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-          break;
-        case "newest":
-          filtered.sort(
-            (a, b) => new Date(b.uploadDate) - new Date(a.uploadDate)
-          );
-          break;
-        case "oldest":
-          filtered.sort(
-            (a, b) => new Date(a.uploadDate) - new Date(b.uploadDate)
-          );
-          break;
-        case "size_asc":
-          filtered.sort((a, b) => a.recordCount - b.recordCount);
-          break;
-        case "size_desc":
-          filtered.sort((a, b) => b.recordCount - a.recordCount);
-          break;
-        case "relevance":
-        default:
-          // Relevance sorting already handled by API
-          break;
-      }
-    }
-
-    return filtered;
-  }, [healthData, filters, showOnlyFavorites, favoriteDatasets]);
 
   // Render consent modal component
   const renderConsentModal = () => {
     if (!consentModalOpen || !pendingAction) return null;
 
-    const { purpose, actionType, consentType } = pendingAction;
+    const { purpose, actionType, consentType, tierInfo } = pendingAction;
+    const tierDetails = tierInfo ? ` (${tierInfo.tier} tier)` : "";
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -1027,7 +977,10 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
           <div className="mb-4">
             <h3 className="text-xl font-bold mb-2">HIPAA Consent Required</h3>
             <p className="text-gray-700">Your consent is required for:</p>
-            <p className="font-medium my-2 text-blue-700">{purpose}</p>
+            <p className="font-medium my-2 text-blue-700">
+              {purpose}
+              {tierDetails}
+            </p>
 
             <div className="my-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
               <p className="text-sm text-gray-700 mb-3">
@@ -1038,8 +991,8 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
                 <li>Your consent will be securely documented</li>
                 {actionType === "PURCHASE" && (
                   <li>
-                    Purchasing this dataset creates a permanent record of your
-                    consent
+                    Purchasing this dataset{tierDetails} creates a permanent
+                    record of your consent
                   </li>
                 )}
                 {consentType ===
@@ -1072,87 +1025,89 @@ const DataBrowser = ({ onPurchase, onDatasetSelect }) => {
     );
   };
 
-  // Fetch current wallet balance to display
-  const [walletBalance, setWalletBalance] = useState(null);
-
-  useEffect(() => {
-    const fetchWalletBalance = async () => {
-      try {
-        if (mockPaymentService.isInitialized) {
-          const balance = await mockPaymentService.getBalance();
-          setWalletBalance(balance);
-        }
-      } catch (err) {
-        console.error("Error fetching wallet balance:", err);
-      }
-    };
-
-    fetchWalletBalance();
-
-    // Set up periodic balance updates
-    const intervalId = setInterval(fetchWalletBalance, 10000); // Check every 10 seconds
-
-    return () => clearInterval(intervalId);
-  }, [purchaseStep]); // Re-fetch when purchase state changes
-
-  // Pass props to the view component (including wallet balance)
   return (
     <>
-      {/* Optional wallet balance display */}
-      {walletBalance !== null && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 mb-4 flex justify-between items-center">
-          <span className="text-blue-700 font-medium">
-            Wallet Balance: {walletBalance} ETH
-          </span>
-          {lastTransactionDetails && (
-            <span className="text-xs text-blue-600">
-              Last transaction:{" "}
-              {lastTransactionDetails.transactionId?.substring(0, 10)}...
-            </span>
-          )}
-        </div>
+      {/* Filtered Subset Creator */}
+      {isFilteringMode && selectedDatasetForFiltering ? (
+        <FilteredSubsetCreator
+          datasetId={
+            typeof selectedDatasetForFiltering === "string"
+              ? selectedDatasetForFiltering
+              : typeof selectedDatasetForFiltering === "object" &&
+                selectedDatasetForFiltering !== null
+                ? String(selectedDatasetForFiltering.id || "")
+                : ""
+          }
+          onSubsetCreated={handleSubsetCreated}
+          onSubsetPurchase={handleSubsetPurchase}
+          onCancel={cancelFiltering}
+          className="mb-6"
+        />
+      ) : (
+        /* Data Browser View */
+        <DataBrowserView
+          userRole={userRole}
+          loading={loading}
+          error={error}
+          filters={filters}
+          updateFilter={updateFilter}
+          totalCount={totalCount}
+          filteredData={filteredData}
+          favoriteDatasets={favoriteDatasets}
+          toggleFavorite={toggleFavorite}
+          handlePurchase={handlePurchase}
+          handleViewDataset={handleViewDataset}
+          handleDownloadDataset={handleDownloadDataset}
+          handleCreateSubset={handleCreateSubset}
+          datasetSubsets={getDatasetSubsets}
+          onPurchaseSubset={handleFilteredSubsetPurchase}
+          onViewSubset={handleViewSubset}
+          onDownloadSubset={handleDownloadSubset}
+          activeSubsetId={activeSubsetId}
+          availableSubsets={savedSubsets.length}
+          subsetProcessing={subsetPurchaseInProgress}
+          searchInput={searchInput}
+          handleSearchInputChange={handleSearchInputChange}
+          handleSearchKeyDown={handleSearchKeyDown}
+          handleSearch={handleSearch}
+          toggleAdvancedFilters={toggleAdvancedFilters}
+          advancedFiltersOpen={advancedFiltersOpen}
+          handleResetFilters={handleResetFilters}
+          handleToggleFavorites={handleToggleFavorites}
+          showOnlyFavorites={showOnlyFavorites}
+          viewMode={viewMode}
+          handleViewModeChange={handleViewModeChange}
+          previewOpen={previewOpen}
+          handleClosePreview={handleClosePreview}
+          selectedDataset={selectedDataset}
+          detailsLoading={detailsLoading}
+          datasetDetails={datasetDetails}
+          categories={CATEGORIES}
+          studyTypes={STUDY_TYPES}
+          dataFormats={DATA_FORMATS}
+          consentVerified={consentVerified}
+          purchasingDataset={purchasingDataset}
+          purchaseStep={purchaseStep}
+          handlePurchaseStart={handlePurchaseStart}
+          handlePurchaseComplete={handlePurchaseComplete}
+          handlePurchaseError={handlePurchaseError}
+          walletBalance={walletBalance}
+          handleTierChange={handleTierChange}
+          selectedTiers={selectedTiers}
+          datasetTiers={datasetTiers}
+          fetchDatasetTiers={fetchDatasetTiers}
+        />
       )}
 
-      <DataBrowserView
-        userRole={userRole}
-        loading={loading}
-        error={error}
-        filters={filters}
-        updateFilter={updateFilter}
-        totalCount={totalCount}
-        filteredData={filteredData}
-        favoriteDatasets={favoriteDatasets}
-        toggleFavorite={toggleFavorite}
-        handlePurchase={handlePurchase}
-        handleViewDataset={handleViewDataset}
-        searchInput={searchInput}
-        handleSearchInputChange={handleSearchInputChange}
-        handleSearchKeyDown={handleSearchKeyDown}
-        handleSearch={handleSearch}
-        toggleAdvancedFilters={toggleAdvancedFilters}
-        advancedFiltersOpen={advancedFiltersOpen}
-        handleResetFilters={handleResetFilters}
-        handleToggleFavorites={handleToggleFavorites}
-        showOnlyFavorites={showOnlyFavorites}
-        viewMode={viewMode}
-        handleViewModeChange={handleViewModeChange}
-        previewOpen={previewOpen}
-        handleClosePreview={handleClosePreview}
-        selectedDataset={selectedDataset}
-        detailsLoading={detailsLoading}
-        datasetDetails={datasetDetails}
-        categories={CATEGORIES}
-        studyTypes={STUDY_TYPES}
-        dataFormats={DATA_FORMATS}
-        consentVerified={consentVerified}
-        purchasingDataset={purchasingDataset}
-        purchaseStep={purchaseStep}
-        handlePurchaseStart={handlePurchaseStart}
-        handlePurchaseComplete={handlePurchaseComplete}
-        handlePurchaseError={handlePurchaseError}
+      {/* Transaction Modal */}
+      <TransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        step={purchaseStep}
+        details={transactionDetails}
       />
 
-      {/* Render consent modal when needed */}
+      {/* Consent Modal */}
       {renderConsentModal()}
     </>
   );

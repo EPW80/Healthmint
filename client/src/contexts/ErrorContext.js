@@ -12,20 +12,14 @@ const ErrorContext = createContext({
   hasErrors: false,
 });
 
-/**
- * Error Provider Component
- *
- * Provides centralized error handling capabilities to the application
- * with HIPAA compliance built in
- */
 export const ErrorProvider = ({ children, userIdentifier }) => {
   // Track errors by component
   const [errors, setErrors] = useState({});
 
-  // Compute whether there are any errors
+  // Check if there are any errors
   const hasErrors = Object.keys(errors).length > 0;
 
-  // Add an error for a specific component with HIPAA logging
+  // Function to add an error for a specific component
   const addError = useCallback(
     (componentId, error, metadata = {}) => {
       const errorMessage =

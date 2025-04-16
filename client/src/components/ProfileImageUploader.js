@@ -12,12 +12,7 @@ const ALLOWED_FILE_TYPES = {
   "image/gif": [".gif"],
 };
 
-/**
- * ProfileImageUploader Component - HIPAA Compliant
- *
- * An accessible component for uploading and managing profile images
- * with HIPAA-compliant security features using secureStorageService
- */
+// ProfileImageUploader component
 const ProfileImageUploader = ({
   previewUrl,
   setPreviewUrl,

@@ -6,10 +6,9 @@ import crypto from "crypto";
 import apiService from "./apiService.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENV } from "../config/networkConfig.js";
+import validation from '../validation/index.js';
 
-/**
- * Error class for SecureStorage errors
- */
+// Error handling
 class SecureStorageError extends Error {
   constructor(message, code = "STORAGE_ERROR", details = {}) {
     super(message);
@@ -20,13 +19,7 @@ class SecureStorageError extends Error {
   }
 }
 
-/**
- * SecureStorageService - HIPAA Compliant Storage
- *
- * Provides methods for securely uploading, downloading, and managing files
- * in compliance with HIPAA regulations, including proper encryption,
- * integrity verification, and audit logging.
- */
+/// SecureStorage class for handling file uploads, downloads, and management
 class SecureStorageService {
   constructor() {
     this.MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -38,7 +31,15 @@ class SecureStorageService {
       "application/json",
       "text/plain",
       "application/dicom",
+      "application/csv",
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
+
+    // Add cache for resolved references
+    this.referenceCache = new Map();
+    this.cacheTimeout = 30 * 60 * 1000; // 30 minutes
 
     // Initialize IPFS client with authentication
     try {
@@ -50,6 +51,12 @@ class SecureStorageService {
           authorization: this.getAuthHeader(),
         },
       });
+
+      // Validate connection to IPFS
+      this.validateIPFSConnection().catch((error) => {
+        console.warn("⚠️ IPFS connection validation failed:", error.message);
+        this.useApiFallback = true;
+      });
     } catch (error) {
       console.error("IPFS initialization error:", error);
       // Create fallback to API-based storage if IPFS fails
@@ -57,10 +64,24 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Get authorization header for IPFS
-   * @private
-   */
+  /// Fallback to API if IPFS is not available
+  async validateIPFSConnection() {
+    if (!this.ipfs) {
+      throw new Error("IPFS client not initialized");
+    }
+
+    try {
+      // Simple validation by getting IPFS node ID
+      const nodeInfo = await this.ipfs.id();
+      console.log(`✅ Connected to IPFS node: ${nodeInfo.id}`);
+      return true;
+    } catch (error) {
+      console.error("IPFS connection validation failed:", error);
+      throw error;
+    }
+  }
+
+  /// Generate authentication header for IPFS
   getAuthHeader() {
     const projectId = process.env.IPFS_PROJECT_ID || ENV.IPFS_PROJECT_ID;
     const projectSecret =
@@ -75,30 +96,32 @@ class SecureStorageService {
     return "";
   }
 
-  /**
-   * Validates file type and size
-   * @param {File} file - File to validate
-   * @returns {Promise<boolean>} Validation result
-   */
+  /// Upload a file to IPFS and return the IPFS hash
   async validateFile(file) {
     try {
-      if (!file) {
-        throw new SecureStorageError("No file provided", "INVALID_INPUT");
-      }
-
-      if (file.size > this.MAX_FILE_SIZE) {
+      const fileValidationResult = validation.validateFile(file, this.MAX_FILE_SIZE, this.ALLOWED_MIME_TYPES);
+      if (!fileValidationResult.isValid) {
         throw new SecureStorageError(
-          `File size exceeds maximum limit of ${
-            this.MAX_FILE_SIZE / (1024 * 1024)
-          }MB`,
-          "SIZE_EXCEEDED"
+          fileValidationResult.message,
+          fileValidationResult.code,
+          fileValidationResult.details
         );
       }
 
-      if (!this.ALLOWED_MIME_TYPES.includes(file.type)) {
-        throw new SecureStorageError("File type not allowed", "INVALID_TYPE", {
-          allowedTypes: this.ALLOWED_MIME_TYPES,
-        });
+      // Check filename for suspicious patterns
+      const filename = file.name || "";
+      const suspiciousPatterns = [
+        /\.\.|\/|\\|~|%00|%0A/, // Path traversal attempts
+        /\.exe$|\.dll$|\.bat$|\.cmd$|\.sh$/i, // Executable files
+        /\.php$|\.jsp$|\.asp$/i, // Server scripts
+      ];
+
+      if (suspiciousPatterns.some((pattern) => pattern.test(filename))) {
+        throw new SecureStorageError(
+          "Suspicious filename detected",
+          "SECURITY_FILENAME",
+          { filename }
+        );
       }
 
       // Additional security scanning could be implemented here
@@ -111,23 +134,14 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Perform security scan on file (placeholder for actual implementation)
-   * @param {File} file - File to scan
-   * @private
-   */
+  /// Upload a file to IPFS and return the IPFS hash
   async scanFile(file) {
     // This would be implemented based on your security requirements
     // For example, virus scanning, content verification, etc.
     return true;
   }
 
-  /**
-   * Read file as buffer
-   * @param {File} file - File to read
-   * @returns {Promise<Buffer>} File buffer
-   * @private
-   */
+  /// Read file as buffer
   async readFileAsBuffer(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -141,12 +155,7 @@ class SecureStorageService {
     });
   }
 
-  /**
-   * Generate checksums for content verification
-   * @param {Buffer} content - Content to hash
-   * @returns {Object} Object containing different hash algorithms
-   * @private
-   */
+  /// Upload a file to IPFS and return the IPFS hash
   async generateChecksums(content) {
     const algorithms = ["sha256", "sha512"];
     const checksums = {};
@@ -160,13 +169,7 @@ class SecureStorageService {
     return checksums;
   }
 
-  /**
-   * Retry an operation with exponential backoff
-   * @param {Function} operation - Function to retry
-   * @param {number} maxRetries - Maximum number of retries
-   * @returns {Promise<any>} Operation result
-   * @private
-   */
+  /// Upload a file to IPFS and return the IPFS hash
   async retryOperation(operation, maxRetries = 3) {
     let lastError;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -176,18 +179,16 @@ class SecureStorageService {
         lastError = error;
         // Exponential backoff
         const delay = Math.pow(2, attempt) * 1000;
+        console.warn(
+          `Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms delay`
+        );
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
     throw lastError;
   }
 
-  /**
-   * Generate a secure reference from IPFS hash
-   * @param {string} ipfsHash - IPFS content identifier
-   * @returns {Promise<string>} Secure reference
-   * @private
-   */
+  /// Generate a secure reference for the file
   async generateSecureReference(ipfsHash) {
     const randomBytes = ethers.utils.randomBytes(16);
     const timestamp = Date.now().toString(16);
@@ -199,12 +200,7 @@ class SecureStorageService {
     );
   }
 
-  /**
-   * Upload file to secure storage
-   * @param {File} file - File to upload
-   * @param {Object} options - Upload options
-   * @returns {Promise<Object>} Upload result with reference
-   */
+  /// Upload a file to IPFS and return the IPFS hash
   async uploadFile(file, options = {}) {
     try {
       await this.validateFile(file);
@@ -234,6 +230,11 @@ class SecureStorageService {
         checksums: await this.generateChecksums(fileContent),
         uploadDate: new Date().toISOString(),
       };
+
+      // Add dataset-specific metadata if provided
+      if (options.datasetMetadata) {
+        metadata.datasetMetadata = options.datasetMetadata;
+      }
 
       // Encrypt metadata
       const encryptedMetadata = await hipaaCompliance.encrypt(
@@ -277,6 +278,9 @@ class SecureStorageService {
       const reference = await this.generateSecureReference(result.path);
       updateProgress(90);
 
+      // Store in cache
+      this.cacheReference(reference, result.path);
+
       // Create audit log
       await hipaaCompliance.createAuditLog("FILE_UPLOAD", {
         reference,
@@ -284,6 +288,7 @@ class SecureStorageService {
         fileSize: file.size,
         timestamp: new Date(),
         ipfsHash: result.path,
+        isDataset: !!options.datasetMetadata,
         ...options.auditMetadata,
       });
 
@@ -305,13 +310,30 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Upload file via API as fallback method
-   * @param {File} file - File to upload
-   * @param {Object} options - Upload options
-   * @returns {Promise<Object>} Upload result
-   * @private
-   */
+  // Cache the reference with IPFS hash
+  cacheReference(reference, ipfsHash) {
+    this.referenceCache.set(reference, {
+      ipfsHash,
+      timestamp: Date.now(),
+    });
+
+    // Clean old cache entries periodically
+    if (this.referenceCache.size > 100) {
+      this.cleanReferenceCache();
+    }
+  }
+
+  // Clean old cache entries
+  cleanReferenceCache() {
+    const now = Date.now();
+    for (const [reference, data] of this.referenceCache.entries()) {
+      if (now - data.timestamp > this.cacheTimeout) {
+        this.referenceCache.delete(reference);
+      }
+    }
+  }
+
+  // Upload a file to IPFS using an API service
   async uploadViaApi(file, options = {}) {
     try {
       // Report upload progress
@@ -324,6 +346,14 @@ class SecureStorageService {
       // Add audit metadata
       if (options.auditMetadata) {
         formData.append("metadata", JSON.stringify(options.auditMetadata));
+      }
+
+      // Add dataset metadata if available
+      if (options.datasetMetadata) {
+        formData.append(
+          "datasetMetadata",
+          JSON.stringify(options.datasetMetadata)
+        );
       }
 
       // Upload via API service with progress tracking
@@ -351,12 +381,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Download file from secure storage
-   * @param {string} reference - Secure reference
-   * @param {Object} options - Download options
-   * @returns {Promise<Object>} File content and metadata
-   */
+  /// Download a file from secure storage
   async downloadFile(reference, options = {}) {
     try {
       // If using API fallback
@@ -409,6 +434,9 @@ class SecureStorageService {
         reference,
         timestamp: new Date(),
         ipfsHash,
+        fileType: metadata.type,
+        fileSize: metadata.size,
+        isDataset: !!metadata.datasetMetadata,
         ...options.auditMetadata,
       });
 
@@ -425,13 +453,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Download file via API as fallback method
-   * @param {string} reference - Secure reference
-   * @param {Object} options - Download options
-   * @returns {Promise<Object>} File content and metadata
-   * @private
-   */
+  /// Download a file using API as fallback method
   async downloadViaApi(reference, options = {}) {
     try {
       options.onProgress?.(10);
@@ -455,12 +477,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Delete file from secure storage
-   * @param {string} reference - Secure reference
-   * @param {Object} options - Delete options
-   * @returns {Promise<boolean>} Success status
-   */
+  /// Delete a file securely
   async deleteFile(reference, options = {}) {
     try {
       // If using API fallback
@@ -476,6 +493,9 @@ class SecureStorageService {
 
       // IPFS doesn't allow true deletion, but we can remove the pin
       await this.ipfs.pin.rm(ipfsHash);
+
+      // Remove from cache
+      this.referenceCache.delete(reference);
 
       // Create audit log
       await hipaaCompliance.createAuditLog("FILE_DELETE", {
@@ -496,13 +516,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Delete file via API as fallback method
-   * @param {string} reference - Secure reference
-   * @param {Object} options - Delete options
-   * @returns {Promise<boolean>} Success status
-   * @private
-   */
+  // Delete a file using API as fallback method
   async deleteViaApi(reference, options = {}) {
     try {
       // Delete via API
@@ -521,18 +535,29 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Resolve a secure reference to an IPFS hash
-   * @param {string} reference - Secure reference
-   * @returns {Promise<string>} IPFS hash
-   * @private
-   */
+  // Verify access to a file
   async resolveReference(reference) {
     try {
-      // In a real implementation, this would query a database
-      // to resolve the reference to an IPFS hash
-      // For now, we'll use a simplified approach with API
+      // Check cache first
+      if (this.referenceCache.has(reference)) {
+        const cachedData = this.referenceCache.get(reference);
+        // Check if cache entry is still valid
+        if (Date.now() - cachedData.timestamp < this.cacheTimeout) {
+          return cachedData.ipfsHash;
+        } else {
+          // Remove expired cache entry
+          this.referenceCache.delete(reference);
+        }
+      }
+
+      // If not in cache, query API
       const response = await apiService.get(`api/storage/resolve/${reference}`);
+
+      // Add to cache
+      if (response.ipfsHash) {
+        this.cacheReference(reference, response.ipfsHash);
+      }
+
       return response.ipfsHash;
     } catch (error) {
       console.error("Reference resolution error:", error);
@@ -544,13 +569,6 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Verify access to a file
-   * @param {string} reference - Secure reference
-   * @param {string} accessToken - Access token
-   * @returns {Promise<boolean>} Access verification result
-   * @private
-   */
   async verifyAccess(reference, accessToken) {
     // If no token provided and not requiring strict access control,
     // allow access (useful for public profile images)
@@ -575,13 +593,6 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Fetch data from IPFS
-   * @param {string} hash - IPFS hash
-   * @param {Function} progressCallback - Progress callback
-   * @returns {Promise<Object>} IPFS data
-   * @private
-   */
   async fetchFromIPFS(hash, progressCallback) {
     const chunks = [];
     let totalSize = 0;
@@ -597,13 +608,6 @@ class SecureStorageService {
     return JSON.parse(Buffer.concat(chunks).toString());
   }
 
-  /**
-   * Verify content integrity using checksums
-   * @param {Buffer} content - Content to verify
-   * @param {Object} storedChecksums - Checksums stored with the content
-   * @returns {Promise<boolean>} Integrity verification result
-   * @private
-   */
   async verifyIntegrity(content, storedChecksums) {
     const currentChecksums = await this.generateChecksums(content);
 
@@ -624,11 +628,7 @@ class SecureStorageService {
     return true;
   }
 
-  /**
-   * Get health records for a user
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Health records
-   */
+  // Generate checksums for a content
   async getHealthRecords(options = {}) {
     try {
       const response = await apiService.get("api/data/records", options);
@@ -643,13 +643,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Handle emergency access to data
-   * @param {string} requestedBy - Requester address
-   * @param {string} dataId - Data ID
-   * @param {string} reason - Emergency reason
-   * @returns {Promise<Object>} Access result
-   */
+  // Generate checksums for a content
   async handleEmergencyAccess(requestedBy, dataId, reason) {
     try {
       const response = await apiService.post("api/data/emergency-access", {
@@ -670,11 +664,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Browse health data based on filters
-   * @param {Object} options - Browse options
-   * @returns {Promise<Object>} Browse results
-   */
+  // Generate checksums for a content
   async browseHealthData(options = {}) {
     try {
       const response = await apiService.get(
@@ -703,13 +693,7 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Get health data details
-   * @param {string} id - Data ID
-   * @param {string} requestedBy - Requester address
-   * @param {Object} metadata - Request metadata
-   * @returns {Promise<Object>} Health data details
-   */
+  // Get health data details
   async getHealthDataDetails(id, requestedBy, metadata = {}) {
     try {
       const response = await apiService.get(`api/data/${id}`, {
@@ -729,11 +713,171 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Get data categories
-   * @param {Object} metadata - Request metadata
-   * @returns {Promise<Array>} Data categories
-   */
+  // Create a new health record
+  async getDataset(id, requestedBy, metadata = {}) {
+    try {
+      const response = await apiService.get(`api/datasets/${id}`, {
+        requestedBy,
+        timestamp: new Date().toISOString(),
+        dataType: "dataset",
+        ...metadata,
+      });
+
+      // Create audit log for dataset access
+      await hipaaCompliance.createAuditLog("DATASET_ACCESS", {
+        datasetId: id,
+        requestedBy,
+        timestamp: new Date(),
+        purpose: metadata.purpose || "view",
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("Dataset retrieval error:", error);
+      throw new SecureStorageError(
+        "Failed to retrieve dataset",
+        "DATASET_RETRIEVAL_FAILED",
+        { originalError: error.message, datasetId: id }
+      );
+    }
+  }
+
+  async downloadDataset(id, options = {}) {
+    try {
+      // Verify this is a dataset
+      const verifyResult = await apiService.get(`api/datasets/${id}/verify`, {
+        requestedBy: options.requestedBy,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (!verifyResult.isDataset) {
+        throw new SecureStorageError(
+          "Resource is not a dataset or access denied",
+          "INVALID_DATASET",
+          { id }
+        );
+      }
+
+      // Create a pre-download audit log
+      await hipaaCompliance.createAuditLog("DATASET_DOWNLOAD_INITIATED", {
+        datasetId: id,
+        requestedBy: options.requestedBy,
+        purpose: options.purpose || "unknown",
+        timestamp: new Date(),
+      });
+
+      // Use the standard download file function
+      const result = await this.downloadFile(id, {
+        ...options,
+        auditMetadata: {
+          ...options.auditMetadata,
+          dataType: "dataset",
+          purpose: options.purpose || "download",
+        },
+      });
+
+      // Post-download audit
+      await hipaaCompliance.createAuditLog("DATASET_DOWNLOAD_COMPLETED", {
+        datasetId: id,
+        requestedBy: options.requestedBy,
+        fileSize: result.content.length,
+        timestamp: new Date(),
+      });
+
+      return result;
+    } catch (error) {
+      // Log download failure
+      await hipaaCompliance.createAuditLog("DATASET_DOWNLOAD_FAILED", {
+        datasetId: id,
+        requestedBy: options.requestedBy || "anonymous",
+        error: error.message,
+        timestamp: new Date(),
+      });
+
+      console.error("Dataset download error:", error);
+      throw new SecureStorageError(
+        "Failed to download dataset",
+        "DATASET_DOWNLOAD_FAILED",
+        { originalError: error.message, datasetId: id }
+      );
+    }
+  }
+
+  async listDatasets(options = {}, metadata = {}) {
+    try {
+      const response = await apiService.get(`api/datasets`, {
+        ...options,
+        dataType: "dataset",
+        timestamp: new Date().toISOString(),
+        ...metadata,
+      });
+
+      return {
+        data: response.data || [],
+        pagination: response.pagination || {
+          page: 1,
+          totalPages: 1,
+          totalItems: response.data?.length || 0,
+        },
+      };
+    } catch (error) {
+      console.error("Dataset listing error:", error);
+      throw new SecureStorageError(
+        "Failed to list datasets",
+        "DATASET_LIST_FAILED",
+        { originalError: error.message }
+      );
+    }
+  }
+
+  async uploadDataset(file, datasetMetadata = {}, options = {}) {
+    // Validate required dataset metadata
+    if (!datasetMetadata.description) {
+      throw new SecureStorageError(
+        "Dataset description is required",
+        "INVALID_DATASET_METADATA"
+      );
+    }
+
+    // Validate file type is appropriate for datasets
+    const datasetFileTypes = [
+      "text/csv",
+      "application/csv",
+      "application/json",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    if (!datasetFileTypes.includes(file.type)) {
+      throw new SecureStorageError(
+        "Invalid file format for dataset",
+        "INVALID_DATASET_FORMAT",
+        {
+          providedType: file.type,
+          allowedTypes: datasetFileTypes,
+        }
+      );
+    }
+
+    // Add dataset type to metadata
+    const enhancedMetadata = {
+      ...datasetMetadata,
+      dataType: "dataset",
+      uploadedAt: new Date().toISOString(),
+      version: datasetMetadata.version || "1.0",
+    };
+
+    // Use standard upload with dataset metadata
+    return this.uploadFile(file, {
+      ...options,
+      datasetMetadata: enhancedMetadata,
+      auditMetadata: {
+        ...options.auditMetadata,
+        dataType: "dataset",
+      },
+    });
+  }
+
   async getCategories(metadata = {}) {
     try {
       const response = await apiService.get("api/data/categories");
@@ -748,12 +892,6 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Get audit log for data
-   * @param {string} dataId - Data ID
-   * @param {string} requestedBy - Requester address
-   * @returns {Promise<Array>} Audit log entries
-   */
   async getAuditLog(dataId, requestedBy) {
     try {
       const response = await apiService.get("api/data/audit", {
@@ -772,13 +910,25 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Store health data
-   * @param {string} address - Owner address
-   * @param {Object} data - Health data
-   * @param {Object} metadata - Request metadata
-   * @returns {Promise<Object>} Storage result
-   */
+  async getDatasetAuditLog(datasetId, requestedBy) {
+    try {
+      const response = await apiService.get(`api/datasets/${datasetId}/audit`, {
+        requestedBy,
+        timestamp: new Date().toISOString(),
+      });
+
+      return response.auditLog || [];
+    } catch (error) {
+      console.error("Dataset audit log error:", error);
+      throw new SecureStorageError(
+        "Failed to retrieve dataset audit log",
+        "DATASET_AUDIT_LOG_FAILED",
+        { originalError: error.message, datasetId }
+      );
+    }
+  }
+
+  // Store health data
   async storeHealthData(address, data, metadata = {}) {
     try {
       const response = await apiService.post("api/data/upload", {
@@ -800,10 +950,7 @@ class SecureStorageService {
   }
 }
 
-// Create singleton instance
 const secureStorageService = new SecureStorageService();
 
-// Export class and instance
 export { SecureStorageService, secureStorageService };
-
-export default SecureStorageService;
+export default secureStorageService;

@@ -7,12 +7,6 @@ import authService from "../services/authService.js";
 import { isLogoutInProgress } from "../utils/authLoopPrevention.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * useAuth Hook
- *
- * Manages authentication state, registration, and related operations
- * with improved logout handling
- */
 const useAuth = () => {
   const dispatch = useDispatch();
 
@@ -29,9 +23,15 @@ const useAuth = () => {
   const verificationCacheTimeoutRef = useRef(null);
   const verificationCacheRef = useRef(null);
 
-  /**
-   * Verify authentication status with smart caching and logout handling
-   */
+  const clearVerificationCache = useCallback(() => {
+    verificationCacheRef.current = null;
+
+    if (verificationCacheTimeoutRef.current) {
+      clearTimeout(verificationCacheTimeoutRef.current);
+      verificationCacheTimeoutRef.current = null;
+    }
+  }, []);
+
   const verifyAuth = useCallback(async () => {
     // Skip verification if there's a logout in progress
     if (isLogoutInProgress()) {
@@ -62,31 +62,110 @@ const useAuth = () => {
     setError(null);
 
     try {
-      console.log("Verifying authentication...");
-
-      // Check auth status from service
-      const result = await authService.verifyAuth();
-
-      // Update state based on verification result
-      setIsAuthenticated(result.isAuthenticated);
-      setIsNewUser(result.isNewUser);
-      setIsRegistrationComplete(result.isRegistrationComplete);
-
-      if (result.userProfile) {
-        setUserIdentity(result.userProfile);
-
-        // Update Redux state with user profile and role
-        dispatch(updateUserProfile(result.userProfile));
-
-        if (result.userProfile.role) {
-          dispatch(setRole(result.userProfile.role));
+      if (typeof authService.verifyAuth === "function") {
+        const result = await authService.verifyAuth();
+        // Check if result is null or undefined
+        if (!result) {
+          throw new Error(
+            "Authentication verification failed: no result returned from authService"
+          );
         }
+        // Now safe to access result properties
+        setIsAuthenticated(result.isAuthenticated);
+        setIsNewUser(result.isNewUser);
+        setIsRegistrationComplete(result.isRegistrationComplete);
+
+        if (result.userProfile) {
+          setUserIdentity(result.userProfile);
+          // Update Redux state with user profile and role
+          dispatch(updateUserProfile(result.userProfile));
+          if (result.userProfile.role) {
+            dispatch(setRole(result.userProfile.role));
+          }
+        }
+
+        // Cache the verification result briefly to prevent repeated calls
+        verificationCacheRef.current = result;
+
+        // Clear cache after a short period
+        if (verificationCacheTimeoutRef.current) {
+          clearTimeout(verificationCacheTimeoutRef.current);
+        }
+
+        verificationCacheTimeoutRef.current = setTimeout(() => {
+          verificationCacheRef.current = null;
+        }, 5000);
+
+        // Create HIPAA-compliant audit log for auth verification
+        await hipaaComplianceService.createAuditLog("AUTH_VERIFICATION", {
+          timestamp: new Date().toISOString(),
+          result: result.isAuthenticated ? "AUTHENTICATED" : "UNAUTHENTICATED",
+          isNewUser: result.isNewUser,
+          isRegistrationComplete: result.isRegistrationComplete,
+        });
+
+        setLoading(false);
+        isVerifyingRef.current = false;
+
+        return result;
       }
 
-      // Cache the verification result briefly to prevent repeated calls
+      // Fallback implementation if function doesn't exist (shouldn't happen after our patch)
+      console.warn("Using fallback auth verification in useAuth hook");
+
+      const walletAddress = localStorage.getItem("healthmint_wallet_address");
+      const isWalletConnected =
+        localStorage.getItem("healthmint_wallet_connection") === "true";
+
+      if (!walletAddress || !isWalletConnected) {
+        setIsAuthenticated(false);
+        setIsRegistrationComplete(false);
+        setIsNewUser(false);
+        clearVerificationCache();
+
+        setLoading(false);
+        isVerifyingRef.current = false;
+
+        return null;
+      }
+
+      const userData = authService.getCurrentUser
+        ? authService.getCurrentUser()
+        : null;
+
+      if (!userData) {
+        setIsAuthenticated(false);
+        setIsRegistrationComplete(false);
+        setIsNewUser(false);
+        clearVerificationCache();
+
+        setLoading(false);
+        isVerifyingRef.current = false;
+
+        return null;
+      }
+
+      const storedRole = localStorage.getItem("healthmint_user_role");
+      const isUserNew =
+        localStorage.getItem("healthmint_is_new_user") === "true";
+
+      // Update state based on the verification
+      setIsAuthenticated(true);
+      setIsNewUser(isUserNew);
+      setIsRegistrationComplete(!isUserNew);
+
+      const result = {
+        ...userData,
+        isAuthenticated: true,
+        isNewUser: isUserNew,
+        isRegistrationComplete: !isUserNew,
+        role: storedRole || null,
+        userProfile: userData,
+      };
+
+      // Cache the result
       verificationCacheRef.current = result;
 
-      // Clear cache after a short period
       if (verificationCacheTimeoutRef.current) {
         clearTimeout(verificationCacheTimeoutRef.current);
       }
@@ -95,13 +174,22 @@ const useAuth = () => {
         verificationCacheRef.current = null;
       }, 5000);
 
-      // Create HIPAA-compliant audit log for auth verification
-      await hipaaComplianceService.createAuditLog("AUTH_VERIFICATION", {
-        timestamp: new Date().toISOString(),
-        result: result.isAuthenticated ? "AUTHENTICATED" : "UNAUTHENTICATED",
-        isNewUser: result.isNewUser,
-        isRegistrationComplete: result.isRegistrationComplete,
-      });
+      // Log verification
+      await hipaaComplianceService.createAuditLog(
+        "AUTH_VERIFICATION_FALLBACK",
+        {
+          timestamp: new Date().toISOString(),
+          result: "AUTHENTICATED",
+          isNewUser: isUserNew,
+          walletAddress,
+        }
+      );
+
+      // Update Redux if needed
+      dispatch(updateUserProfile(userData));
+      if (storedRole) {
+        dispatch(setRole(storedRole));
+      }
 
       setLoading(false);
       isVerifyingRef.current = false;
@@ -131,23 +219,8 @@ const useAuth = () => {
         error: err.message || "Authentication verification failed",
       };
     }
-  }, [dispatch]);
+  }, [dispatch, clearVerificationCache]);
 
-  /**
-   * Clear verification cache
-   */
-  const clearVerificationCache = useCallback(() => {
-    verificationCacheRef.current = null;
-
-    if (verificationCacheTimeoutRef.current) {
-      clearTimeout(verificationCacheTimeoutRef.current);
-      verificationCacheTimeoutRef.current = null;
-    }
-  }, []);
-
-  /**
-   * Handle login with a wallet address
-   */
   const login = useCallback(
     async (walletAddress) => {
       if (!walletAddress) {
@@ -178,7 +251,6 @@ const useAuth = () => {
           }
         }
 
-        // Create HIPAA-compliant audit log for login
         await hipaaComplianceService.createAuditLog("USER_LOGIN", {
           timestamp: new Date().toISOString(),
           walletAddress,
@@ -195,7 +267,6 @@ const useAuth = () => {
         console.error("Login error:", err);
         setError(err.message || "Failed to log in");
 
-        // Create HIPAA-compliant audit log for login error
         await hipaaComplianceService.createAuditLog("USER_LOGIN_ERROR", {
           timestamp: new Date().toISOString(),
           walletAddress,
@@ -209,9 +280,6 @@ const useAuth = () => {
     [dispatch, clearVerificationCache]
   );
 
-  /**
-   * Complete the registration process
-   */
   const completeRegistration = useCallback(
     async (userData) => {
       if (!userData || !userData.role) {
@@ -240,9 +308,7 @@ const useAuth = () => {
           userId: userData.address || userData.id,
         });
 
-        // Clear any cached verification after registration
         clearVerificationCache();
-
         setLoading(false);
         return true;
       } catch (err) {
@@ -263,9 +329,6 @@ const useAuth = () => {
     [dispatch, clearVerificationCache]
   );
 
-  /**
-   * Register a new user
-   */
   const register = useCallback(
     async (userData) => {
       if (!userData || !userData.address) {
@@ -277,9 +340,7 @@ const useAuth = () => {
       setError(null);
 
       try {
-        // Call authentication service to register user
-
-        // Update authentication state
+        // Call authentication service to register the user
         setIsAuthenticated(true);
         setIsNewUser(false);
         setIsRegistrationComplete(true);

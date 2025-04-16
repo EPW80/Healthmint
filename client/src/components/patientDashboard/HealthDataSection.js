@@ -14,11 +14,6 @@ import useHealthData from "../../hooks/useHealthData.js";
 import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import HipaaCompliantDataViewer from "../HipaaCompliantDataViewer.js";
 
-/**
- * HealthDataSection Component
- *
- * Displays health records for the patient dashboard with HIPAA compliance
- */
 const HealthDataSection = ({ walletAddress, userRole }) => {
   const [viewingRecord, setViewingRecord] = useState(null);
 
@@ -34,7 +29,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
   } = useHealthData({
     loadOnMount: true,
     userRole: "patient",
-    enablePolling: false, // Set to true to automatically refresh data periodically
+    enablePolling: false, // Disable polling for this example
   });
 
   // Fetch data on mount
@@ -84,9 +79,6 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
     if (!hasConsent) {
       return;
     }
-
-    // Implement sharing functionality here
-    // This would typically open a modal for sharing options
   };
 
   // Close the record viewer

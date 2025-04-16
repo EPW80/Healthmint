@@ -1,45 +1,65 @@
 import mongoose from "mongoose";
 import hipaaConfig from "./hipaaConfig.js";
 
+/**
+ * Custom error class for database-related errors
+ */
 class DatabaseError extends Error {
   constructor(message, code = "DB_ERROR") {
     super(message);
     this.name = "DatabaseError";
     this.code = code;
+    this.timestamp = new Date().toISOString();
   }
 }
 
-const validateConfig = () => {
-  // Only check for MONGODB_URI since credentials are included in the URI
-  const requiredEnvVars = ["MONGODB_URI", "ENCRYPTION_KEY"];
+/**
+ * Validates required environment variables for database connection
+ * @throws {DatabaseError} If required variables are missing
+ */
+const validateConfig = (options = {}) => {
+  // Check for required environment variables or provided options
+  const requiredVars = ["MONGODB_URI", "ENCRYPTION_KEY"];
 
-  const missingVars = requiredEnvVars.filter(
-    (varName) => !process.env[varName]
+  const missingVars = requiredVars.filter(
+    (varName) => !(process.env[varName] || options[varName.toLowerCase()])
   );
+
   if (missingVars.length > 0) {
     throw new DatabaseError(
-      `Missing required environment variables: ${missingVars.join(", ")}`,
+      `Missing required configuration: ${missingVars.join(", ")}`,
       "CONFIG_ERROR"
     );
   }
 };
 
-const getMongoOptions = () => ({
-  serverSelectionTimeoutMS: 5000,
-  maxPoolSize: 50,
-  minPoolSize: 10,
-  connectTimeoutMS: 30000,
-  retryWrites: true,
-  w: "majority",
-  dbName: "healthmint", // Explicitly set database name
+/**
+ * Gets MongoDB connection options based on environment
+ * @param {Object} customOptions - Optional overrides for connection options
+ * @returns {Object} MongoDB connection options
+ */
+const getMongoOptions = (customOptions = {}) => ({
+  serverSelectionTimeoutMS: customOptions.serverSelectionTimeout || 5000,
+  maxPoolSize: customOptions.maxPoolSize || 50,
+  minPoolSize: customOptions.minPoolSize || 10,
+  connectTimeoutMS: customOptions.connectTimeout || 30000,
+  retryWrites: customOptions.retryWrites !== false,
+  w: customOptions.writeConcern || "majority",
+  dbName: customOptions.dbName || "healthmint",
+  // Enhanced TLS options for production
   ...(process.env.NODE_ENV === "production"
     ? {
         tls: true,
         tlsAllowInvalidCertificates: false,
+        tlsCAFile: process.env.MONGODB_CA_FILE || undefined,
       }
     : {}),
+  ...customOptions, // Allow any other custom options to override defaults
 });
 
+/**
+ * Sets up Mongoose middleware for encryption and auditing
+ */
 const setupMongooseMiddleware = () => {
   // Encrypt sensitive fields before saving
   mongoose.plugin((schema) => {
@@ -57,6 +77,7 @@ const setupMongooseMiddleware = () => {
         }
         next();
       } catch (error) {
+        console.error("Encryption middleware error:", error);
         next(error);
       }
     });
@@ -84,6 +105,7 @@ const setupMongooseMiddleware = () => {
             });
             next();
           } catch (error) {
+            console.error("Audit logging middleware error:", error);
             next(error);
           }
         });
@@ -92,10 +114,23 @@ const setupMongooseMiddleware = () => {
   }
 };
 
-const connectDB = async () => {
+/**
+ * Connect to MongoDB with retry logic
+ * @param {Object} options - Custom connection options
+ * @returns {Promise<mongoose.Connection>} Mongoose connection
+ * @throws {DatabaseError} If connection fails after retries
+ */
+const connectDB = async (options = {}) => {
+  const maxRetries = options.maxRetries || 3;
+  const retryDelayMs = options.retryDelayMs || 5000;
+  const connectionUri = options.uri || process.env.MONGODB_URI;
+
+  let lastError = null;
+  let retryCount = 0;
+
   try {
     // Validate environment configuration
-    validateConfig();
+    validateConfig(options);
 
     // Configure Mongoose
     mongoose.set("strictQuery", true);
@@ -104,13 +139,38 @@ const connectDB = async () => {
     // Setup Mongoose middleware
     setupMongooseMiddleware();
 
-    console.log("Connecting to MongoDB...");
-    await mongoose.connect(process.env.MONGODB_URI, getMongoOptions());
-    console.log("✓ MongoDB connected successfully");
+    // Attempt connection with retries
+    while (retryCount < maxRetries) {
+      try {
+        console.log(
+          `Connecting to MongoDB${retryCount > 0 ? ` (attempt ${retryCount + 1}/${maxRetries})` : ""}...`
+        );
+        await mongoose.connect(
+          connectionUri,
+          getMongoOptions(options.mongoOptions || {})
+        );
+        console.log("✓ MongoDB connected successfully");
 
-    // Test connection
-    await mongoose.connection.db.admin().ping();
-    console.log("✓ MongoDB connection verified");
+        // Test connection
+        await mongoose.connection.db.admin().ping();
+        console.log("✓ MongoDB connection verified");
+
+        // Connection successful, break retry loop
+        break;
+      } catch (error) {
+        lastError = error;
+        retryCount++;
+
+        if (retryCount >= maxRetries) {
+          throw error; // Rethrow after max retries
+        }
+
+        console.log(
+          `Connection attempt failed. Retrying in ${retryDelayMs / 1000} seconds...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
 
     // Log connection details in development
     if (process.env.NODE_ENV !== "production") {
@@ -146,6 +206,9 @@ const connectDB = async () => {
       });
     });
 
+    // Add process handlers for graceful shutdown
+    setupShutdownHandlers();
+
     return mongoose.connection;
   } catch (error) {
     console.error("MongoDB Connection Error:", {
@@ -166,9 +229,52 @@ const connectDB = async () => {
   }
 };
 
-const disconnectDB = async () => {
+/**
+ * Set up process event handlers for graceful shutdown
+ */
+const setupShutdownHandlers = () => {
+  // Only add handlers once
+  if (!process.shutdownHandlersAdded) {
+    const gracefulShutdown = async (signal) => {
+      console.log(`Received ${signal}, shutting down gracefully...`);
+      try {
+        await disconnectDB();
+        console.log("Graceful shutdown completed");
+        process.exit(0);
+      } catch (err) {
+        console.error("Error during graceful shutdown:", err);
+        process.exit(1);
+      }
+    };
+
+    // Handle application termination signals
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+    process.shutdownHandlersAdded = true;
+  }
+};
+
+/**
+ * Disconnect from MongoDB
+ * @param {Object} options - Disconnect options
+ * @returns {Promise<void>}
+ * @throws {DatabaseError} If disconnection fails
+ */
+const disconnectDB = async (options = {}) => {
+  const timeoutMs = options.timeoutMs || 10000;
+
   try {
-    await mongoose.disconnect();
+    // Set a timeout to force disconnect if it takes too long
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Disconnect timed out"));
+      }, timeoutMs);
+    });
+
+    // Race the actual disconnect with the timeout
+    await Promise.race([mongoose.disconnect(), timeoutPromise]);
+
     console.log("✓ MongoDB disconnected successfully");
 
     hipaaConfig.audit.logEvent?.({

@@ -5,8 +5,8 @@ const { createSlice } = pkg;
 
 const initialState = {
   healthRecords: [],
-  userRecords: [], // Records owned by the current user
-  purchasedRecords: [], // Records purchased by the current user
+  userRecords: [],
+  purchasedRecords: [],
   loading: false,
   error: null,
   filters: {
@@ -21,7 +21,7 @@ const initialState = {
     recordsPerPage: 12,
   },
   selectedRecord: null,
-  transactions: [], // Transaction history
+  transactions: [],
 };
 
 // data slice reducer

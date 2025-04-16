@@ -2,9 +2,9 @@
 import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   Home,
-  Upload,
   Search,
   Settings,
   LogOut,
@@ -14,6 +14,9 @@ import {
   X,
   ChevronDown,
   AlertTriangle,
+  ShoppingCart,
+  Database,
+  HeartPulse,
 } from "lucide-react";
 import useNavigation from "../hooks/useNavigation.js";
 
@@ -72,6 +75,9 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
+  // Get user role from Redux store
+  const userRole = useSelector((state) => state.role.role);
+
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
@@ -89,14 +95,53 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
     navigateTo("/login");
   }, [onLogout, navigateTo]);
 
-  const navigationItems = [
-    { to: "/", label: "Home", icon: Home },
-    { to: "/upload", label: "Upload Data", icon: Upload },
-    { to: "/browse", label: "Browse Data", icon: Search },
-    { to: "/transactions", label: "Transactions", icon: Clock },
-    { to: "/profile", label: "Profile Settings", icon: Settings },
-  ];
+  // Filter navigation items based on user role
+  const getNavigationItems = () => {
+    // Common items for all roles
+    const baseItems = [
+      { to: "/", label: "Home", icon: Home },
+      { to: "/transactions", label: "Transactions", icon: Clock },
+      { to: "/profile", label: "Profile Settings", icon: Settings },
+    ];
 
+    // Role-specific items
+    if (userRole === "patient") {
+      // Add patient-specific items - insert after Home
+      baseItems.splice(
+        1,
+        0,
+        {
+          to: "/upload",
+          label: "Upload Records",
+          icon: Database,
+        },
+        {
+          to: "/contribute",
+          label: "Contribute Data",
+          icon: HeartPulse,
+        }
+      );
+    } else if (userRole === "researcher") {
+      baseItems.splice(
+        1,
+        0,
+        {
+          to: "/browse",
+          label: "Browse Data",
+          icon: Search,
+        },
+        {
+          to: "/marketplace",
+          label: "Request Portal",
+          icon: ShoppingCart,
+        }
+      );
+    }
+
+    return baseItems;
+  };
+
+  const navigationItems = getNavigationItems();
   const showNetworkWarning = network && network.isSupported === false;
 
   const handleSwitchNetwork = useCallback(() => {

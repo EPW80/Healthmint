@@ -2,12 +2,6 @@
 import hipaaComplianceService from "./hipaaComplianceService.js";
 import { ENV } from "../config/environmentConfig.js";
 
-/**
- * AuthService
- *
- * Provides authentication services with HIPAA compliance for the Healthmint application.
- * Includes token validation, refresh capabilities, and recovery mechanisms.
- */
 class AuthService {
   constructor() {
     this.API_URL = ENV.API_URL || "/api";
@@ -22,10 +16,6 @@ class AuthService {
     this.loadAuthState();
   }
 
-  /**
-   * Load the authentication state from localStorage
-   * @private
-   */
   loadAuthState() {
     this.token = localStorage.getItem(this.tokenKey);
     this.refreshToken = localStorage.getItem(this.refreshTokenKey);
@@ -42,11 +32,83 @@ class AuthService {
     this._isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
   }
 
-  /**
-   * Ensure the authentication token is valid, refreshing it if necessary
-   * @returns {Promise<string>} The valid token
-   * @throws {Error} If token validation or recovery fails
-   */
+  async verifyAuth() {
+    try {
+      // Check if we have a wallet address in localStorage
+      const walletAddress = localStorage.getItem(this.walletAddressKey);
+      if (!walletAddress) {
+        console.log("[AuthService] No wallet address found in localStorage");
+        return null;
+      }
+
+      // Check if wallet is connected
+      const isWalletConnected =
+        localStorage.getItem("healthmint_wallet_connection") === "true";
+      if (!isWalletConnected) {
+        console.log(
+          "[AuthService] Wallet not connected according to localStorage"
+        );
+        return null;
+      }
+
+      // Check if we have user data
+      const userData = this.getCurrentUser();
+      if (!userData) {
+        console.log("[AuthService] No user data found");
+        return null;
+      }
+
+      // Check if user is registered
+      const isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
+      if (isNewUser) {
+        console.log(
+          "[AuthService] User is marked as new, registration required"
+        );
+        return { ...userData, isNewUser: true, isRegistrationComplete: false };
+      }
+
+      // Get user role
+      const userRole = localStorage.getItem("healthmint_user_role");
+
+      // Log auth verification for HIPAA compliance
+      await hipaaComplianceService
+        .createAuditLog("AUTH_VERIFICATION", {
+          action: "VERIFY_AUTH",
+          walletAddress,
+          timestamp: new Date().toISOString(),
+        })
+        .catch((err) =>
+          console.error("[AuthService] Error logging auth verification:", err)
+        );
+
+      // Return authenticated user data
+      return {
+        ...userData,
+        address: walletAddress,
+        isAuthenticated: true,
+        isNewUser: false,
+        isRegistrationComplete: true,
+        role: userRole || null,
+      };
+    } catch (error) {
+      console.error("[AuthService] Auth verification error:", error);
+
+      // Log verification failure
+      await hipaaComplianceService
+        .createAuditLog("AUTH_VERIFICATION_FAILURE", {
+          action: "VERIFY_AUTH",
+          walletAddress: this.walletAddress,
+          timestamp: new Date().toISOString(),
+          errorMessage: error.message,
+        })
+        .catch((err) =>
+          console.error("[AuthService] Error logging auth failure:", err)
+        );
+
+      return null;
+    }
+  }
+
   async ensureValidToken() {
     try {
       if (!this.token) {
@@ -92,11 +154,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Refresh the access token using the refresh token
-   * @private
-   * @returns {Promise<void>}
-   */
   async refreshAccessToken() {
     try {
       if (!this.refreshToken) {
@@ -122,12 +179,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Perform token refresh API call
-   * @param {string} refreshToken - Current refresh token
-   * @returns {Promise<Object>} New token data
-   * @private
-   */
   async performTokenRefresh(refreshToken) {
     // For demo purposes, simulate a refresh
     return {
@@ -137,10 +188,6 @@ class AuthService {
     };
   }
 
-  /**
-   * Check if the user is authenticated
-   * @returns {boolean} True if user is authenticated
-   */
   isAuthenticated() {
     if (!this.token) return false;
 
@@ -154,27 +201,16 @@ class AuthService {
     return true;
   }
 
-  /**
-   * Check if the user is a new user
-   * @returns {boolean} True if user is new
-   */
   isNewUser() {
     return this._isNewUser === true;
   }
 
-  /**
-   * Check if user registration is complete
-   * @returns {boolean} True if registration is complete
-   */
+  // Check if registration is complete
   isRegistrationComplete() {
     return this.userProfile !== null && !this._isNewUser;
   }
 
-  /**
-   * Update the authentication state
-   * @param {Object} authData - Authentication data
-   * @private
-   */
+  // Retrieve current user data
   updateAuthState(authData) {
     const { token, refreshToken, expiresAt, userProfile, isNewUser } = authData;
 
@@ -192,11 +228,6 @@ class AuthService {
     localStorage.setItem(this.isNewUserKey, String(this._isNewUser));
   }
 
-  /**
-   * Log in with wallet address
-   * @param {Object} credentials - Credentials object with wallet address
-   * @returns {Promise<Object>} Authentication result
-   */
   async login(credentials = {}) {
     try {
       const walletAddress = credentials.address || this.walletAddress;
@@ -261,12 +292,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Perform API login with wallet address
-   * @param {string} walletAddress - Wallet address
-   * @returns {Promise<Object>} Login result
-   * @private
-   */
   async performApiLogin(walletAddress) {
     try {
       // Simulate API login for demo
@@ -283,12 +308,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Get user profile by wallet address
-   * @param {string} walletAddress - Wallet address
-   * @returns {Promise<Object|null>} User profile or null if not found
-   * @private
-   */
   async getUserByWallet(walletAddress) {
     try {
       const profileStr = localStorage.getItem(this.userProfileKey);
@@ -314,16 +333,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Log out the current user
-   * @returns {Promise<boolean>} Success or failure
-   */
-  // Updated logout method for authService.js
-
-  /**
-   * Log out the current user
-   * @returns {Promise<boolean>} Success or failure
-   */
   async logout() {
     try {
       await hipaaComplianceService.createAuditLog("AUTH_LOGOUT", {
@@ -358,11 +367,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Register a new user
-   * @param {Object} userData - User data
-   * @returns {Promise<boolean>} Success or failure
-   */
   async register(userData) {
     try {
       if (!userData || !userData.address) {
@@ -403,10 +407,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Mark registration as complete
-   * @param {Object} userData - User data
-   */
   completeRegistration(userData) {
     this.userProfile = userData;
     localStorage.setItem(this.userProfileKey, JSON.stringify(userData));
@@ -428,11 +428,6 @@ class AuthService {
       );
   }
 
-  /**
-   * Update user profile
-   * @param {Object} userData - Updated user data
-   * @returns {Promise<Object>} Updated user profile
-   */
   async updateProfile(userData) {
     try {
       if (!userData || !userData.address) {
@@ -458,12 +453,13 @@ class AuthService {
     }
   }
 
-  /**
-   * Get current user profile
-   * @returns {Object|null} User profile or null if not authenticated
-   */
   getCurrentUser() {
     return this.userProfile;
+  }
+
+  // Check if user is new
+  clearVerificationCache() {
+    console.log("[AuthService] Verification cache cleared");
   }
 }
 

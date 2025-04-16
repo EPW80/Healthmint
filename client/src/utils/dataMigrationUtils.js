@@ -2,18 +2,6 @@
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import apiConfig from "../config/apiConfig.js";
 
-/**
- * Data Migration Utility
- *
- * Provides functions to handle the transition from mock to real data
- * and ensures proper data formatting for HIPAA compliance
- */
-
-/**
- * Converts a mock health record format to the standardized backend format
- * @param {Object} mockRecord - Record in mock format
- * @returns {Object} Standardized record
- */
 export const convertMockToStandardFormat = (mockRecord) => {
   // Create audit log for data transformation
   hipaaComplianceService.createAuditLog("DATA_TRANSFORMATION", {
@@ -44,11 +32,6 @@ export const convertMockToStandardFormat = (mockRecord) => {
   };
 };
 
-/**
- * Imports mock data to the backend
- * @param {Array} mockData - Array of mock records
- * @returns {Promise<Object>} Import results
- */
 export const importMockDataToBackend = async (mockData) => {
   try {
     if (!Array.isArray(mockData) || mockData.length === 0) {
@@ -72,8 +55,6 @@ export const importMockDataToBackend = async (mockData) => {
     // Convert all records to standard format
     const standardRecords = mockData.map(convertMockToStandardFormat);
 
-    // This would normally make a backend API call, but for now
-    // we'll just return the converted data
     return {
       success: true,
       importedCount: standardRecords.length,
@@ -88,21 +69,10 @@ export const importMockDataToBackend = async (mockData) => {
   }
 };
 
-/**
- * Check if user has any health data
- * @param {Array} records - User health records
- * @returns {boolean} Whether user has health data
- */
 export const hasHealthData = (records) => {
   return Array.isArray(records) && records.length > 0;
 };
 
-/**
- * Generate mock data stats based on user records
- * @param {Array} records - Health records
- * @param {string} userRole - User role
- * @returns {Object} Stats object
- */
 export const generateDataStats = (records, userRole) => {
   if (!Array.isArray(records)) {
     records = [];
@@ -127,11 +97,6 @@ export const generateDataStats = (records, userRole) => {
   }
 };
 
-/**
- * Migrate local health data to the backend
- * This is a utility function for one-time migration
- * @returns {Promise<Object>} Migration result
- */
 export const migrateLocalHealthData = async () => {
   try {
     const mockHealthDataKey = "healthmint_mock_health_data";
@@ -168,7 +133,6 @@ export const migrateLocalHealthData = async () => {
   }
 };
 
-// Default export with all utility functions
 export default {
   convertMockToStandardFormat,
   importMockDataToBackend,

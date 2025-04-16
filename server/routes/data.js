@@ -3,9 +3,9 @@ import browseRoutes from "./data/browse.js";
 import {
   validateAddress,
   validateHealthData,
-} from "../services/validationService.js";
+} from "../validation/index.js"; // Updated import path
 import { ERROR_CODES } from "../config/hipaaConfig.js";
-import { asyncHandler, createError } from "../utils/errorUtils.js";
+import { asyncHandler, createError } from "../errors/index.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { userService } from "../services/userService.js";
 import transactionService from "../services/transactionService.js";
@@ -257,5 +257,4 @@ router.get(
 
 router.use("/browse", browseRoutes);
 
-// Export the router for use in the main server.js file
 export default router;

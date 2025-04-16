@@ -1,14 +1,9 @@
 // server/services/userService.js
 import apiService from "./apiService.js";
 import hipaaComplianceService from "./hipaaComplianceService.js";
-import errorHandlingService from "./errorHandlingService.js";
+import { createError } from "../errors/index.js";
 
 class ServerUserService {
-  /**
-   * Get user statistics from the server
-   * @param {Object} metadata - Additional metadata for the request (e.g., filters, userId)
-   * @returns {Promise<Object>} User statistics
-   */
   async getUserStats(metadata = {}) {
     try {
       // GET /users/stats - Fetch user statistics
@@ -22,19 +17,17 @@ class ServerUserService {
 
       return stats;
     } catch (error) {
-      throw errorHandlingService.handleError(error, {
-        code: "USER_STATS_ERROR",
-        context: "User Statistics",
-        userVisible: true,
-      });
+      throw createError.api(
+        "USER_STATS_ERROR",
+        "Failed to retrieve user statistics",
+        {
+          context: "User Statistics",
+          originalError: error.message,
+        }
+      );
     }
   }
-
-  /**
-   * Get user's health records from the server
-   * @param {Object} options - Query options (e.g., filters, pagination)
-   * @returns {Promise<Array>} User's health records
-   */
+  // ... other methods for interacting with the user service
   async getUserHealthRecords(options = {}) {
     try {
       // GET /users/health-records - Fetch health records with optional filters
@@ -48,20 +41,17 @@ class ServerUserService {
 
       return records;
     } catch (error) {
-      throw errorHandlingService.handleError(error, {
-        code: "HEALTH_RECORDS_ERROR",
-        context: "Health Records",
-        userVisible: true,
-      });
+      throw createError.api(
+        "HEALTH_RECORDS_ERROR",
+        "Failed to retrieve health records",
+        {
+          context: "Health Records",
+          originalError: error.message,
+        }
+      );
     }
   }
 
-  /**
-   * Get user data by wallet address
-   * @param {string} address - User's wallet address
-   * @param {Object} metadata - Additional metadata for the request
-   * @returns {Promise<Object>} User data
-   */
   async getUserByAddress(address, metadata = {}) {
     try {
       if (!address) {
@@ -69,7 +59,10 @@ class ServerUserService {
       }
 
       // GET /users/{address} - Fetch user by address
-      const userData = await apiService.get(`/users/${address.toLowerCase()}`, metadata);
+      const userData = await apiService.get(
+        `/users/${address.toLowerCase()}`,
+        metadata
+      );
 
       // Log the profile view for HIPAA compliance
       await hipaaComplianceService.createAuditLog("VIEW_USER_PROFILE", {
@@ -80,19 +73,17 @@ class ServerUserService {
 
       return userData;
     } catch (error) {
-      throw errorHandlingService.handleError(error, {
-        code: "USER_FETCH_ERROR",
-        context: "User Profile",
-        userVisible: true,
-      });
+      throw createError.api(
+        "USER_FETCH_ERROR",
+        "Failed to retrieve user profile",
+        {
+          context: "User Profile",
+          originalError: error.message,
+        }
+      );
     }
   }
 
-  /**
-   * Register a new user
-   * @param {Object} userData - User data to register (e.g., address, name, role)
-   * @returns {Promise<Object>} Registration result
-   */
   async registerUser(userData) {
     try {
       if (!userData || !userData.address) {
@@ -110,19 +101,17 @@ class ServerUserService {
 
       return response;
     } catch (error) {
-      throw errorHandlingService.handleError(error, {
-        code: "USER_REGISTRATION_ERROR",
-        context: "User Registration",
-        userVisible: true,
-      });
+      throw createError.api(
+        "USER_REGISTRATION_ERROR",
+        "Failed to register user",
+        {
+          context: "User Registration",
+          originalError: error.message,
+        }
+      );
     }
   }
 
-  /**
-   * Update user profile
-   * @param {Object} profileData - Profile data to update (e.g., address, name, email)
-   * @returns {Promise<Object>} Update result
-   */
   async updateProfile(profileData) {
     try {
       if (!profileData || !profileData.address) {
@@ -144,11 +133,14 @@ class ServerUserService {
 
       return response;
     } catch (error) {
-      throw errorHandlingService.handleError(error, {
-        code: "PROFILE_UPDATE_ERROR",
-        context: "Profile Update",
-        userVisible: true,
-      });
+      throw createError.api(
+        "PROFILE_UPDATE_ERROR",
+        "Failed to update profile",
+        {
+          context: "Profile Update",
+          originalError: error.message,
+        }
+      );
     }
   }
 }

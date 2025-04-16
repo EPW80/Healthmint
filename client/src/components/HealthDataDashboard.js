@@ -17,11 +17,7 @@ import { useError } from "../contexts/ErrorContext.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * HealthDataDashboard Component
- *
- * An example component using all our new hooks together
- */
+// Fetch health data
 const HealthDataDashboard = () => {
   const userRole = useSelector((state) => state.role.role);
   const userId = useSelector((state) => state.wallet.address);

@@ -4,11 +4,7 @@ import PropTypes from "prop-types";
 import { AlertCircle, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-/**
- * WalletErrorNotification Component
- *
- * A HIPAA-compliant notification for wallet connection errors with recovery options
- */
+// WalletErrorNotification: A component to display a notification when wallet connection fails
 const WalletErrorNotification = ({
   message = "Wallet address not found. Please reconnect your wallet.",
   isVisible = true,

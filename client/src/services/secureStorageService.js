@@ -14,19 +14,7 @@ try {
   );
 }
 
-/**
- * SecureStorageService
- *
- * A HIPAA-compliant secure storage service for handling file operations
- * with proper encryption, audit logging, and security measures.
- *
- * Features:
- * - Client-side validation and sanitization
- * - Encryption for sensitive data (if available)
- * - Comprehensive HIPAA compliance logging
- * - PHI (Protected Health Information) detection
- * - Secure file management
- */
+// SecureStorageService class
 class SecureStorageService {
   constructor() {
     // Default configuration with fallbacks
@@ -56,10 +44,6 @@ class SecureStorageService {
     this.initService();
   }
 
-  /**
-   * Initialize the service
-   * @private
-   */
   initService() {
     // Log service initialization for compliance
     hipaaComplianceService
@@ -76,13 +60,6 @@ class SecureStorageService {
       );
   }
 
-  /**
-   * Comprehensively validates file before upload
-   * @param {File} file - File to validate
-   * @param {Object} options - Validation options
-   * @returns {boolean} Validation result
-   * @throws {Error} Validation error with specific reason
-   */
   validateFile(file, options = {}) {
     // Required file
     if (!file) {
@@ -158,12 +135,6 @@ class SecureStorageService {
     return true;
   }
 
-  /**
-   * Upload a profile image with proper security and HIPAA compliance
-   * @param {File} file - Image file to upload
-   * @param {Object} options - Upload options
-   * @returns {Promise<Object>} Upload result with secure reference
-   */
   async uploadProfileImage(file, options = {}) {
     try {
       // Validate file with strict image-specific options
@@ -275,12 +246,6 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Upload any file securely with HIPAA compliance
-   * @param {File} file - File to upload
-   * @param {Object} options - Upload options
-   * @returns {Promise<Object>} Upload result with secure reference
-   */
   async uploadFile(file, options = {}) {
     try {
       // Validate file with provided options
@@ -404,12 +369,6 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Delete a file from secure storage with HIPAA compliance logging
-   * @param {string} reference - Storage reference
-   * @param {Object} options - Delete options
-   * @returns {Promise<Object>} Deletion result
-   */
   async deleteFile(reference, options = {}) {
     try {
       if (!reference) {
@@ -474,12 +433,6 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Download a file with proper access logging
-   * @param {string} reference - Storage reference
-   * @param {Object} options - Download options
-   * @returns {Promise<Blob>} File blob
-   */
   async downloadFile(reference, options = {}) {
     try {
       if (!reference) {
@@ -572,22 +525,12 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Check file content for PHI (Protected Health Information)
-   * Delegates to HIPAA compliance service
-   * @param {string} text - Text to check for PHI
-   * @returns {Object} PHI detection result with types found
-   */
+  // HIPAA compliance check for PHI
   checkForPHI(text) {
     return hipaaComplianceService.containsPHI(text);
   }
 
-  /**
-   * Generate a simple hash for the file when encryption service isn't available
-   * @param {File} file - File to hash
-   * @returns {string} Simple hash of the file
-   * @private
-   */
+  // Generate a simple hash for the file
   generateSimpleFileHash(file) {
     const str = `${file.name}:${file.size}:${file.lastModified}`;
     let hash = 0;
@@ -601,12 +544,7 @@ class SecureStorageService {
     return Math.abs(hash).toString(16).padStart(8, "0");
   }
 
-  /**
-   * Sanitize a filename to prevent security issues
-   * @param {string} filename - Filename to sanitize
-   * @returns {string} Sanitized filename
-   * @private
-   */
+  // Sanitize filename to prevent path traversal and control characters
   sanitizeFileName(filename) {
     if (!filename) return "unnamed-file";
 
@@ -618,12 +556,6 @@ class SecureStorageService {
       .trim();
   }
 
-  /**
-   * Read file as text asynchronously
-   * @param {File} file - File to read
-   * @returns {Promise<string>} File contents as text
-   * @private
-   */
   readFileAsText(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -634,6 +566,5 @@ class SecureStorageService {
   }
 }
 
-// Create singleton instance
 const secureStorageService = new SecureStorageService();
 export default secureStorageService;

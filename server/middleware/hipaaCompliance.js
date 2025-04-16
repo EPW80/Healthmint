@@ -1,20 +1,44 @@
 // middleware/hipaaCompliance.js
-import { createApiError } from "../utils/apiError.js";
+import { createError, asyncHandler } from "../errors/index.js";
 import crypto from "crypto";
+import validation from "../validation/index.js";
 
-// HIPAA Compliance Error Handling
-class HIPAAComplianceError extends Error {
-  constructor(message, code = "HIPAA_COMPLIANCE_ERROR", details = {}) {
-    super(message);
-    this.name = "HIPAAComplianceError";
-    this.code = code;
-    this.details = details;
-    this.timestamp = new Date();
+// Function to create an audit log entry
+const createAuditLog = async (action, details = {}) => {
+  try {
+    // Create the audit log entry
+    const auditEntry = {
+      action,
+      timestamp: new Date().toISOString(),
+      ...details,
+    };
+
+    // Log the entry
+    console.log(`[HIPAA AUDIT] ${action}:`, auditEntry);
+
+    // For production, store in a secure database
+    if (process.env.NODE_ENV === "production") {
+      try {
+        // Here we would call a service to persist the audit log
+        // await hipaaComplianceService.createAuditLog(action, auditEntry);
+      } catch (error) {
+        console.error("Failed to save programmatic audit log:", error);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Audit logging error:", error);
+    // Use the new error creation pattern
+    throw createError.hipaa("Audit logging failed", error);
   }
-}
+};
 
 // HIPAA Compliance Middleware
 const hipaaCompliance = {
+  // Explicitly add the createAuditLog function
+  createAuditLog,
+
   // Middleware to validate PHI data in requests
   validatePHI: (req, res, next) => {
     try {
@@ -53,7 +77,7 @@ const hipaaCompliance = {
     } catch (error) {
       console.error("PHI validation error:", error);
       next(
-        createApiError.validation("PHI validation failed", {
+        createError.validation("PHI validation failed", {
           error: "Unable to validate PHI data",
         })
       );
@@ -119,16 +143,10 @@ const hipaaCompliance = {
 
   // Verify user access to PHI
   verifyAccess: (requestedBy, targetAddress, accessLevel = "read") => {
-    // In a real implementation, this would check the database
-    // For now, we'll allow access if the user is requesting their own data
-    // or has the appropriate role-based permissions
-
     if (requestedBy === targetAddress) {
       return true; // Self-access is always permitted
     }
 
-    // This is a simplified implementation
-    // In production, you would check against actual DB records
     return false;
   },
 
@@ -141,11 +159,11 @@ const hipaaCompliance = {
         req.params.address || req.query.address || req.body.address;
 
       if (!requestedBy) {
-        return next(createApiError.unauthorized("Authentication required"));
+        return next(createError.unauthorized("Authentication required"));
       }
 
       if (!targetResource) {
-        return next(createApiError.validation("Resource identifier required"));
+        return next(createError.validation("Resource identifier required"));
       }
 
       // Check access rights
@@ -156,7 +174,7 @@ const hipaaCompliance = {
       );
 
       if (!hasAccess) {
-        return next(createApiError.forbidden("Insufficient access rights"));
+        return next(createError.forbidden("Insufficient access rights"));
       }
 
       next();
@@ -285,8 +303,21 @@ const hipaaCompliance = {
       return sanitized;
     });
   },
+
+  // Token validation
+  validateToken: (token) => {
+    const tokenValidation = validation.validateToken(token);
+    if (!tokenValidation.isValid) {
+      throw createError.hipaa(
+        tokenValidation.message || "Invalid token format",
+        tokenValidation.code || "INVALID_TOKEN"
+      );
+    }
+    return true;
+  },
 };
 
-// ✅ Use ES Module Export
+hipaaCompliance.createAuditLog = createAuditLog;
+
 export default hipaaCompliance;
-export { HIPAAComplianceError };
+export { createAuditLog };

@@ -16,15 +16,10 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 import ErrorDisplay from "./ui/ErrorDisplay.js";
-import mockPaymentService from "../services/mockPaymentService.js"; // Import mock payment service
+import mockPaymentService from "../services/mockPaymentService.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-/**
- * TransactionHistory Component
- *
- * Displays the user's transaction history for data uploads, purchases, and other blockchain
- * interactions with HIPAA-compliant logging using the mock payment service
- */
+// This component displays a user's transaction history, including filters for type, date range, and status.
 const TransactionHistory = ({
   limit = 10,
   showFilters = true,
@@ -57,7 +52,7 @@ const TransactionHistory = ({
       : `${num.toFixed(num < 0.1 ? 4 : 3)} ETH`;
   };
 
-  // Format date in a user-friendly way
+  // Format date based on timestamp
   const formatDate = (timestamp) => {
     if (!timestamp) return "Unknown";
 
@@ -77,7 +72,7 @@ const TransactionHistory = ({
     }
   };
 
-  // Get status badge styling based on transaction status
+  // Get status badge classes based on transaction status
   const getStatusBadge = (status) => {
     const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
 
@@ -109,20 +104,22 @@ const TransactionHistory = ({
     }
   };
 
-  // Initialize mock payment service on component mount
+  // Initialize mock payment service
   useEffect(() => {
     const initMockService = async () => {
       if (!mockPaymentService.isInitialized) {
         try {
           await mockPaymentService.initializeProvider();
-          console.log("Mock payment service initialized for transaction history");
+          console.log(
+            "Mock payment service initialized for transaction history"
+          );
         } catch (err) {
           console.error("Failed to initialize mock payment service:", err);
           setError("Failed to initialize payment service");
         }
       }
     };
-    
+
     initMockService();
   }, []);
 
@@ -152,18 +149,19 @@ const TransactionHistory = ({
       // Fetch transaction history from mock payment service
       const mockTransactions = await mockPaymentService.getPaymentHistory();
 
-      // Transform mock transactions to match our component's expected format
-      const transformedHistory = mockTransactions.map(tx => ({
-        id: tx.paymentId,
+      // Transform the mock transaction data
+      const transformedHistory = mockTransactions.map((tx, index) => ({
+        id: tx.paymentId || `tx_${index}_${Date.now()}`,
+        internalKey: `${tx.paymentId || "tx"}_${index}_${Date.now()}`,
         hash: tx.transactionHash,
-        type: "purchase", // Set all mock transactions as purchases for now
-        status: "success", // All mock transactions are successful
+        type: "purchase", // Assuming all transactions are purchases for this example
+        status: "success",
         amount: tx.amount,
         timestamp: tx.timestamp,
         description: `Dataset Purchase: ${tx.datasetId}`,
         blockNumber: tx.blockNumber,
         gasUsed: tx.gasUsed,
-        dataRef: tx.datasetId
+        dataRef: tx.datasetId,
       }));
 
       // Apply filters if needed
@@ -283,7 +281,7 @@ const TransactionHistory = ({
         "Date",
         "Description",
         "Block Number",
-        "Gas Used"
+        "Gas Used",
       ];
       const csvRows = [headers];
 
@@ -296,7 +294,7 @@ const TransactionHistory = ({
           new Date(tx.timestamp).toISOString(),
           tx.description || "",
           tx.blockNumber || "",
-          tx.gasUsed || ""
+          tx.gasUsed || "",
         ]);
       });
 
@@ -428,8 +426,11 @@ const TransactionHistory = ({
   // Render a compact list view
   const renderCompactView = () => (
     <div className="divide-y divide-gray-200">
-      {transactions.map((tx) => (
-        <div key={tx.id} className="py-3 flex items-center justify-between">
+      {transactions.map((tx, index) => (
+        <div
+          key={tx.internalKey || `tx_compact_${index}_${Date.now()}`}
+          className="py-3 flex items-center justify-between"
+        >
           <div className="flex items-center">
             <div className="mr-3">{getTransactionIcon(tx.type)}</div>
             <div>
@@ -498,134 +499,145 @@ const TransactionHistory = ({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {transactions.map((tx) => (
-            <React.Fragment key={tx.id}>
-              <tr className="hover:bg-gray-50">
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-gray-100">
-                      {getTransactionIcon(tx.type)}
-                    </div>
-                    <div className="ml-3">
-                      <div className="text-sm font-medium text-gray-900 truncate max-w-xs">
-                        {tx.description ||
-                          `Transaction ${tx.id.substring(0, 8)}...`}
+          {transactions.map((tx, index) => {
+            // Generate a unique key for each transaction row
+            const rowKey = tx.internalKey || `tx_${index}_${Date.now()}`;
+            // Generate a unique key for the expanded row if needed
+            const expandedRowKey = `expanded_${rowKey}`;
+
+            return (
+              <React.Fragment key={rowKey}>
+                <tr className="hover:bg-gray-50">
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-gray-100">
+                        {getTransactionIcon(tx.type)}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        ID: {tx.id.substring(0, 8)}...
-                        {tx.id.substring(tx.id.length - 4)}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 capitalize">
-                    {tx.type}
-                  </div>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {formatDate(tx.timestamp)}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(tx.timestamp).toLocaleTimeString()}
-                  </div>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {formatEth(tx.amount)}
-                  </div>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <span className={getStatusBadge(tx.status)}>
-                    {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => toggleTransactionDetails(tx.id)}
-                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                  >
-                    <span className="sr-only">
-                      {expandedTransaction === tx.id
-                        ? "Hide details"
-                        : "View details"}
-                    </span>
-                    <MoreHorizontal size={16} />
-                  </button>
-                </td>
-              </tr>
-              {expandedTransaction === tx.id && (
-                <tr className="bg-gray-50">
-                  <td colSpan="6" className="px-4 py-3">
-                    <div className="text-sm text-gray-900">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="font-medium mb-2">
-                            Transaction Details
-                          </h4>
-                          <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Transaction ID:</span>{" "}
-                            {tx.id}
-                          </p>
-                          <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Block Number:</span>{" "}
-                            {tx.blockNumber || "Pending"}
-                          </p>
-                          <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Gas Used:</span>{" "}
-                            {tx.gasUsed || "N/A"}
-                          </p>
-                          {tx.hash && (
-                            <p className="text-xs text-gray-500 mb-1">
-                              <span className="font-medium">
-                                Transaction Hash:
-                              </span>{" "}
-                              <a
-                                href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline"
-                              >
-                                {tx.hash.substring(0, 16)}...
-                                <ExternalLink
-                                  size={12}
-                                  className="inline ml-1"
-                                />
-                              </a>
-                            </p>
-                          )}
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900 truncate max-w-xs">
+                          {tx.description ||
+                            `Transaction ${tx.id.substring(0, 8)}...`}
                         </div>
-                        <div>
-                          <h4 className="font-medium mb-2">
-                            Additional Information
-                          </h4>
-                          <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Dataset ID:</span>{" "}
-                            {tx.dataRef || "N/A"}
-                          </p>
-                          <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Timestamp:</span>{" "}
-                            {new Date(tx.timestamp).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500 mb-1">
-                            <span className="font-medium">Payment Amount:</span>{" "}
-                            {formatEth(tx.amount)}
-                          </p>
-                          {tx.error && (
-                            <p className="text-xs text-red-500 mb-1">
-                              <span className="font-medium">Error:</span>{" "}
-                              {tx.error}
-                            </p>
-                          )}
+                        <div className="text-xs text-gray-500">
+                          ID: {tx.id.substring(0, 8)}...
+                          {tx.id.substring(tx.id.length - 4)}
                         </div>
                       </div>
                     </div>
                   </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 capitalize">
+                      {tx.type}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {formatDate(tx.timestamp)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(tx.timestamp).toLocaleTimeString()}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {formatEth(tx.amount)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className={getStatusBadge(tx.status)}>
+                      {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => toggleTransactionDetails(tx.id)}
+                      className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                    >
+                      <span className="sr-only">
+                        {expandedTransaction === tx.id
+                          ? "Hide details"
+                          : "View details"}
+                      </span>
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </td>
                 </tr>
-              )}
-            </React.Fragment>
-          ))}
+                {expandedTransaction === tx.id && (
+                  <tr key={expandedRowKey} className="bg-gray-50">
+                    <td colSpan="6" className="px-4 py-3">
+                      <div className="text-sm text-gray-900">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-medium mb-2">
+                              Transaction Details
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-1">
+                              <span className="font-medium">
+                                Transaction ID:
+                              </span>{" "}
+                              {tx.id}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-1">
+                              <span className="font-medium">Block Number:</span>{" "}
+                              {tx.blockNumber || "Pending"}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-1">
+                              <span className="font-medium">Gas Used:</span>{" "}
+                              {tx.gasUsed || "N/A"}
+                            </p>
+                            {tx.hash && (
+                              <p className="text-xs text-gray-500 mb-1">
+                                <span className="font-medium">
+                                  Transaction Hash:
+                                </span>{" "}
+                                <a
+                                  href={`https://sepolia.etherscan.io/tx/${tx.hash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {tx.hash.substring(0, 16)}...
+                                  <ExternalLink
+                                    size={12}
+                                    className="inline ml-1"
+                                  />
+                                </a>
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium mb-2">
+                              Additional Information
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-1">
+                              <span className="font-medium">Dataset ID:</span>{" "}
+                              {tx.dataRef || "N/A"}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-1">
+                              <span className="font-medium">Timestamp:</span>{" "}
+                              {new Date(tx.timestamp).toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-1">
+                              <span className="font-medium">
+                                Payment Amount:
+                              </span>{" "}
+                              {formatEth(tx.amount)}
+                            </p>
+                            {tx.error && (
+                              <p className="text-xs text-red-500 mb-1">
+                                <span className="font-medium">Error:</span>{" "}
+                                {tx.error}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -633,7 +645,7 @@ const TransactionHistory = ({
 
   // Display current wallet balance
   const [currentBalance, setCurrentBalance] = useState(null);
-  
+
   // Fetch wallet balance
   useEffect(() => {
     const fetchBalance = async () => {
@@ -646,9 +658,9 @@ const TransactionHistory = ({
         console.error("Error fetching balance:", err);
       }
     };
-    
+
     fetchBalance();
-    
+
     // Update balance periodically
     const intervalId = setInterval(fetchBalance, 10000);
     return () => clearInterval(intervalId);
@@ -686,8 +698,12 @@ const TransactionHistory = ({
           <div className="flex items-center">
             <DollarSign className="text-blue-600 mr-2" size={18} />
             <div>
-              <p className="text-sm text-blue-700">Current Estimated Earnings</p>
-              <p className="text-lg font-semibold text-blue-800">{currentBalance} ETH</p>
+              <p className="text-sm text-blue-700">
+                Current Estimated Earnings
+              </p>
+              <p className="text-lg font-semibold text-blue-800">
+                {currentBalance} ETH
+              </p>
             </div>
           </div>
           <div className="text-xs text-blue-600">
@@ -697,7 +713,7 @@ const TransactionHistory = ({
       )}
 
       {renderFilters()}
-      
+
       {/* If no transactions, show empty state */}
       {transactions.length === 0 ? (
         <div className={`bg-gray-50 rounded-lg p-6 text-center ${className}`}>

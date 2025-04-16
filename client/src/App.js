@@ -66,7 +66,7 @@ const App = () => {
         .createAuditLog("APPLICATION_SHUTDOWN", {
           timestamp: new Date().toISOString(),
           userId: userIdentifier,
-          sessionDuration: "Unknown", // Would need a session timer to track this
+          sessionDuration: "Unknown", // Placeholder for session duration
           usingMockData: mockDataEnabled,
         })
         .catch((error) => {
@@ -178,7 +178,7 @@ const App = () => {
             </div>
           </>
         ) : (
-          // Collapsed state - just show an icon
+          // Button to expand the dev tools
           <button
             onClick={() => setIsDevToolsExpanded(true)}
             style={{
