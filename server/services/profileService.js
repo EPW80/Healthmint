@@ -2,7 +2,7 @@
 import User from "../models/User.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { AUDIT_TYPES } from "../constants/index.js";
-import validation from '../validation/index.js';
+import validation from "../validation/index.js";
 
 export class ProfileServiceError extends Error {
   constructor(message, code = "PROFILE_SERVICE_ERROR", details = {}) {
@@ -88,7 +88,10 @@ const profileService = {
     try {
       // Validate address
       if (!validation.validateAddress(address).isValid) {
-        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+        throw new ProfileServiceError(
+          "Invalid wallet address",
+          "INVALID_ADDRESS"
+        );
       }
 
       // Remove sensitive or non-updatable fields
@@ -166,7 +169,10 @@ const profileService = {
     try {
       // Validate address
       if (!validation.validateAddress(address).isValid) {
-        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+        throw new ProfileServiceError(
+          "Invalid wallet address",
+          "INVALID_ADDRESS"
+        );
       }
 
       // Get user with session
@@ -218,7 +224,10 @@ const profileService = {
     try {
       // Validate address
       if (!validation.validateAddress(address).isValid) {
-        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+        throw new ProfileServiceError(
+          "Invalid wallet address",
+          "INVALID_ADDRESS"
+        );
       }
 
       const user = await User.findOne({ address: address.toLowerCase() });
@@ -264,7 +273,10 @@ const profileService = {
     try {
       // Validate address
       if (!validation.validateAddress(address).isValid) {
-        throw new ProfileServiceError("Invalid wallet address", "INVALID_ADDRESS");
+        throw new ProfileServiceError(
+          "Invalid wallet address",
+          "INVALID_ADDRESS"
+        );
       }
 
       const user = await User.findOne({

@@ -4,10 +4,6 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
-/**
- * @title Migrations
- * @dev Enhanced migrations contract with security features to support HIPAA compliance
- */
 contract Migrations is Ownable, Pausable {
     struct MigrationRecord {
         uint256 completedAt;
@@ -40,18 +36,11 @@ contract Migrations is Ownable, Pausable {
         uint256 timestamp
     );
 
-    /**
-     * @dev Constructor that sets up initial state
-     */
     constructor() Ownable() {
         // Initial setup is recorded as migration 0
         _recordMigration(0, keccak256("INITIAL_MIGRATION"));
     }
 
-    /**
-     * @dev Records completion of a migration with audit trail
-     * @param completed Migration number completed
-     */
     function setCompleted(uint256 completed) external onlyOwner whenNotPaused {
         require(completed > lastCompletedMigration, "Invalid migration number");
 
@@ -63,10 +52,6 @@ contract Migrations is Ownable, Pausable {
         _recordMigration(completed, migrationHash);
     }
 
-    /**
-     * @dev Upgrades the migration contract with audit trail
-     * @param newAddress Address of the new migrations contract
-     */
     function upgrade(address newAddress) external onlyOwner whenNotPaused {
         require(newAddress != address(0), "Invalid new address");
         require(newAddress != address(this), "Cannot upgrade to self");
@@ -85,11 +70,6 @@ contract Migrations is Ownable, Pausable {
         emit MigrationUpgraded(address(this), newAddress, block.timestamp);
     }
 
-    /**
-     * @dev Internal function to record migration details
-     * @param migrationId Migration number
-     * @param migrationHash Unique hash of the migration
-     */
     function _recordMigration(
         uint256 migrationId,
         bytes32 migrationHash
@@ -111,11 +91,7 @@ contract Migrations is Ownable, Pausable {
             block.timestamp
         );
     }
-
-    /**
-     * @dev Gets details of a specific migration
-     * @param migrationId Migration number to query
-     */
+    // Pause and resume functionality
     function getMigrationDetails(
         uint256 migrationId
     )
@@ -139,10 +115,7 @@ contract Migrations is Ownable, Pausable {
         );
     }
 
-    /**
-     * @dev Emergency function to pause migrations
-     * @param reason Reason for emergency shutdown
-     */
+    // Pause and resume functionality
     function emergencyShutdown(
         string calldata reason
     ) external onlyOwner whenNotPaused {
@@ -151,9 +124,7 @@ contract Migrations is Ownable, Pausable {
         emit EmergencyShutdown(msg.sender, reason, block.timestamp);
     }
 
-    /**
-     * @dev Resumes migrations after emergency
-     */
+    // Resume migrations after emergency shutdown
     function resumeMigrations() external onlyOwner whenPaused {
         _unpause();
     }

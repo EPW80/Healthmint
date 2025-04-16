@@ -1,12 +1,11 @@
 // server/controllers/userController.js
 import userService from "../services/userService.js";
-import { ethers } from "ethers";
 import { logger } from "../config/loggerConfig.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { USER_ROLES, AUDIT_TYPES } from "../constants/index.js";
 import { sanitizeUserData } from "../utils/sanitizers.js";
-import validation from '../validation/index.js';
-import { ValidationError } from '../validation/errors.js';
+import validation from "../validation/index.js";
+import { ValidationError } from "../validation/errors.js";
 
 const sendResponse = (res, statusCode, success, message, data = null) => {
   try {
@@ -82,12 +81,12 @@ const logRequestInfo = (req, context) => {
 // Utility function to mask Ethereum address
 const maskAddress = (address) => {
   if (!address || typeof address !== "string") return "[INVALID]";
-  
+
   const addressValidation = validation.validateAddress(address);
   if (!addressValidation.isValid) return "[INVALID]";
-  
+
   const normalizedAddress = address.toLowerCase();
-  
+
   // Show only first 6 and last 4 characters
   if (normalizedAddress.length >= 10) {
     return `${normalizedAddress.slice(0, 6)}...${normalizedAddress.slice(-4)}`;
@@ -115,7 +114,12 @@ const userController = {
         // Validate wallet address
         const addressValidation = validation.validateAddress(address);
         if (!addressValidation.isValid) {
-          return sendResponse(res, 400, false, addressValidation.message || "Invalid wallet address format");
+          return sendResponse(
+            res,
+            400,
+            false,
+            addressValidation.message || "Invalid wallet address format"
+          );
         }
 
         // Normalize address
@@ -157,10 +161,16 @@ const userController = {
             });
 
             // Return sanitized user data
-            return sendResponse(res, 200, true, "Wallet connected successfully", {
-              user: await hipaaCompliance.sanitizeResponse(updatedUser),
-              isNewUser: false,
-            });
+            return sendResponse(
+              res,
+              200,
+              true,
+              "Wallet connected successfully",
+              {
+                user: await hipaaCompliance.sanitizeResponse(updatedUser),
+                isNewUser: false,
+              }
+            );
           }
 
           // Create audit log for connection attempt by new user
@@ -186,7 +196,7 @@ const userController = {
         if (error instanceof ValidationError) {
           return sendResponse(res, 400, false, error.message, {
             code: error.code,
-            details: error.details
+            details: error.details,
           });
         }
         throw error; // Re-throw other errors to be caught by outer catch block
@@ -224,7 +234,9 @@ const userController = {
         const userValidation = validation.validateProfile(req.body);
         if (!userValidation.isValid) {
           return sendResponse(res, 400, false, "Validation failed", {
-            errors: userValidation.errors || [{ message: userValidation.message }],
+            errors: userValidation.errors || [
+              { message: userValidation.message },
+            ],
           });
         }
 
@@ -282,7 +294,7 @@ const userController = {
         if (error instanceof ValidationError) {
           return sendResponse(res, 400, false, error.message, {
             code: error.code,
-            details: error.details
+            details: error.details,
           });
         }
         throw error;
@@ -310,7 +322,12 @@ const userController = {
 
       const addressValidation = validation.validateAddress(address);
       if (!addressValidation.isValid) {
-        return sendResponse(res, 400, false, addressValidation.message || "Invalid wallet address format");
+        return sendResponse(
+          res,
+          400,
+          false,
+          addressValidation.message || "Invalid wallet address format"
+        );
       }
 
       const normalizedAddress = address.toLowerCase();
@@ -365,7 +382,12 @@ const userController = {
 
       const addressValidation = validation.validateAddress(address);
       if (!addressValidation.isValid) {
-        return sendResponse(res, 400, false, addressValidation.message || "Invalid wallet address format");
+        return sendResponse(
+          res,
+          400,
+          false,
+          addressValidation.message || "Invalid wallet address format"
+        );
       }
 
       const normalizedAddress = address.toLowerCase();
@@ -436,10 +458,6 @@ const userController = {
   },
 };
 
-export {
-  sendResponse,
-  logRequestInfo,
-  maskAddress,
-};
+export { sendResponse, logRequestInfo, maskAddress };
 
 export default userController;

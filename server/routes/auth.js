@@ -8,14 +8,12 @@ import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import userService from "../services/userService.js";
 import { USER_ROLES, AUDIT_TYPES } from "../constants/index.js";
 import jwt from "jsonwebtoken";
-import { validateAddress } from "../validation/index.js"; // Import from new validation module
+import { validateAddress } from "../validation/index.js";
+import blockchainService from "../services/blockchainService.js";
+import { ERROR_CODES } from "../config/networkConfig.js";
 
 const router = express.Router();
-
-// Get CORS origin from environment or use default
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
-
-// Set CORS headers for all responses
 const applyCorsHeaders = (res) => {
   res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -26,8 +24,6 @@ const applyCorsHeaders = (res) => {
   );
 };
 
-// Validate Ethereum address and throw appropriate error
-// Helper function to maintain compatibility with existing code
 const validateAndNormalizeAddress = (address) => {
   const result = validateAddress(address);
   if (!result.isValid) {
@@ -35,8 +31,6 @@ const validateAndNormalizeAddress = (address) => {
   }
   return result.normalizedAddress;
 };
-
-// Generate JWT tokens for user authentication
 const generateTokens = (user) => {
   // Get JWT secret from environment with fallback
   const jwtSecret = process.env.JWT_SECRET || "healthmint-dev-secret-key";
@@ -62,14 +56,11 @@ const generateTokens = (user) => {
     expiresIn: tokenExpiry,
   };
 };
-
-// CORS Preflight Handling for all auth routes
 router.options("*", (req, res) => {
   applyCorsHeaders(res);
-  return res.sendStatus(204); // No content response for preflight
+  return res.sendStatus(204);
 });
 
-// Middleware to apply CORS headers
 router.post(
   "/wallet/connect",
   rateLimiters.auth, // Apply rate limiting
@@ -444,6 +435,163 @@ router.post(
 
       throw createError.unauthorized("Failed to refresh token");
     }
+  })
+);
+
+router.post(
+  "/wallet/challenge",
+  asyncHandler(async (req, res) => {
+    const { address } = req.body;
+
+    if (!address) {
+      throw createError.validation("Wallet address is required");
+    }
+
+    // Validate address format
+    const addressValidation = validateAddress(address);
+    if (!addressValidation.isValid) {
+      throw createError.validation(
+        addressValidation.message || "Invalid wallet address format"
+      );
+    }
+
+    // Generate a unique challenge message
+    const challengeMessage =
+      blockchainService.generateChallengeMessage(address);
+
+    // Store the challenge message in session or database
+    req.session = req.session || {};
+    req.session.challengeMessages = req.session.challengeMessages || {};
+    req.session.challengeMessages[address.toLowerCase()] = {
+      message: challengeMessage,
+      expires: Date.now() + 5 * 60 * 1000, // 5 minutes expiry
+    };
+
+    res.json({
+      success: true,
+      message: "Challenge message generated",
+      challengeMessage,
+    });
+  })
+);
+
+router.post(
+  "/wallet/authenticate",
+  asyncHandler(async (req, res) => {
+    const { address, signature, message } = req.body;
+
+    // Validate request
+    if (!address || !signature || !message) {
+      throw createError.validation("Missing required parameters", {
+        required: ["address", "signature", "message"],
+      });
+    }
+
+    // Validate address format
+    const addressValidation = validateAddress(address);
+    if (!addressValidation.isValid) {
+      throw createError.validation(
+        addressValidation.message || "Invalid wallet address format"
+      );
+    }
+
+    // Optional: Verify this is the expected challenge message
+    // const storedChallenge = req.session?.challengeMessages?.[address.toLowerCase()];
+    // if (!storedChallenge || storedChallenge.message !== message || storedChallenge.expires < Date.now()) {
+    //   throw createError.unauthorized("Invalid or expired challenge message");
+    // }
+
+    // Verify signature
+    const isValid = blockchainService.verifySignature(
+      message,
+      signature,
+      address
+    );
+
+    if (!isValid) {
+      // Create audit log for failed authentication attempt
+      await hipaaCompliance.createAuditLog("FAILED_AUTHENTICATION", {
+        address,
+        method: "wallet_signature",
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+
+      throw createError.unauthorized("Invalid signature");
+    }
+
+    // Find or create user based on wallet address
+    let user;
+    try {
+      user = await userService.getUserByAddress(address);
+
+      // If user doesn't exist, create a new one
+      if (!user) {
+        user = await userService.createUser({
+          address: address.toLowerCase(),
+          roles: ["patient"], // Default role
+          createdAt: new Date(),
+          walletConnected: true,
+        });
+
+        logger.info("Created new user from wallet authentication", {
+          address: address.toLowerCase(),
+        });
+      }
+
+      // Update last login time
+      await userService.updateUser(address, { lastLogin: new Date() });
+    } catch (dbError) {
+      logger.error("Database error during authentication", {
+        error: dbError.message,
+        address,
+      });
+
+      throw createError.serverError("Authentication processing error", {
+        code: ERROR_CODES.SERVER_ERROR.code,
+      });
+    }
+
+    // Generate authentication token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        address: user.address.toLowerCase(),
+        roles: user.roles || [user.role], // Support both formats
+        iat: Math.floor(Date.now() / 1000),
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRY || "24h" }
+    );
+
+    // Create refresh token if your app uses them
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+        address: user.address.toLowerCase(),
+        tokenType: "refresh",
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "7d" }
+    );
+
+    // Create audit log for successful authentication
+    await hipaaCompliance.createAuditLog("SUCCESSFUL_AUTHENTICATION", {
+      userId: user.id,
+      address: user.address.toLowerCase(),
+      method: "wallet_signature",
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
+
+    // Return tokens and user information (sanitized)
+    res.json({
+      success: true,
+      message: "Authentication successful",
+      token,
+      refreshToken,
+      user: await hipaaCompliance.sanitizeResponse(user),
+    });
   })
 );
 

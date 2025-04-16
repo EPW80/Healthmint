@@ -44,36 +44,30 @@ class TransactionService {
   // Initialize provider and contract
   initializeProvider() {
     try {
-      // Ensure SEPOLIA RPC URL is retrieved correctly
       const rpcUrl =
-        process.env.SEPOLIA_RPC_URL || NETWORK_CONFIG?.SEPOLIA?.RPC_URL;
-
-      if (!rpcUrl) {
-        throw new TransactionServiceError(
-          "RPC URL is missing. Check your .env file or NETWORK_CONFIG.",
-          "MISSING_RPC_URL"
-        );
-      }
-
-      // Ethers.js v5 provider initialization
+        process.env.SEPOLIA_RPC_URL || "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea";
       this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-      if (!this.provider) {
-        throw new TransactionServiceError(
-          "Failed to initialize JsonRpcProvider",
-          "PROVIDER_INITIALIZATION_ERROR"
-        );
-      }
-
       console.log("✅ Provider successfully initialized:", rpcUrl);
 
+      // Only try to initialize contract if address is available
+      const contractAddress = process.env.CONTRACT_HEALTH_DATA_MARKETPLACE;
+
+      if (!contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
+        console.log("ℹ️ No valid contract address provided, skipping contract initialization");
+        // Set a flag that contract is not initialized
+        this.contractInitialized = false;
+        return true;
+      }
+
       this.contract = new ethers.Contract(
-        process.env.CONTRACT_ADDRESS,
-        contractABI,
+        contractAddress,
+        contractABI,  // Pass the ABI, not the contract itself
         this.provider
       );
 
-      this.setupEventListeners();
+      this.contractInitialized = true;
+      console.log("✅ Contract initialized at address:", contractAddress);
+      return true;
     } catch (error) {
       console.error("❌ Provider initialization error:", error.message);
       throw new TransactionServiceError(
@@ -117,15 +111,16 @@ class TransactionService {
     });
   }
 
-  /**
-   * Purchase data through the blockchain contract
-   * @param {string} buyerAddress - Address of the buyer
-   * @param {string} dataId - ID of the data being purchased
-   * @param {string} purpose - Purpose of data purchase
-   * @param {string} transactionHash - Optional transaction hash
-   * @returns {Promise<Object>} Purchase transaction details
-   */
+ // Method to purchase data
   async purchaseData(buyerAddress, dataId, purpose) {
+    if (!this.contractInitialized) {
+      console.warn("Contract not initialized. Method unavailable.");
+      throw new TransactionServiceError(
+        "Contract not initialized",
+        "CONTRACT_NOT_INITIALIZED"
+      );
+    }
+
     try {
       // Validate inputs
       if (!buyerAddress || !dataId || !purpose) {

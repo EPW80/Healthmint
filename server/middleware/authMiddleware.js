@@ -15,8 +15,8 @@ const extractToken = (req) => {
       const token = authHeader.split(" ")[1];
       const tokenValidation = validation.validateToken(token);
       if (!tokenValidation.isValid) {
-        logger.debug("Invalid token format in Authorization header", { 
-          code: tokenValidation.code 
+        logger.debug("Invalid token format in Authorization header", {
+          code: tokenValidation.code,
         });
       }
       return token;
@@ -47,7 +47,7 @@ const verifyToken = (token) => {
     if (!tokenValidation.isValid) {
       throw new Error(tokenValidation.message || "Invalid token format");
     }
-    
+
     // Get JWT secret from environment variables with fallback
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
@@ -94,7 +94,9 @@ const authMiddleware = async (req, res, next) => {
       });
 
       return next(
-        createError.unauthorized("Authentication required", { code: ERROR_CODES.UNAUTHORIZED.code })
+        createError.unauthorized("Authentication required", {
+          code: ERROR_CODES.UNAUTHORIZED.code,
+        })
       );
     }
 
@@ -127,10 +129,15 @@ const authMiddleware = async (req, res, next) => {
       if (needsVerification) {
         try {
           // Validate address format
-          const addressValidation = validation.validateAddress(req.user.address);
+          const addressValidation = validation.validateAddress(
+            req.user.address
+          );
           if (!addressValidation.isValid) {
             return next(
-              createError.unauthorized(addressValidation.message || "Invalid wallet address", { code: ERROR_CODES.UNAUTHORIZED.code })
+              createError.unauthorized(
+                addressValidation.message || "Invalid wallet address",
+                { code: ERROR_CODES.UNAUTHORIZED.code }
+              )
             );
           }
 
@@ -151,7 +158,9 @@ const authMiddleware = async (req, res, next) => {
             });
 
             return next(
-              createError.unauthorized("User account not found", { code: ERROR_CODES.UNAUTHORIZED.code })
+              createError.unauthorized("User account not found", {
+                code: ERROR_CODES.UNAUTHORIZED.code,
+              })
             );
           }
 
@@ -166,7 +175,10 @@ const authMiddleware = async (req, res, next) => {
             });
 
             return next(
-              createError.forbidden(`Account locked. Try again after ${new Date(user.security.lockoutUntil).toLocaleString()}`, { code: ERROR_CODES.FORBIDDEN.code })
+              createError.forbidden(
+                `Account locked. Try again after ${new Date(user.security.lockoutUntil).toLocaleString()}`,
+                { code: ERROR_CODES.FORBIDDEN.code }
+              )
             );
           }
 
@@ -213,7 +225,9 @@ const authMiddleware = async (req, res, next) => {
     });
 
     return next(
-      createError.serverError("Authentication processing error", { code: ERROR_CODES.SERVER_ERROR.code })
+      createError.serverError("Authentication processing error", {
+        code: ERROR_CODES.SERVER_ERROR.code,
+      })
     );
   }
 };
@@ -274,7 +288,10 @@ const handleJwtError = (error, req, next, logger) => {
     logger.info("Token expired", { exp: error.expiredAt });
 
     return next(
-      createError.unauthorized("Authentication token expired", { expiredAt: error.expiredAt, code: ERROR_CODES.UNAUTHORIZED.code })
+      createError.unauthorized("Authentication token expired", {
+        expiredAt: error.expiredAt,
+        code: ERROR_CODES.UNAUTHORIZED.code,
+      })
     );
   }
 
@@ -294,7 +311,9 @@ const handleJwtError = (error, req, next, logger) => {
       );
 
     return next(
-      createError.unauthorized("Invalid authentication token", { code: ERROR_CODES.UNAUTHORIZED.code })
+      createError.unauthorized("Invalid authentication token", {
+        code: ERROR_CODES.UNAUTHORIZED.code,
+      })
     );
   }
 
@@ -302,7 +321,9 @@ const handleJwtError = (error, req, next, logger) => {
     logger.warn("Token not yet valid", { nbf: error.date });
 
     return next(
-      createError.unauthorized("Token not yet valid", { code: ERROR_CODES.UNAUTHORIZED.code })
+      createError.unauthorized("Token not yet valid", {
+        code: ERROR_CODES.UNAUTHORIZED.code,
+      })
     );
   }
 
@@ -313,7 +334,9 @@ const handleJwtError = (error, req, next, logger) => {
   });
 
   return next(
-    createError.unauthorized("Authentication failed: " + error.message, { code: ERROR_CODES.UNAUTHORIZED.code })
+    createError.unauthorized("Authentication failed: " + error.message, {
+      code: ERROR_CODES.UNAUTHORIZED.code,
+    })
   );
 };
 
@@ -334,7 +357,9 @@ export const authorize = (roles, options = {}) => {
   return (req, res, next) => {
     if (!req.user) {
       return next(
-        createError.unauthorized("Authentication required", { code: ERROR_CODES.UNAUTHORIZED.code })
+        createError.unauthorized("Authentication required", {
+          code: ERROR_CODES.UNAUTHORIZED.code,
+        })
       );
     }
 
@@ -388,7 +413,11 @@ export const authorize = (roles, options = {}) => {
           logger.error("Failed to create audit log", { error: e.message })
         );
 
-      return next(createError.forbidden(errorMessage, { code: ERROR_CODES.FORBIDDEN.code }));
+      return next(
+        createError.forbidden(errorMessage, {
+          code: ERROR_CODES.FORBIDDEN.code,
+        })
+      );
     }
 
     // Create audit log for successful authorization
@@ -425,7 +454,9 @@ export const requirePermission = (permissions, options = {}) => {
     // Ensure user is authenticated
     if (!req.user) {
       return next(
-        createError.unauthorized("Authentication required", { code: ERROR_CODES.UNAUTHORIZED.code })
+        createError.unauthorized("Authentication required", {
+          code: ERROR_CODES.UNAUTHORIZED.code,
+        })
       );
     }
 
@@ -454,7 +485,10 @@ export const requirePermission = (permissions, options = {}) => {
 
     if (!hasPermission) {
       return next(
-        createError.forbidden(options.errorMessage || "Missing required permissions", { code: ERROR_CODES.FORBIDDEN.code })
+        createError.forbidden(
+          options.errorMessage || "Missing required permissions",
+          { code: ERROR_CODES.FORBIDDEN.code }
+        )
       );
     }
 

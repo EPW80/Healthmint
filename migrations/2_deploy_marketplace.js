@@ -7,11 +7,11 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Function to dynamically load the contract artifact
-const getContractArtifact = async () => {
+// Function to dynamically load contract artifacts
+const getContractArtifact = async (contractName) => {
   const artifactPath = path.join(
     __dirname,
-    "../build/contracts/HealthDataMarketplace.json"
+    `../build/contracts/${contractName}.json`
   );
   const artifactData = await fs.readFile(artifactPath, "utf8");
   return JSON.parse(artifactData);
@@ -20,7 +20,7 @@ const getContractArtifact = async () => {
 // Migration function
 export default async function (deployer, network, accounts) {
   try {
-    // Create directories if they don’t exist
+    // Create directories if they don't exist
     const auditDir = path.join(__dirname, "../audit");
     const deploymentsDir = path.join(auditDir, "deployments");
 
@@ -34,28 +34,39 @@ export default async function (deployer, network, accounts) {
     // Log deployment initiation
     const deploymentStart = new Date();
     console.log(
-      `\nInitiating HealthDataMarketplace deployment at ${deploymentStart.toISOString()}`
+      `\nInitiating Healthmint contracts deployment at ${deploymentStart.toISOString()}`
     );
     console.log(`Network: ${network}`);
     console.log(`Deployer address: ${accounts[0]}`);
 
-    // Load contract artifact
-    console.log("\nLoading HealthDataMarketplace artifact...");
-    const artifact = await getContractArtifact();
-    const HealthDataMarketplace = deployer.truffle.Contract(artifact);
+    // Load contract artifacts
+    console.log("\nLoading contract artifacts...");
+    const marketplaceArtifact = await getContractArtifact(
+      "HealthDataMarketplace"
+    );
 
-    // Deploy contract
-    console.log("Deploying HealthDataMarketplace contract...");
-    const instance = await deployer.deploy(HealthDataMarketplace);
-    console.log("Contract deployed at:", instance.address);
+    const HealthDataMarketplace =
+      deployer.truffle.Contract(marketplaceArtifact);
+
+    // Deploy HealthDataMarketplace
+    console.log("\nDeploying HealthDataMarketplace contract...");
+    const marketplaceInstance = await deployer.deploy(HealthDataMarketplace);
+    console.log(
+      "HealthDataMarketplace deployed at:",
+      marketplaceInstance.address
+    );
 
     // Save deployment info
     const deploymentInfo = {
       network,
-      address: instance.address,
+      contracts: {
+        HealthDataMarketplace: {
+          address: marketplaceInstance.address,
+          transactionHash: marketplaceInstance.transactionHash,
+        },
+      },
       timestamp: deploymentStart.toISOString(),
       deployer: accounts[0],
-      transactionHash: instance.transactionHash,
       blockNumber: await web3.eth.getBlockNumber(),
       networkId: await web3.eth.net.getId(),
     };
@@ -75,13 +86,22 @@ export default async function (deployer, network, accounts) {
       "../client/src/contractInfo.json"
     );
     const clientInfo = {
-      address: instance.address,
-      network,
+      marketplace: {
+        address: marketplaceInstance.address,
+        network,
+      },
       deploymentDate: deploymentStart.toISOString(),
     };
 
     await fs.writeFile(clientInfoPath, JSON.stringify(clientInfo, null, 2));
-    console.log(`Contract info updated at: ${clientInfoPath}`);
+    console.log(`\nContract info updated at: ${clientInfoPath}`);
+
+    // Print environment variables format
+    console.log("\n----- CONTRACT ADDRESSES FOR .ENV FILE -----");
+    console.log(
+      `CONTRACT_HEALTH_DATA_MARKETPLACE=${marketplaceInstance.address}`
+    );
+    console.log("-------------------------------------------\n");
 
     return deploymentInfo;
   } catch (error) {

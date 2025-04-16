@@ -7,10 +7,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-/**
- * @title HealthDataMarketplace
- * @dev HIPAA-compliant marketplace for health data
- */
 contract HealthDataMarketplace is
     ReentrancyGuard,
     Pausable,
@@ -302,8 +298,6 @@ contract HealthDataMarketplace is
 
         emit AccessGranted(_id, _user, _purpose, _expirationTime);
     }
-
-    // ...
 
     function grantConsent(
         uint256 _id,

@@ -30,11 +30,15 @@ class ServerHipaaComplianceService {
       return response;
     } catch (error) {
       // Use new centralized error handling
-      throw createError.hipaa("AUDIT_LOG_ERROR", `Failed to create audit log: ${error.message}`, { 
-        action, 
-        details,
-        severity: "high" 
-      });
+      throw createError.hipaa(
+        "AUDIT_LOG_ERROR",
+        `Failed to create audit log: ${error.message}`,
+        {
+          action,
+          details,
+          severity: "high",
+        }
+      );
     }
   }
 
@@ -59,18 +63,25 @@ class ServerHipaaComplianceService {
           }
         );
       } catch (auditError) {
-        this.logger.warn("Failed to create consent audit log:", auditError.message);
+        this.logger.warn(
+          "Failed to create consent audit log:",
+          auditError.message
+        );
       }
 
       return response;
     } catch (error) {
       // Use new centralized error handling
-      throw createError.hipaa("CONSENT_RECORDING_ERROR", `Failed to record consent: ${error.message}`, {
-        consentType, 
-        granted, 
-        details,
-        severity: "medium"
-      });
+      throw createError.hipaa(
+        "CONSENT_RECORDING_ERROR",
+        `Failed to record consent: ${error.message}`,
+        {
+          consentType,
+          granted,
+          details,
+          severity: "medium",
+        }
+      );
     }
   }
 

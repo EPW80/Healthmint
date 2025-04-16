@@ -182,6 +182,9 @@ try {
   process.exit(1); // Stops the server if routes fail to load
 }
 
+// Import blockchain routes
+import blockchainRoutes from "./routes/blockchain.js";
+
 // Root Route
 app.get("/", (_req, res) => {
   res.json({
@@ -227,6 +230,9 @@ apiRouter.use("/users", usersRoutes);
 
 console.log("Mounting datasets routes at /api/datasets");
 apiRouter.use("/datasets", datasetsRoutes);
+
+console.log("Mounting blockchain routes at /api/blockchain");
+apiRouter.use("/blockchain", blockchainRoutes);
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);
