@@ -8,16 +8,16 @@ import helmet from "helmet";
 import morgan from "morgan";
 import fs from "fs";
 
+// Load environment variables first thing
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 // Import standardized error handling
 import { errorHandler } from "./errors/index.js";
 
 // Import HIPAA middleware
 import hipaaCompliance from "./middleware/hipaaCompliance.js";
-
-// Resolve the correct .env path
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 // Validate critical environment variables
 const REQUIRED_ENV_VARS = ["ENCRYPTION_KEY", "JWT_SECRET"];
@@ -54,7 +54,6 @@ if (!fs.existsSync(logDir)) {
 }
 
 // Initialize service dependencies first individually
-import hipaaComplianceService from "./services/hipaaComplianceService.js";
 
 // Debugging Environment Variables
 console.log(
@@ -184,6 +183,21 @@ try {
 
 // Import blockchain routes
 import blockchainRoutes from "./routes/blockchain.js";
+
+// Import secure storage service
+import secureStorageService from "./services/secureStorageService.js";
+
+// Validate storage connection
+try {
+  const isConnected = await secureStorageService.validateIPFSConnection();
+  console.log(
+    isConnected
+      ? "✅ Web3Storage connection validated"
+      : "⚠️ Web3Storage connection failed"
+  );
+} catch (error) {
+  console.error("❌ Error validating storage connection:", error.message);
+}
 
 // Root Route
 app.get("/", (_req, res) => {

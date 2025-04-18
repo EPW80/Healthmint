@@ -1,13 +1,19 @@
 // ../services/secureStorageService.js
-import { create } from "ipfs-http-client";
 import { Buffer } from "buffer";
 import { ethers } from "ethers";
 import crypto from "crypto";
 import apiService from "./apiService.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENV } from "../config/networkConfig.js";
-import validation from '../validation/index.js';
-import { Web3Storage } from 'web3.storage';
+import validation from "../validation/index.js";
+import { Web3Storage } from "web3.storage";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 // Error handling
 class SecureStorageError extends Error {
@@ -20,9 +26,13 @@ class SecureStorageError extends Error {
   }
 }
 
-/// SecureStorage class for handling file uploads, downloads, and management
+// Secure Storage Service
 class SecureStorageService {
   constructor() {
+    this.storageClient = null;
+    this.storageType = process.env.IPFS_PROVIDER || "web3storage"; // Match your env var name
+    this.initialized = false;
+
     this.MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
     this.ALLOWED_MIME_TYPES = [
       "image/jpeg",
@@ -42,54 +52,54 @@ class SecureStorageService {
     this.referenceCache = new Map();
     this.cacheTimeout = 30 * 60 * 1000; // 30 minutes
 
-    // Initialize Web3Storage client if token is available
-    if (process.env.WEB3_STORAGE_TOKEN) {
-      this.web3Storage = new Web3Storage({ token: process.env.WEB3_STORAGE_TOKEN });
-      this.storageProvider = 'web3storage';
-    } else if (process.env.IPFS_PROJECT_ID) {
-      // Fallback to Infura if configured
-      this.ipfs = create({
-        host: process.env.IPFS_HOST,
-        port: process.env.IPFS_PORT,
-        protocol: process.env.IPFS_PROTOCOL,
-        headers: {
-          authorization: `Basic ${Buffer.from(
-            `${process.env.IPFS_PROJECT_ID}:${process.env.IPFS_PROJECT_SECRET}`
-          ).toString('base64')}`,
-        },
-      });
-      this.storageProvider = 'infura';
-    } else {
-      console.warn("No IPFS provider configured!");
-      this.storageProvider = 'none';
-    }
-    
-    console.log(`Storage service initialized using: ${this.storageProvider}`);
+    this.initialize();
   }
 
-  /// Fallback to API if IPFS is not available
-  async validateIPFSConnection() {
+  initialize() {
     try {
-      if (this.storageProvider === 'web3storage') {
-        // For Web3Storage, we can just check if client is initialized
-        if (!this.web3Storage) {
-          throw new Error("Web3Storage client not initialized");
+      // Log all relevant environment variables for debugging
+      console.log("Storage initialization:");
+      console.log("- IPFS_PROVIDER:", process.env.IPFS_PROVIDER);
+      console.log(
+        "- WEB3_STORAGE_TOKEN:",
+        process.env.WEB3_STORAGE_TOKEN ? "Present" : "Missing"
+      );
+
+      if (this.storageType === "web3storage") {
+        const token = process.env.WEB3_STORAGE_TOKEN;
+
+        if (!token) {
+          console.error(
+            "❌ No WEB3_STORAGE_TOKEN found in environment variables"
+          );
+          return;
         }
-        console.log("✅ Web3Storage connection validated");
-        return true;
-      } else if (this.storageProvider === 'infura') {
-        // Existing Infura validation logic
-        const result = await this.ipfs.id();
-        if (!result || !result.id) {
-          throw new Error("Invalid IPFS node response");
-        }
-        return true;
+
+        this.storageClient = new Web3Storage({ token });
+        this.initialized = true;
+        console.log("✅ Web3Storage client initialized successfully");
       } else {
-        console.warn("⚠️ No IPFS provider configured");
-        return false;
+        console.warn(`⚠️ Unsupported storage type: ${this.storageType}`);
       }
     } catch (error) {
-      console.error("IPFS connection validation failed:", error);
+      console.error("❌ Failed to initialize storage service:", error);
+    }
+  }
+
+  async validateIPFSConnection() {
+    if (!this.initialized || !this.storageClient) {
+      console.error("❌ Storage client not initialized");
+      return false;
+    }
+
+    try {
+      // Make a simple API call to check connectivity
+      console.log("Testing Web3Storage connection...");
+      const uploads = await this.storageClient.list({ maxResults: 1 });
+      console.log("✅ Web3Storage connection validated successfully");
+      return true;
+    } catch (error) {
+      console.error("❌ IPFS connection validation failed:", error);
       return false;
     }
   }
@@ -112,7 +122,11 @@ class SecureStorageService {
   /// Upload a file to IPFS and return the IPFS hash
   async validateFile(file) {
     try {
-      const fileValidationResult = validation.validateFile(file, this.MAX_FILE_SIZE, this.ALLOWED_MIME_TYPES);
+      const fileValidationResult = validation.validateFile(
+        file,
+        this.MAX_FILE_SIZE,
+        this.ALLOWED_MIME_TYPES
+      );
       if (!fileValidationResult.isValid) {
         throw new SecureStorageError(
           fileValidationResult.message,
@@ -329,35 +343,28 @@ class SecureStorageService {
 
   async uploadToIPFS(content, options = {}) {
     try {
-      if (this.storageProvider === 'web3storage') {
+      if (this.storageType === "web3storage") {
         // Convert content to File object for Web3Storage
         const files = [];
-        const fileType = options.mimeType || 'application/json';
+        const fileType = options.mimeType || "application/json";
         const fileName = options.fileName || `file-${Date.now()}.json`;
-        
-        if (typeof content === 'object') {
+
+        if (typeof content === "object") {
           content = JSON.stringify(content);
         }
-        
+
         const file = new File([content], fileName, { type: fileType });
         files.push(file);
-        
+
         // Upload to Web3Storage
-        const cid = await this.web3Storage.put(files, {
+        const cid = await this.storageClient.put(files, {
           name: options.name || fileName,
-          wrapWithDirectory: false
+          wrapWithDirectory: false,
         });
-        
+
         return {
           cid,
-          url: `${process.env.IPFS_GATEWAY || 'https://dweb.link/ipfs/'}${cid}/${fileName}`
-        };
-      } else if (this.storageProvider === 'infura') {
-        // Existing Infura upload logic
-        const result = await this.ipfs.add(content);
-        return { 
-          cid: result.cid.toString(),
-          url: `https://ipfs.io/ipfs/${result.cid.toString()}`
+          url: `${process.env.IPFS_GATEWAY || "https://dweb.link/ipfs/"}${cid}/${fileName}`,
         };
       } else {
         throw new Error("No IPFS provider configured");
@@ -1012,4 +1019,3 @@ const secureStorageService = new SecureStorageService();
 
 export { SecureStorageService, secureStorageService };
 export default secureStorageService;
- 
