@@ -157,19 +157,15 @@ const networks = {
 
   // Sepolia testnet
   sepolia: {
-    provider: () => new ProviderManager().getProvider(),
+    provider: () => new HDWalletProvider(
+      process.env.PRIVATE_KEY,
+      process.env.SEPOLIA_RPC_URL
+    ),
     network_id: 11155111,
     gas: 5500000,
-    gasPrice: 20000000000, // 20 gwei
     confirmations: 2,
-    timeoutBlocks: 500,
+    timeoutBlocks: 200,
     skipDryRun: true,
-    networkCheckTimeout: 1000000,
-    websockets: false,
-    verify: {
-      apiUrl: "https://api-sepolia.etherscan.io/",
-      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
-    },
   },
 
   // Mainnet configuration for production deployments

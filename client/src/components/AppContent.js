@@ -45,6 +45,7 @@ import {
 import DataVisualization from "./analytics/DataVisualization.js";
 import StatisticalAnalysis from "./analytics/StatisticalAnalysis.js";
 import PopulationStudies from "./analytics/PopulationStudies.js";
+import FileUploader from "../components/FileUploader";
 
 // Logout Confirmation Dialog
 const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
@@ -616,6 +617,7 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/test/upload" element={<FileUploader />} />
           <Route
             path="/"
             element={

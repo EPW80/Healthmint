@@ -7,6 +7,9 @@ import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import multer from "multer";
+import { Readable } from "stream";
+import secureStorageService from "../services/secureStorageService.js";
 
 // Load ABIs
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +43,14 @@ const router = express.Router();
 
 // Middleware to protect routes
 router.use(authMiddleware);
+
+// Set up multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
 
 // Get network information
 router.get(
@@ -213,5 +224,44 @@ router.get(
     });
   })
 );
+
+// Add this test endpoint
+router.post('/test-upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file provided',
+      });
+    }
+
+    console.log(`Received file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+    
+    // Create a File object that Web3Storage can use
+    const fileData = new File(
+      [req.file.buffer], 
+      req.file.originalname, 
+      { type: req.file.mimetype }
+    );
+    
+    // Upload to IPFS via Web3Storage
+    const cid = await secureStorageService.storeFiles([fileData]);
+    
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      fileName: req.file.originalname,
+      cid: cid,
+      retrievalUrl: `https://${cid}.ipfs.dweb.link/${encodeURIComponent(req.file.originalname)}`
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'File upload failed',
+      error: error.message
+    });
+  }
+});
 
 export default router;

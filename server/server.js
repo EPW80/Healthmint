@@ -7,6 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import fs from "fs";
+import multer from "multer";
 
 // Load environment variables first thing
 const __filename = fileURLToPath(import.meta.url);
@@ -52,8 +53,6 @@ if (!fs.existsSync(logDir)) {
     console.warn("⚠️ Could not create logs directory:", err.message);
   }
 }
-
-// Initialize service dependencies first individually
 
 // Debugging Environment Variables
 console.log(
@@ -187,8 +186,11 @@ import blockchainRoutes from "./routes/blockchain.js";
 // Import secure storage service
 import secureStorageService from "./services/secureStorageService.js";
 
-// Validate storage connection
+// Initialize the storage service before proceeding
 try {
+  // Wait for initialization to complete
+  await secureStorageService.initialize();
+  
   const isConnected = await secureStorageService.validateIPFSConnection();
   console.log(
     isConnected
@@ -196,7 +198,7 @@ try {
       : "⚠️ Web3Storage connection failed"
   );
 } catch (error) {
-  console.error("❌ Error validating storage connection:", error.message);
+  console.error("❌ Error initializing storage service:", error.message);
 }
 
 // Root Route
@@ -247,6 +249,50 @@ apiRouter.use("/datasets", datasetsRoutes);
 
 console.log("Mounting blockchain routes at /api/blockchain");
 apiRouter.use("/blockchain", blockchainRoutes);
+
+// Add this public test route (not under /api) - before the 404 handler
+const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+app.post("/test-upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file provided",
+      });
+    }
+
+    console.log(
+      `Received file: ${req.file.originalname}, size: ${req.file.size} bytes`
+    );
+
+    // Convert multer file to format expected by secureStorageService
+    const file = {
+      name: req.file.originalname,
+      type: req.file.mimetype,
+      size: req.file.size,
+      buffer: req.file.buffer,
+    };
+
+    // Use your secure storage service to upload to IPFS
+    const result = await secureStorageService.uploadToIPFS(file.buffer, {
+      fileName: file.name,
+      mimeType: file.type,
+    });
+
+    return res.json({
+      success: true,
+      cid: result.cid,
+      fileName: file.name,
+      retrievalUrl: result.url,
+    });
+  } catch (error) {
+    console.error("Test upload error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Upload failed",
+    });
+  }
+});
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);

@@ -45,7 +45,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
   const [status, setStatus] = useState("idle"); // idle, uploading, ipfs, blockchain, success, error
 
   // Use the blockchain hook
-  const { uploadHealthData } = useBlockchain({
+  const { uploadHealthData, contract, walletAddress } = useBlockchain({
     showNotifications: true,
   });
 
@@ -145,11 +145,46 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
 
         // 2. Upload to blockchain
         setStatus("blockchain");
-        await uploadHealthData(result.reference, category, price, description);
+
+        let blockchainTxHash;
+
+        // Check if contract is valid
+        if (!contract || typeof contract.uploadHealthData !== "function") {
+          console.warn("Contract not properly initialized, using fallback mode");
+          
+          // Use the simulated version explicitly
+          blockchainTxHash = await uploadHealthData(
+            {
+              reference: result.reference,
+              category,
+              price,
+              description,
+            },
+            null,  // Pass null to indicate simulation should be used
+            walletAddress
+          );
+        } else {
+          // Use the real contract when it's valid
+          blockchainTxHash = await uploadHealthData(
+            {
+              reference: result.reference,
+              category,
+              price,
+              description,
+            },
+            contract,
+            walletAddress
+          );
+        }
+
+        console.log("Transaction hash:", blockchainTxHash);
 
         // Update UI when transaction completes
         setUploadProgress(100);
-        setStatus("success");
+        setStatus({
+          ...status,
+          transactionHash: blockchainTxHash.transactionHash
+        });
 
         // Call onUploadSuccess callback
         onUploadSuccess?.({
@@ -157,6 +192,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
           category,
           price,
           description,
+          transactionHash: blockchainTxHash.transactionHash
         });
 
         // Reset form
