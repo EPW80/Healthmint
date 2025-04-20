@@ -8,7 +8,7 @@ import { ethers } from "ethers";
 import HealthDataABI from "../contracts/HealthDataABI.json";
 
 const CONTRACT_ADDRESSES = {
-  sepolia: "0xE39f6089CA93A71C420c3b102963C54F04292763", // Health Data Marketplace on Sepolia
+  sepolia: "0x82B037679b8b79E2Dbde17895a15419876921Cff", // Your newly deployed contract
   goerli: "0x0000000000000000000000000000000000000000", // Not deployed on Goerli yet
 };
 

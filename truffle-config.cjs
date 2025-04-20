@@ -15,27 +15,20 @@ const networks = {
     port: 8545,
     network_id: "*",
   },
-  
+
   // Sepolia testnet
   sepolia: {
-    provider: () => {
-      console.log("Creating Sepolia provider...");
-      // Use Infura instead of Alchemy
-      const rpcUrl = "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea";
-      return new HDWalletProvider({
-        privateKeys: [process.env.PRIVATE_KEY],
-        providerOrUrl: rpcUrl,
-        pollingInterval: 180000
-      });
-    },
-    network_id: 11155111,  // Correct Sepolia network ID
-    gas: 5500000,
+    provider: () =>
+      new HDWalletProvider(
+        process.env.PRIVATE_KEY,
+        process.env.SEPOLIA_RPC_URL
+      ),
+    network_id: 11155111,
+    gas: 8000000,
     gasPrice: 20000000000,
-    confirmations: 3,
-    timeoutBlocks: 500,
+    timeoutBlocks: 200,
     skipDryRun: true,
-    networkCheckTimeout: 10000000
-  }
+  },
 };
 
 // Compiler configuration
@@ -57,5 +50,9 @@ module.exports = {
   compilers,
   contracts_directory: "./contracts",
   contracts_build_directory: "./client/src/contracts",
-  migrations_directory: "./migrations"
+  migrations_directory: "./migrations",
+  plugins: ["truffle-plugin-verify"],
+  api_keys: {
+    etherscan: process.env.ETHERSCAN_API_KEY,
+  },
 };
