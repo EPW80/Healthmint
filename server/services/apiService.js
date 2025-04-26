@@ -1,6 +1,7 @@
 // apiService.js
 import axios from "axios";
 import config from "../config/config.js";
+import secureStorageService from "./secureStorageService.js";
 
 // API service for making HTTP requests
 class ApiService {
@@ -421,6 +422,12 @@ class ApiService {
   }
 
   async uploadFile(endpoint, file, progressCallback, metadata = {}) {
+    // In development or test mode, use the local file handler
+    if (process.env.NODE_ENV !== "production") {
+      return this.handleFileUpload(file, { metadata });
+    }
+
+    // Otherwise, use the standard upload code
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -448,6 +455,20 @@ class ApiService {
       this.handleClientError(error, endpoint, { isPHI: metadata.isPHI });
       throw error;
     }
+  }
+
+  async handleFileUpload(file, options = {}) {
+    // Log for debugging purposes
+    console.log(
+      `[API] ${process.env.NODE_ENV !== "production" ? "Mock " : ""}file upload: ${file.originalname} (${file.size} bytes)`
+    );
+
+    // Use local storage service instead of mocks
+    if (!secureStorageService.initialized) {
+      await secureStorageService.initialize();
+    }
+
+    return secureStorageService.storeFile(file);
   }
 
   async downloadFile(endpoint, progressCallback) {

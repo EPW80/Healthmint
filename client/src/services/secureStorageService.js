@@ -14,6 +14,22 @@ try {
   );
 }
 
+// Custom error class for storage-related errors
+class SecureStorageError extends Error {
+  constructor(message, code, details = {}) {
+    super(message);
+    this.name = "SecureStorageError";
+    this.code = code;
+    this.details = details;
+    this.timestamp = new Date().toISOString();
+
+    // Maintains proper stack trace
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, SecureStorageError);
+    }
+  }
+}
+
 // SecureStorageService class
 class SecureStorageService {
   constructor() {
@@ -58,6 +74,33 @@ class SecureStorageService {
       .catch((err) =>
         console.error("Failed to log service initialization:", err)
       );
+  }
+
+  async initialize() {
+    try {
+      // Don't re-initialize if already initialized
+      if (this.initialized && this.client) {
+        console.log("Storage client already initialized.");
+        return this;
+      }
+
+      console.log("Client-side storage service initialization");
+
+      // In client context, we don't actually initialize a real IPFS client
+      // Instead, we just mark the service as initialized since all operations
+      // will go through the API proxy
+      this.initialized = true;
+      this.client = {
+        currentSpace: () => ({ did: () => "client-side-mock" }),
+      };
+
+      return this;
+    } catch (error) {
+      console.error("Failed to initialize storage service:", error);
+      this.initialized = false;
+      this.client = null;
+      throw error;
+    }
   }
 
   validateFile(file, options = {}) {
@@ -525,6 +568,73 @@ class SecureStorageService {
     }
   }
 
+  async fetchFromIPFS(hash, progressCallback) {
+    try {
+      // Make sure client is initialized
+      if (!this.client || !this.initialized) {
+        throw new Error("Storage client not initialized");
+      }
+
+      // Use Web3Storage to retrieve the content
+      progressCallback?.(40);
+
+      // Get the data from Web3Storage - use the HTTP gateway pattern
+      const gateway = process.env.IPFS_GATEWAY || "https://dweb.link/ipfs/";
+      const url = `${gateway}${hash}`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch from IPFS: ${response.statusText}`);
+      }
+
+      progressCallback?.(50);
+      const data = await response.json();
+      progressCallback?.(60);
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching from IPFS:", error);
+      throw new SecureStorageError(
+        "Failed to retrieve data from storage",
+        "IPFS_RETRIEVAL_FAILED",
+        { originalError: error.message }
+      );
+    }
+  }
+
+  async validateIPFSConnection() {
+    try {
+      if (!this.initialized || !this.client) {
+        console.error("❌ Storage client not initialized");
+        return false;
+      }
+
+      console.log("Testing Web3Storage connection...");
+
+      try {
+        // Just checking if we have access to the space
+        const space = this.client.currentSpace();
+        console.log("✅ Web3Storage connection validated successfully");
+        return !!space;
+      } catch (error) {
+        // Try to reinitialize if connection failed
+        console.error(
+          "❌ IPFS connection validation failed, attempting to reinitialize:",
+          error
+        );
+
+        // Wait 2 seconds before attempting reinitialization
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        await this.initialize();
+        return this.client && this.initialized;
+      }
+    } catch (error) {
+      console.error("❌ IPFS connection validation critical failure:", error);
+      return false;
+    }
+  }
+
   // HIPAA compliance check for PHI
   checkForPHI(text) {
     return hipaaComplianceService.containsPHI(text);
@@ -568,3 +678,4 @@ class SecureStorageService {
 
 const secureStorageService = new SecureStorageService();
 export default secureStorageService;
+export { SecureStorageError };

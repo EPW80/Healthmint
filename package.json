@@ -18,25 +18,20 @@
     "lint-staged": "lint-staged",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
     "prepare": "husky install",
-    "postinstall": "cd client && npm install && cd ../server && npm install",
-    "truffle": "truffle --config truffle-config.cjs"
+    "postinstall": "cd client && npm install && cd ../server && npm install"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.9.6",
-    "@truffle/hdwallet-provider": "^2.1.15",
-    "dotenv": "^16.5.0",
-    "truffle": "^5.11.5",
-    "web3": "^1.10.4"
+    "dotenv": "^16.5.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "nodemon": "^3.1.9",
     "prettier": "^3.2.0",
-    "rimraf": "^5.0.1",
-    "truffle-plugin-verify": "^0.6.7"
+    "rimraf": "^5.0.1"
   },
   "engines": {
     "node": ">=18.0.0",

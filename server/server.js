@@ -183,6 +183,9 @@ try {
 // Import blockchain routes
 import blockchainRoutes from "./routes/blockchain.js";
 
+// Import audit routes
+import auditRoutes from "./routes/audit.js";
+
 // Import secure storage service
 import secureStorageService from "./services/secureStorageService.js";
 
@@ -190,7 +193,7 @@ import secureStorageService from "./services/secureStorageService.js";
 try {
   // Wait for initialization to complete
   await secureStorageService.initialize();
-  
+
   const isConnected = await secureStorageService.validateIPFSConnection();
   console.log(
     isConnected
@@ -250,49 +253,125 @@ apiRouter.use("/datasets", datasetsRoutes);
 console.log("Mounting blockchain routes at /api/blockchain");
 apiRouter.use("/blockchain", blockchainRoutes);
 
-// Add this public test route (not under /api) - before the 404 handler
+console.log("Mounting audit routes at /api/audit");
+apiRouter.use("/audit", auditRoutes);
+
+// Storage test routes
+console.log("Mounting storage test routes at /api/storage");
 const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
-app.post("/test-upload", upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
+
+apiRouter.post(
+  "/storage/test-upload",
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, message: "No file provided" });
+      }
+
+      console.log(
+        `Test upload: ${req.file.originalname}, size: ${req.file.size} bytes`
+      );
+
+      // Upload to IPFS
+      const uploadResult = await secureStorageService.uploadToIPFS(
+        req.file.buffer,
+        {
+          fileName: req.file.originalname,
+          mimeType: req.file.mimetype,
+        }
+      );
+
+      return res.json({
+        success: true,
+        cid: uploadResult.cid,
+        fileName: req.file.originalname,
+        url: `https://dweb.link/ipfs/${uploadResult.cid}`,
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      return res.status(500).json({
         success: false,
-        message: "No file provided",
+        message: error.message || "Upload failed",
       });
     }
-
-    console.log(
-      `Received file: ${req.file.originalname}, size: ${req.file.size} bytes`
-    );
-
-    // Convert multer file to format expected by secureStorageService
-    const file = {
-      name: req.file.originalname,
-      type: req.file.mimetype,
-      size: req.file.size,
-      buffer: req.file.buffer,
-    };
-
-    // Use your secure storage service to upload to IPFS
-    const result = await secureStorageService.uploadToIPFS(file.buffer, {
-      fileName: file.name,
-      mimeType: file.type,
-    });
-
-    return res.json({
-      success: true,
-      cid: result.cid,
-      fileName: file.name,
-      retrievalUrl: result.url,
-    });
-  } catch (error) {
-    console.error("Test upload error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Upload failed",
-    });
   }
-});
+);
+
+apiRouter.post(
+  "/storage/test-ipfs-flow",
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, message: "No file provided" });
+      }
+
+      console.log(
+        `Testing IPFS flow: ${req.file.originalname}, size: ${req.file.size} bytes`
+      );
+
+      // 1. Upload to IPFS
+      const uploadResult = await secureStorageService.uploadToIPFS(
+        req.file.buffer,
+        {
+          fileName: req.file.originalname,
+          mimeType: req.file.mimetype,
+        }
+      );
+
+      console.log("Upload successful, CID:", uploadResult.cid);
+
+      try {
+        // 2. Try to retrieve it
+        console.log("Attempting to retrieve content from IPFS...");
+        const retrievedContent = await secureStorageService.fetchFromIPFS(
+          uploadResult.cid
+        );
+
+        return res.json({
+          success: true,
+          uploaded: {
+            cid: uploadResult.cid,
+            fileName: req.file.originalname,
+            url: `https://dweb.link/ipfs/${uploadResult.cid}`,
+          },
+          retrieved: {
+            success: true,
+            contentPreview:
+              typeof retrievedContent === "object"
+                ? JSON.stringify(retrievedContent).substring(0, 100) + "..."
+                : String(retrievedContent).substring(0, 100) + "...",
+          },
+        });
+      } catch (retrievalError) {
+        console.error("Retrieval error:", retrievalError);
+        return res.json({
+          success: true,
+          uploaded: {
+            cid: uploadResult.cid,
+            fileName: req.file.originalname,
+            url: `https://dweb.link/ipfs/${uploadResult.cid}`,
+          },
+          retrieved: {
+            success: false,
+            error: retrievalError.message,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("IPFS flow test error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "IPFS flow test failed",
+      });
+    }
+  }
+);
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);
@@ -352,14 +431,11 @@ process.on("unhandledRejection", (reason, promise) => {
 
 // Start Server
 try {
-  server = app.listen(PORT, "0.0.0.0", () => {
+  global.SERVER_INITIALIZING = true;
+  server = app.listen(PORT, () => {
     console.log(`🚀 Server running and accessible at http://0.0.0.0:${PORT}`);
-    console.log(`🌐 Environment: ${NODE_ENV}`);
-    console.log("Available routes:");
-    console.log("  GET  /");
-    console.log("  GET  /health");
-    console.log("  POST /api/auth/wallet/connect");
-    console.log("  GET  /api/datasets/:id/download");
+    // Server is now initialized
+    global.SERVER_INITIALIZING = false;
   });
 } catch (err) {
   console.error("❌ Failed to start server:", err);

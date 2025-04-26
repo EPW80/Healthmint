@@ -18,8 +18,13 @@ class ServerHipaaComplianceService {
     console.log("✅ Logger set in HipaaComplianceService");
   }
 
-  async createAuditLog(action, details = {}) {
+  async createAuditLog(action, details, severity = "info", user = "anonymous") {
     try {
+      // Check if server is still initializing
+      if (global.SERVER_INITIALIZING) {
+        console.log(`Skipping audit log during initialization: ${action}`);
+        return true;
+      }
       const logEntry = {
         action,
         timestamp: new Date().toISOString(),

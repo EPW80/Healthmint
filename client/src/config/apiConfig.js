@@ -17,6 +17,7 @@ const ENDPOINTS = {
     VERIFY: "/api/auth/wallet/verify",
     REFRESH: "/api/auth/refresh",
     LOGOUT: "/api/auth/logout",
+    WALLET_CONNECT: "/api/auth/wallet/connect",
   },
 
   // User management

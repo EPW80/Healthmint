@@ -612,9 +612,9 @@ const Dashboard = ({ onNavigate }) => {
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
                       className="h-6 w-6"
                       fill="none"
-                      viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
                       <path
@@ -776,9 +776,9 @@ const Dashboard = ({ onNavigate }) => {
                 View All Records
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
                   className="h-4 w-4"
                   fill="none"
-                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
                   <path
@@ -814,9 +814,9 @@ const Dashboard = ({ onNavigate }) => {
                 Manage Privacy
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 24 24"
                   className="h-4 w-4"
                   fill="none"
-                  viewBox="0 24 24"
                   stroke="currentColor"
                 >
                   <path
@@ -845,9 +845,9 @@ const Dashboard = ({ onNavigate }) => {
                 Sharing Controls
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
                   className="h-4 w-4"
                   fill="none"
-                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
                   <path
@@ -1080,9 +1080,9 @@ const Dashboard = ({ onNavigate }) => {
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
                     className="h-6 w-6"
                     fill="none"
-                    viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
                     <path
@@ -1299,9 +1299,9 @@ const Dashboard = ({ onNavigate }) => {
                 View All Datasets
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
                   className="h-4 w-4"
                   fill="none"
-                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
                   <path

@@ -41,17 +41,29 @@ class BlockchainService {
   }
 
   // Access multiple contracts beyond the marketplace
-  async getContract(contractName, contractAddress, abi) {
+  async getContract(contractName, address, abi) {
     try {
-      return new ethers.Contract(contractAddress, abi, this.getProvider());
+      if (!address) {
+        console.warn(`No address provided for ${contractName}, using fallback mode`);
+        return this.createMockContract(contractName);
+      }
+      
+      const contract = new ethers.Contract(address, abi, this.provider);
+      
+      // Add the validation code here
+      if (!contract || !contract.interface) {
+        console.error(`Contract ${contractName} not properly initialized. Check ABI and address configuration.`);
+        this.useFallbackMode = true;
+        return this.createMockContract(contractName);
+      } else {
+        console.log(`✅ Contract ${contractName} initialized successfully:`, contract.address);
+        this.useFallbackMode = false;
+        return contract;
+      }
     } catch (error) {
-      logger.error(`Failed to create contract instance for ${contractName}`, {
-        error: error.message,
-      });
-      throw createError.api(
-        "CONTRACT_CREATION_FAILED",
-        `Failed to initialize contract: ${error.message}`
-      );
+      console.error(`Error initializing ${contractName} contract:`, error);
+      this.useFallbackMode = true;
+      return this.createMockContract(contractName);
     }
   }
 

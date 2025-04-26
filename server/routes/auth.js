@@ -61,101 +61,51 @@ router.options("*", (req, res) => {
   return res.sendStatus(204);
 });
 
-router.post(
-  "/wallet/connect",
-  rateLimiters.auth, // Apply rate limiting
-  asyncHandler(async (req, res) => {
-    const requestLogger = logger.child({
-      requestId: req.id || "req_" + Date.now(),
-    });
-    applyCorsHeaders(res);
-
-    const { address, chainId } = req.body;
-    const normalizedAddress = validateAndNormalizeAddress(address);
-    const requestMetadata = {
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      timestamp: new Date(),
-      chainId: chainId || "unknown",
-    };
-
-    requestLogger.info("Wallet connection attempt", {
-      address: `${normalizedAddress.substring(0, 6)}...${normalizedAddress.substring(38)}`,
-      chainId,
-    });
-
-    // Check if user exists in database
-    let user = null;
-    let isNewUser = true;
-
-    try {
-      user = await userService.getUserByAddress(normalizedAddress);
-      if (user) {
-        isNewUser = false;
-
-        // Update last login time
-        await userService.updateUser(normalizedAddress, {
-          lastLogin: new Date(),
-          lastChainId: chainId,
-        });
-
-        // Create audit log for existing user
-        await hipaaCompliance.createAuditLog(AUDIT_TYPES.LOGIN, {
-          userId: user.id,
-          address: normalizedAddress,
-          ...requestMetadata,
-        });
-      } else {
-        // Log connection attempt by new user
-        await hipaaCompliance.createAuditLog("WALLET_CONNECTION_ATTEMPT", {
-          address: normalizedAddress,
-          ...requestMetadata,
-        });
-      }
-    } catch (error) {
-      requestLogger.error("Error checking user existence", {
-        error: error.message,
-        address: normalizedAddress,
+router.post("/wallet/connect", async (req, res) => {
+  try {
+    const { address } = req.body;
+    
+    if (!address) {
+      return res.status(400).json({
+        success: false,
+        message: "Wallet address is required"
       });
-      // Continue flow even if database check fails
     }
-
-    // Generate JWT tokens if user exists
-    let tokenData = null;
-    if (user) {
-      tokenData = generateTokens(user);
-
-      // Set HTTP-only cookie with token for added security
-      if (process.env.USE_COOKIE_AUTH === "true") {
-        res.cookie("auth_token", tokenData.token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        });
-      }
-    }
-
+    
+    console.log(`Wallet connection attempt from address: ${address}`);
+    
+    // For development, auto-authenticate any wallet
+    // In production, add your real authentication logic here
+    
+    // Generate a JWT token
+    const token = jwt.sign(
+      { 
+        address, 
+        role: "patient",
+        id: address.toLowerCase() 
+      }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: "24h" }
+    );
+    
     return res.json({
       success: true,
-      message: isNewUser
-        ? "Registration required"
-        : "Wallet connected successfully",
-      data: {
-        isNewUser,
-        address: normalizedAddress,
-        chainId,
-        timestamp: new Date().toISOString(),
-        ...(tokenData && {
-          token: tokenData.token,
-          expiresIn: tokenData.expiresIn,
-        }),
-        ...(user &&
-          !isNewUser && { user: await hipaaCompliance.sanitizeResponse(user) }),
-      },
+      message: "Authentication successful",
+      token,
+      user: {
+        address,
+        role: "patient",
+        id: address.toLowerCase()
+      }
     });
-  })
-);
+  } catch (error) {
+    console.error("Wallet connect error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Authentication failed: " + error.message
+    });
+  }
+});
 
 router.post(
   "/register",

@@ -221,64 +221,44 @@ const useAuth = () => {
     }
   }, [dispatch, clearVerificationCache]);
 
-  const login = useCallback(
-    async (walletAddress) => {
-      if (!walletAddress) {
-        setError("Wallet address is required for login");
-        return { success: false, message: "Wallet address is required" };
-      }
-
+  const login = async (walletAddress) => {
+    try {
       setLoading(true);
-      setError(null);
-
-      try {
-        // Call authentication service to verify the wallet address
-        const result = await authService.login({ address: walletAddress });
-
-        // Update authentication state based on login result
-        setIsAuthenticated(result.isAuthenticated);
-        setIsNewUser(result.isNewUser);
-        setIsRegistrationComplete(result.isRegistrationComplete);
-
-        if (result.userProfile) {
-          setUserIdentity(result.userProfile);
-
-          // Update Redux state
-          dispatch(updateUserProfile(result.userProfile));
-
-          if (result.userProfile.role) {
-            dispatch(setRole(result.userProfile.role));
-          }
-        }
-
-        await hipaaComplianceService.createAuditLog("USER_LOGIN", {
-          timestamp: new Date().toISOString(),
-          walletAddress,
-          result: result.isAuthenticated ? "SUCCESS" : "FAILURE",
-          isNewUser: result.isNewUser,
-        });
-
-        // Clear any cached verification after login
-        clearVerificationCache();
-
-        setLoading(false);
-        return { ...result, success: result.isAuthenticated };
-      } catch (err) {
-        console.error("Login error:", err);
-        setError(err.message || "Failed to log in");
-
-        await hipaaComplianceService.createAuditLog("USER_LOGIN_ERROR", {
-          timestamp: new Date().toISOString(),
-          walletAddress,
-          error: err.message || "Unknown error",
-        });
-
-        setLoading(false);
-        return { success: false, message: err.message || "Login failed" };
+      console.log("Login attempt with wallet:", walletAddress);
+      
+      // Make sure address is properly formatted with 0x prefix
+      const formattedAddress = walletAddress.startsWith('0x') 
+        ? walletAddress 
+        : `0x${walletAddress}`;
+      
+      const response = await fetch('/api/auth/wallet/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address: formattedAddress }),
+      });
+      
+      const data = await response.json();
+      console.log("Auth API response:", data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Authentication request failed');
       }
-    },
-    [dispatch, clearVerificationCache]
-  );
+      
+      if (data.token) {
+        localStorage.setItem('healthmint_auth_token', data.token);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(error.message);
+      return { success: false, message: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const completeRegistration = useCallback(
     async (userData) => {

@@ -45,15 +45,21 @@ class TransactionService {
   initializeProvider() {
     try {
       const rpcUrl =
-        process.env.SEPOLIA_RPC_URL || "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea";
+        process.env.SEPOLIA_RPC_URL ||
+        "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea";
       this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       console.log("✅ Provider successfully initialized:", rpcUrl);
 
       // Only try to initialize contract if address is available
       const contractAddress = process.env.CONTRACT_HEALTH_DATA_MARKETPLACE;
 
-      if (!contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
-        console.log("ℹ️ No valid contract address provided, skipping contract initialization");
+      if (
+        !contractAddress ||
+        contractAddress === "0x0000000000000000000000000000000000000000"
+      ) {
+        console.log(
+          "ℹ️ No valid contract address provided, skipping contract initialization"
+        );
         // Set a flag that contract is not initialized
         this.contractInitialized = false;
         return true;
@@ -61,7 +67,7 @@ class TransactionService {
 
       this.contract = new ethers.Contract(
         contractAddress,
-        contractABI,  // Pass the ABI, not the contract itself
+        contractABI, // Pass the ABI, not the contract itself
         this.provider
       );
 
@@ -111,7 +117,7 @@ class TransactionService {
     });
   }
 
- // Method to purchase data
+  // Method to purchase data
   async purchaseData(buyerAddress, dataId, purpose) {
     if (!this.contractInitialized) {
       console.warn("Contract not initialized. Method unavailable.");
