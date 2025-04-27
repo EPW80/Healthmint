@@ -4,21 +4,13 @@ import { useDispatch } from "react-redux";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { handleLogout, createForceLogout } from "../utils/logoutUtils.js";
 
-/**
- * Custom hook for managing logout functionality
- *
- * @param {Object} options - Configuration options
- * @param {boolean} options.showNotification - Whether to show notifications
- * @returns {Object} Logout methods and state
- */
+// This hook provides a simple way to perform a logout operation,
 const useLogout = (options = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const dispatch = useDispatch();
 
-  /**
-   * Perform logout with loading state management
-   */
+  // Hook to perform the logout operation
   const logout = useCallback(async () => {
     try {
       setLoading(true);
@@ -54,9 +46,7 @@ const useLogout = (options = {}) => {
     }
   }, [dispatch, options]);
 
-  /**
-   * Force logout without API calls (for session timeouts, etc.)
-   */
+  // Hook to perform a force logout operation
   const forceLogout = useCallback(
     (message) => {
       const forceLogoutFn = createForceLogout({
@@ -69,9 +59,7 @@ const useLogout = (options = {}) => {
     [options]
   );
 
-  /**
-   * Clear any error state
-   */
+  // Hook to clear the error message
   const clearError = useCallback(() => {
     setError(null);
   }, []);

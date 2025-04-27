@@ -11,8 +11,7 @@ import { clearUserProfile } from "../redux/slices/userSlice.js";
 import LoadingSpinner from "./ui/LoadingSpinner";
 import useWalletConnect from "../hooks/useWalletConnect.js";
 
-// This component is a button that allows users to log out of the application.
-// It provides options for different button styles, sizes, and whether to show an icon.
+// LogoutButton component
 const LogoutButton = ({
   variant = "primary",
   size = "md",

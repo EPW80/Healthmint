@@ -89,9 +89,13 @@ const ProtectedRoute = ({
   // Check bypass flags
   const checkBypassFlags = useCallback(() => {
     // Only allow bypass in development AND with session flag
-    if (process.env.NODE_ENV === 'development' && 
-        sessionStorage.getItem("bypass_route_protection") === "true") {
-      console.log(`[ProtectedRoute:${debugId}] Bypassing route protection (dev only)`);
+    if (
+      process.env.NODE_ENV === "development" &&
+      sessionStorage.getItem("bypass_route_protection") === "true"
+    ) {
+      console.log(
+        `[ProtectedRoute:${debugId}] Bypassing route protection (dev only)`
+      );
       return true;
     }
     return false;

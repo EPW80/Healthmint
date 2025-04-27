@@ -8,7 +8,7 @@ const FileUploader = () => {
   const [retrieveResult, setRetrieveResult] = useState(null);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
-  const [testMode, setTestMode] = useState("upload"); // "upload" or "full-flow"
+  const [testMode, setTestMode] = useState("upload");
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -37,28 +37,28 @@ const FileUploader = () => {
         // Standard upload test
         response = await axios.post("/api/storage/test-upload", formData, {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            "Content-Type": "multipart/form-data",
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
             );
             setProgress(percentCompleted);
-          }
+          },
         });
         setResult(response.data);
       } else {
         // Full flow test (upload + retrieval)
         response = await axios.post("/api/storage/test-ipfs-flow", formData, {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            "Content-Type": "multipart/form-data",
           },
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
             );
             setProgress(percentCompleted);
-          }
+          },
         });
 
         setResult(response.data.uploaded);

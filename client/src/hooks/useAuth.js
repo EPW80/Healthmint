@@ -225,31 +225,31 @@ const useAuth = () => {
     try {
       setLoading(true);
       console.log("Login attempt with wallet:", walletAddress);
-      
+
       // Make sure address is properly formatted with 0x prefix
-      const formattedAddress = walletAddress.startsWith('0x') 
-        ? walletAddress 
+      const formattedAddress = walletAddress.startsWith("0x")
+        ? walletAddress
         : `0x${walletAddress}`;
-      
-      const response = await fetch('/api/auth/wallet/connect', {
-        method: 'POST',
+
+      const response = await fetch("/api/auth/wallet/connect", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ address: formattedAddress }),
       });
-      
+
       const data = await response.json();
       console.log("Auth API response:", data);
-      
+
       if (!response.ok) {
-        throw new Error(data.message || 'Authentication request failed');
+        throw new Error(data.message || "Authentication request failed");
       }
-      
+
       if (data.token) {
-        localStorage.setItem('healthmint_auth_token', data.token);
+        localStorage.setItem("healthmint_auth_token", data.token);
       }
-      
+
       return data;
     } catch (error) {
       console.error("Login error:", error);

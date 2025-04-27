@@ -1,14 +1,36 @@
 // client/src/services/mockData.js
+
+// Helper functions for generating dates
+const daysAgo = (days) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+const hoursAgo = (hours) =>
+  new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+const daysFromNow = (days) =>
+  new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+// Generate transaction hash
+const generateTxHash = () =>
+  `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`;
+
+// Base transactions factory
+const createTransaction = (overrides = {}) => ({
+  id: `tx_${Math.random().toString(36).substring(2, 10)}`,
+  hash: generateTxHash(),
+  timestamp: daysAgo(1),
+  status: "completed",
+  type: "purchase",
+  amount: "0.05",
+  description: "Transaction description",
+  ...overrides,
+});
+
 const mockData = {
   // Mock data for demonstration purposes
   getResearcherTransactions: (address) => {
-    // Create some mock transactions with realistic data
     return [
-      {
+      createTransaction({
         id: "tx_purchase_123",
-        hash: "0x7feb9a0a6eb06fb3d170c333bcacb09473e1e468d9c7f7c3b4a93b2aec675bd6",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-        status: "completed",
+        timestamp: daysAgo(1),
         type: "purchase",
         dataId: "dataset_123",
         dataName: "Anonymized Blood Pressure Records",
@@ -19,12 +41,10 @@ const mockData = {
         fileSize: "2.4 MB",
         dataAvailable: true,
         downloadUrl: "/api/datasets/123/download",
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_purchase_456",
-        hash: "0x3cba87c8a7fa5a782c1adfe3cbabf9f87b3dd8eee6cf22b7e34fd7e567913456",
-        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-        status: "completed",
+        timestamp: daysAgo(3),
         type: "purchase",
         dataId: "dataset_456",
         dataName: "Diabetes Monitoring Data",
@@ -35,12 +55,10 @@ const mockData = {
         fileSize: "3.7 MB",
         dataAvailable: true,
         downloadUrl: "/api/datasets/456/download",
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_purchase_789",
-        hash: "0x9a52d34e4c2f67e890bcc8b14a7b5971c7e8b7b1b3f4a5de1aa2b3c7e8d9f6a5",
-        timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-        status: "completed",
+        timestamp: daysAgo(7),
         type: "purchase",
         dataId: "dataset_789",
         dataName: "Sleep Patterns Dataset",
@@ -51,14 +69,10 @@ const mockData = {
         fileSize: "1.8 MB",
         dataAvailable: true,
         downloadUrl: "/api/datasets/789/download",
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_purchase_101",
-        hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-        timestamp: new Date(
-          Date.now() - 18 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 18 days ago
-        status: "completed",
+        timestamp: daysAgo(18),
         type: "purchase",
         dataId: "dataset_101",
         dataName: "Heart Rate Variability",
@@ -69,14 +83,10 @@ const mockData = {
         fileSize: "4.2 MB",
         dataAvailable: true,
         downloadUrl: "/api/datasets/101/download",
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_purchase_202",
-        hash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-        timestamp: new Date(
-          Date.now() - 45 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 45 days ago
-        status: "completed",
+        timestamp: daysAgo(45),
         type: "purchase",
         dataId: "dataset_202",
         dataName: "Cholesterol Measurements",
@@ -87,11 +97,11 @@ const mockData = {
         fileSize: "1.5 MB",
         dataAvailable: true,
         downloadUrl: "/api/datasets/202/download",
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_purchase_pending",
-        hash: "0xdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abc",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+        hash: generateTxHash(),
+        timestamp: hoursAgo(2),
         status: "pending",
         type: "purchase",
         dataId: "dataset_303",
@@ -102,11 +112,10 @@ const mockData = {
         recordCount: 420,
         fileSize: "6.8 MB",
         dataAvailable: false,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_purchase_failed",
-        hash: "0x0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba",
-        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+        timestamp: daysAgo(5),
         status: "failed",
         type: "purchase",
         dataId: "dataset_404",
@@ -117,25 +126,16 @@ const mockData = {
         recordCount: 0,
         fileSize: "0 KB",
         dataAvailable: false,
-      },
+      }),
     ];
   },
 
-  // Get a specific researcher transaction by ID
-  getResearcherTransactionById: (transactionId, address) => {
-    const transactions = mockData.getResearcherTransactions(address);
-    return transactions.find((tx) => tx.id === transactionId) || null;
-  },
-
-  // Get all researcher transactions for a specific address
+  // Get patient transactions with our helper functions
   getPatientTransactions: (address) => {
-    // Create some mock transactions with realistic data
     return [
-      {
+      createTransaction({
         id: "tx_share_123",
-        hash: "0x8feb9a0a6eb06fb3d170c333bcacb09473e1e468d9c7f7c3b4a93b2aec675bd7",
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-        status: "completed",
+        timestamp: daysAgo(2),
         type: "share",
         dataId: "health_records_123",
         dataName: "Blood Pressure Records",
@@ -143,104 +143,78 @@ const mockData = {
         description: "Shared blood pressure data with research group",
         sharedWith: "Cardiac Research Institute",
         permission: "Read-only",
-        expiration: new Date(
-          Date.now() + 90 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 90 days from now
+        expiration: daysFromNow(90),
         canRevoke: true,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_share_456",
-        hash: "0x4cba87c8a7fa5a782c1adfe3cbabf9f87b3dd8eee6cf22b7e34fd7e567913457",
-        timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), // 8 days ago
-        status: "completed",
+        timestamp: daysAgo(8),
         type: "share",
         dataId: "health_records_456",
         dataName: "Glucose Monitoring Data",
-        amount: "0.05", // reward amount
+        amount: "0.05",
         description: "Shared diabetes monitoring data with research group",
         sharedWith: "National Diabetes Research Center",
         permission: "Read-only",
-        expiration: new Date(
-          Date.now() + 180 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 180 days from now
+        expiration: daysFromNow(180),
         canRevoke: true,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_consent_789",
-        hash: "0xa52d34e4c2f67e890bcc8b14a7b5971c7e8b7b1b3f4a5de1aa2b3c7e8d9f6a6",
-        timestamp: new Date(
-          Date.now() - 15 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 15 days ago
-        status: "completed",
+        timestamp: daysAgo(15),
         type: "consent",
         dataId: "all_records",
         dataName: "All Health Records",
-        amount: "0", // No direct reward for consent updates
+        amount: "0",
         description: "Updated global data sharing preferences",
         sharedWith: "All Verified Researchers",
         permission: "Anonymous access only",
-        expiration: null, // No expiration
+        expiration: null,
         canRevoke: true,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_upload_101",
-        hash: "0x2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef",
-        timestamp: new Date(
-          Date.now() - 20 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 20 days ago
-        status: "completed",
+        timestamp: daysAgo(20),
         type: "upload",
         dataId: "health_records_101",
         dataName: "Annual Physical Results",
-        amount: "0", // No reward for uploads
+        amount: "0",
         description: "Uploaded annual physical examination results",
         sharedWith: "Personal use only",
         permission: "Owner",
         expiration: null,
         canRevoke: false,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_share_202",
-        hash: "0xbcdef2345678901abcdef2345678901abcdef2345678901abcdef2345678901a",
-        timestamp: new Date(
-          Date.now() - 40 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 40 days ago
-        status: "completed",
+        timestamp: daysAgo(40),
         type: "share",
         dataId: "health_records_202",
         dataName: "Sleep Tracking Data",
-        amount: "0.02", // reward amount
+        amount: "0.02",
         description: "Shared sleep data from wearable device",
         sharedWith: "Sleep Science Institute",
         permission: "Read-only",
-        expiration: new Date(
-          Date.now() - 10 * 24 * 60 * 60 * 1000
-        ).toISOString(), // Expired 10 days ago
+        expiration: daysAgo(10),
         canRevoke: false,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_share_pending",
-        hash: "0xef2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcd",
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+        timestamp: hoursAgo(4),
         status: "pending",
         type: "share",
         dataId: "health_records_303",
         dataName: "Heart Rate Data",
-        amount: "0.04", // pending reward amount
+        amount: "0.04",
         description: "Sharing heart rate monitoring data",
         sharedWith: "Cardiac Research Network",
         permission: "Read-only",
-        expiration: new Date(
-          Date.now() + 365 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 1 year from now
+        expiration: daysFromNow(365),
         canRevoke: false,
-      },
-      {
+      }),
+      createTransaction({
         id: "tx_share_failed",
-        hash: "0x1087654321fedcba1087654321fedcba1087654321fedcba1087654321fedcba",
-        timestamp: new Date(
-          Date.now() - 10 * 24 * 60 * 60 * 1000
-        ).toISOString(), // 10 days ago
+        timestamp: daysAgo(10),
         status: "failed",
         type: "share",
         dataId: "health_records_404",
@@ -252,13 +226,70 @@ const mockData = {
         permission: "N/A",
         expiration: null,
         canRevoke: false,
-      },
+      }),
     ];
   },
 
+  // Get specific transactions by ID with proper error handling
+  getResearcherTransactionById: (transactionId, address) => {
+    if (!transactionId) {
+      console.error("Transaction ID is required");
+      return null;
+    }
+
+    try {
+      const transactions = mockData.getResearcherTransactions(address);
+      return transactions.find((tx) => tx.id === transactionId) || null;
+    } catch (error) {
+      console.error("Error fetching researcher transaction:", error);
+      return null;
+    }
+  },
+
   getPatientTransactionById: (transactionId, address) => {
-    const transactions = mockData.getPatientTransactions(address);
-    return transactions.find((tx) => tx.id === transactionId) || null;
+    if (!transactionId) {
+      console.error("Transaction ID is required");
+      return null;
+    }
+
+    try {
+      const transactions = mockData.getPatientTransactions(address);
+      return transactions.find((tx) => tx.id === transactionId) || null;
+    } catch (error) {
+      console.error("Error fetching patient transaction:", error);
+      return null;
+    }
+  },
+
+  // New helper methods for flexible querying
+  getTransactionsByStatus: (address, role, status) => {
+    const transactions =
+      role === "researcher"
+        ? mockData.getResearcherTransactions(address)
+        : mockData.getPatientTransactions(address);
+
+    return transactions.filter((tx) => tx.status === status);
+  },
+
+  getTransactionsByType: (address, role, type) => {
+    const transactions =
+      role === "researcher"
+        ? mockData.getResearcherTransactions(address)
+        : mockData.getPatientTransactions(address);
+
+    return transactions.filter((tx) => tx.type === type);
+  },
+
+  getRecentTransactions: (address, role, days = 7) => {
+    const transactions =
+      role === "researcher"
+        ? mockData.getResearcherTransactions(address)
+        : mockData.getPatientTransactions(address);
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    return transactions.filter((tx) => new Date(tx.timestamp) >= cutoffDate);
   },
 };
 

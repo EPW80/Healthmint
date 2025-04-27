@@ -1,6 +1,4 @@
 // src/mockData/mockHealthRecords.js
-
-// This file generates mock health records for testing and demonstration purposes.
 const generateMockHealthRecords = () => {
   // Data formats
   const formats = ["PDF", "CSV", "JSON", "DICOM", "HL7", "FHIR"];

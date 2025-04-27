@@ -1034,7 +1034,7 @@ const DataBrowser = ({ className, mode = "browse" }) => {
             typeof selectedDatasetForFiltering === "string"
               ? selectedDatasetForFiltering
               : typeof selectedDatasetForFiltering === "object" &&
-                selectedDatasetForFiltering !== null
+                  selectedDatasetForFiltering !== null
                 ? String(selectedDatasetForFiltering.id || "")
                 : ""
           }

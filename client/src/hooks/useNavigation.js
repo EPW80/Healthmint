@@ -2,10 +2,7 @@
 import { useContext } from "react";
 import { NavigationContext } from "../components/providers/NavigationProvider.js";
 
-/**
- * Custom hook to access the navigation context
- * @returns {Object} Navigation context with navigation methods
- */
+// Hook to access navigation state and methods from the NavigationProvider
 const useNavigation = () => {
   const context = useContext(NavigationContext);
 

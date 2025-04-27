@@ -9,9 +9,6 @@ import {
 } from "lucide-react";
 import PropTypes from "prop-types";
 import mockPaymentService from "../services/mockPaymentService.js";
-
-// This component is responsible for rendering a button that allows users to purchase a dataset.
-// It handles the purchase process, including payment processing and transaction confirmation.
 const DatasetPurchaseButton = ({
   dataset,
   selectedTier = "complete",

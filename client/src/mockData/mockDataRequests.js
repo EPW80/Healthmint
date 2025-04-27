@@ -1,10 +1,5 @@
 // src/mockData/mockRequests.js
 
-/**
- * Mock data for the Data Request Portal and Data Contribution Portal
- * This powers both the researcher and patient interfaces
- */
-
 export const MOCK_REQUESTS = [
   {
     id: "req-001",
@@ -128,9 +123,6 @@ export const MOCK_REQUESTS = [
   },
 ];
 
-/**
- * Helper function to get request by ID
- */
 export const getRequestById = (requestId) => {
   return MOCK_REQUESTS.find((request) => request.id === requestId) || null;
 };

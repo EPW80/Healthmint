@@ -211,8 +211,7 @@ const ProfileManager = () => {
         ? hipaaComplianceService.sanitizeInputValue(value, fieldName)
         : value,
     logFieldChange: (fieldName, value, metadata) => {
-      // This is a placeholder for actual field change logging
-      // We don't log the actual values for HIPAA compliance
+      // Log the field change event for auditing purposes
       if (process.env.NODE_ENV !== "production") {
         console.log(`Field ${fieldName} changed`, metadata);
       }
@@ -734,7 +733,7 @@ const ProfileManager = () => {
               setError={setError}
               loading={loading}
               setLoading={() => {}} // We're managing loading state with our hooks now
-              defaultImage="/default-avatar.png"
+              defaultImage="/images/default-avatar.png"
               userIdentifier={formState.name || walletAddress}
               onImageUpload={handleImageUpload}
               onImageRemove={handleImageRemove}

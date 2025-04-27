@@ -1,4 +1,4 @@
-// dataSlice.js
+// Hook to perform a force logout operation
 import * as pkg from "@reduxjs/toolkit";
 
 const { createSlice } = pkg;

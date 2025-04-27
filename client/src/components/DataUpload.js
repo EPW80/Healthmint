@@ -150,8 +150,10 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
 
         // Check if contract is valid
         if (!contract || typeof contract.uploadHealthData !== "function") {
-          console.warn("Contract not properly initialized, using fallback mode");
-          
+          console.warn(
+            "Contract not properly initialized, using fallback mode"
+          );
+
           // Use the simulated version explicitly
           blockchainTxHash = await uploadHealthData(
             {
@@ -160,7 +162,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
               price,
               description,
             },
-            null,  // Pass null to indicate simulation should be used
+            null, // Pass null to indicate simulation should be used
             walletAddress
           );
         } else {
@@ -183,7 +185,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
         setUploadProgress(100);
         setStatus({
           ...status,
-          transactionHash: blockchainTxHash.transactionHash
+          transactionHash: blockchainTxHash.transactionHash,
         });
 
         // Call onUploadSuccess callback
@@ -192,7 +194,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
           category,
           price,
           description,
-          transactionHash: blockchainTxHash.transactionHash
+          transactionHash: blockchainTxHash.transactionHash,
         });
 
         // Reset form

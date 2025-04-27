@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useEffect, useState } from "react";
 import { Provider } from "react-redux";
 import { BrowserRouter as Router } from "react-router-dom";
@@ -10,37 +9,32 @@ import { ErrorProvider } from "./contexts/ErrorContext.js";
 import { HipaaComplianceProvider } from "./components/providers/HipaaComplianceProvider.js";
 import NavigationProvider from "./components/providers/NavigationProvider.js";
 import hipaaComplianceService from "./services/hipaaComplianceService.js";
-
-// Import mock data utilities
 import mockDataUtils from "./utils/mockDataUtils.js";
 import apiService from "./services/apiService.js";
 
 const App = () => {
-  // State to track if mock data is enabled
   const [mockDataEnabled, setMockDataEnabled] = useState(
-    apiService.isMockDataEnabled?.() || false
+    typeof apiService.isMockDataEnabled === "function"
+      ? apiService.isMockDataEnabled()
+      : false
   );
-
-  // Move this state up to the component level
   const [isDevToolsExpanded, setIsDevToolsExpanded] = useState(false);
 
-  // Get the user ID for HIPAA logging from localStorage - fallback to anonymous
   const userIdentifier =
     localStorage.getItem("healthmint_wallet_address") || "anonymous";
 
-  // Initialize mock data on app startup
   useEffect(() => {
-    // Initialize mock health data
-    mockDataUtils.initializeMockData();
-
-    // Enable mock data by default to fix API errors
-    if (apiService.enableMockData) {
-      apiService.enableMockData();
-      setMockDataEnabled(true);
+    try {
+      mockDataUtils.initializeMockData();
+      if (typeof apiService.enableMockData === "function") {
+        apiService.enableMockData();
+        setMockDataEnabled(true);
+      }
+    } catch (error) {
+      console.error("Failed to initialize mock data:", error);
     }
   }, []);
 
-  // Log application startup for HIPAA compliance
   useEffect(() => {
     const logAppStartup = async () => {
       try {
@@ -60,13 +54,12 @@ const App = () => {
 
     logAppStartup();
 
-    // Log application shutdown on unmount (though this may not always fire)
     return () => {
       hipaaComplianceService
         .createAuditLog("APPLICATION_SHUTDOWN", {
           timestamp: new Date().toISOString(),
           userId: userIdentifier,
-          sessionDuration: "Unknown", // Placeholder for session duration
+          sessionDuration: "Unknown",
           usingMockData: mockDataEnabled,
         })
         .catch((error) => {
@@ -75,126 +68,83 @@ const App = () => {
     };
   }, [userIdentifier, mockDataEnabled]);
 
-  // Toggle mock data functionality
   const toggleMockData = () => {
-    if (mockDataEnabled) {
-      if (apiService.disableMockData) {
-        apiService.disableMockData();
-      }
+    const newState = !mockDataEnabled;
+    if (newState && typeof apiService.enableMockData === "function") {
+      apiService.enableMockData();
+    } else if (!newState && typeof apiService.disableMockData === "function") {
+      apiService.disableMockData();
     } else {
-      if (apiService.enableMockData) {
-        apiService.enableMockData();
+      console.warn("Mock data toggle method not available.");
+      return;
+    }
+    setMockDataEnabled(newState);
+    setTimeout(() => window.location.reload(), 1000); // Delay for notification visibility
+  };
+
+  const resetMockData = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to reset mock data? This action cannot be undone."
+      )
+    ) {
+      try {
+        mockDataUtils.resetMockData();
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (error) {
+        console.error("Failed to reset mock data:", error);
       }
     }
-    setMockDataEnabled(!mockDataEnabled);
-    window.location.reload(); // Reload to apply changes
   };
 
-  // Reset mock data functionality
-  const resetMockData = () => {
-    mockDataUtils.resetMockData();
-    window.location.reload(); // Reload to apply changes
-  };
-
-  // Render development tools in non-production environments
   const renderDevTools = () => {
-    // Skip rendering entirely in production
-    if (process.env.NODE_ENV === "production") {
-      return null;
-    }
+    if (process.env.NODE_ENV === "production") return null;
 
-    // Use the state from the component level instead of creating new state here
     return (
       <div
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 9999,
-          background: isDevToolsExpanded ? "#f0f0f0" : "transparent",
-          padding: isDevToolsExpanded ? "10px" : "0",
-          borderRadius: "5px",
-          boxShadow: isDevToolsExpanded ? "0 2px 5px rgba(0,0,0,0.2)" : "none",
-          transition: "all 0.3s ease",
-        }}
+        className={`fixed bottom-5 right-5 z-50 transition-all duration-300 ${
+          isDevToolsExpanded ? "bg-white p-4 rounded-lg shadow-lg" : ""
+        }`}
+        role="region"
+        aria-label="Developer Tools"
       >
-        {/* Collapsible panel content */}
         {isDevToolsExpanded ? (
-          <>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-              }}
-            >
-              <span style={{ fontWeight: "bold" }}>Dev Tools</span>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-gray-700">Dev Tools</span>
               <button
                 onClick={() => setIsDevToolsExpanded(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "16px",
-                  padding: "0 5px",
-                }}
+                className="text-gray-500 hover:text-gray-700 text-lg"
+                aria-label="Close Dev Tools"
               >
                 ×
               </button>
             </div>
-
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            <button
+              onClick={toggleMockData}
+              className={`w-full py-2 px-4 rounded text-white ${
+                mockDataEnabled
+                  ? "bg-red-500 hover:bg-red-600"
+                  : "bg-blue-500 hover:bg-blue-600"
+              }`}
+              aria-pressed={mockDataEnabled}
             >
+              {mockDataEnabled ? "Disable Mock Data" : "Enable Mock Data"}
+            </button>
+            {mockDataEnabled && (
               <button
-                onClick={toggleMockData}
-                style={{
-                  padding: "5px 10px",
-                  backgroundColor: mockDataEnabled ? "#d32f2f" : "#4a90e2",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "3px",
-                  cursor: "pointer",
-                }}
+                onClick={resetMockData}
+                className="w-full py-2 px-4 rounded bg-green-500 hover:bg-green-600 text-white"
               >
-                {mockDataEnabled ? "Disable Mock Data" : "Enable Mock Data"}
+                Reset Mock Data
               </button>
-
-              {mockDataEnabled && (
-                <button
-                  onClick={resetMockData}
-                  style={{
-                    padding: "5px 10px",
-                    backgroundColor: "#388e3c",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "3px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Reset Mock Data
-                </button>
-              )}
-            </div>
-          </>
+            )}
+          </div>
         ) : (
-          // Button to expand the dev tools
           <button
             onClick={() => setIsDevToolsExpanded(true)}
-            style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              backgroundColor: "#4a90e2",
-              color: "white",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontSize: "14px",
-              opacity: 0.7,
-            }}
+            className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full opacity-70 hover:opacity-100"
+            aria-label="Open Dev Tools"
             title="Dev Tools"
           >
             ⚙️

@@ -1,7 +1,5 @@
 // client/src/utils/authUtils.js
-// This file contains utility functions for managing user authentication and registration status.
-// It includes functions to check if a user is new, needs registration, and to handle local storage for user profiles.
-// as well as functions to sanitize data for HIPAA compliance.
+// Check if a user is new based on their Ethereum address
 export const isNewUser = (address) => {
   // Default to true if we can't determine
   if (!address) return true;

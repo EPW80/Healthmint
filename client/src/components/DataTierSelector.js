@@ -4,8 +4,7 @@ import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
-// This component allows users to select a data tier for purchasing datasets.
-// It displays different tiers with their respective prices and record counts.
+// PropTypes
 const DataTierSelector = ({
   datasetId,
   datasetName,

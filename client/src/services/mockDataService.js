@@ -987,7 +987,7 @@ const downloadSubset = async (subsetId, parentDatasetId) => {
 
 // Assign the object to a variable first
 const exportedService = {
-  ...mockDataService, // Spread the mockDataService object to expose all its methods
+  ...mockDataService, // Mock data service methods
   getDatasetConditions,
   getDatasetRecordTypes,
   previewFilteredSubset,

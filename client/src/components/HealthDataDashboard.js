@@ -75,7 +75,7 @@ const HealthDataDashboard = () => {
     userId,
     accessPurpose: "Viewing health records dashboard",
     initialData: [],
-    pollingInterval: 0, // Don't poll automatically
+    pollingInterval: 0,
   });
 
   // Use our form state hook for filters

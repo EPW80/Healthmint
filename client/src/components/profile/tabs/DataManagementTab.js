@@ -1,12 +1,6 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { ChevronDown, Download } from "lucide-react";
-
-/**
- * DataManagementTab Component
- *
- * Displays and manages user data based on role (patient or researcher)
- */
 const DataManagementTab = ({
   userRole,
   userProfile,

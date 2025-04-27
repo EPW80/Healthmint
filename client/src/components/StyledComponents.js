@@ -25,7 +25,7 @@ GlassContainer.propTypes = {
   maxWidth: PropTypes.string,
 };
 
-// ConnectButton: A styled button for wallet connection with improved disabled state
+// PurchaseButton: A button with gradient background and a hover effect
 export const ConnectButton = ({
   children,
   disabled = false,

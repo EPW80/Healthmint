@@ -1,7 +1,7 @@
 // client/src/hooks/useSynchronizedAuth.js
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation } from "react-router-dom"; // Added import for useLocation
+import { useLocation } from "react-router-dom";
 import { setRole } from "../redux/slices/roleSlice";
 import { updateUserProfile } from "../redux/slices/userSlice";
 import useWalletConnect from "./useWalletConnect";

@@ -14,8 +14,7 @@ class Web3Error extends Error {
   }
 }
 
-// Web3Service class to manage Ethereum interactions
-// and contract interactions
+// Initialize Web3 provider and contract
 class Web3Service {
   constructor() {
     this.provider = null;

@@ -22,7 +22,7 @@ const ProfileImageUploader = ({
   error,
   loading,
   setLoading,
-  defaultImage = "/default-avatar.png",
+  defaultImage = "/images/default-avatar.png",
   userIdentifier,
   onImageUpload,
   onImageRemove,

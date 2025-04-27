@@ -1,11 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-/**
- * NotificationsTab Component
- *
- * Manages user notification preferences
- */
 const NotificationsTab = ({ formState, handleFormChange }) => {
   return (
     <>

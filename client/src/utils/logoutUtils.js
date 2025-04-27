@@ -190,7 +190,7 @@ export const createForceLogout = (options = {}) => {
       localStorage.removeItem("healthmint_wallet_connection");
       localStorage.removeItem("healthmint_wallet_address");
 
-      // Clear Redux state - wrapped in try/catch for resilience
+      // clear session-related state without making API calls
       try {
         store.dispatch(clearRole());
         store.dispatch(resetUserState());

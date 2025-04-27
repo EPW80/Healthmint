@@ -6,10 +6,7 @@ import { addNotification } from "../redux/slices/notificationSlice.js";
 import useNavigation from "./useNavigation.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 
-// This hook provides navigation functions for different analytics tools
-// and handles logging for HIPAA compliance.
-// It allows navigation to data visualization, statistical analysis,
-// population studies, and data filtering tools.
+// Handle navigation to data visualization tool
 const useAnalyticsNavigation = ({ onStartFiltering } = {}) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();

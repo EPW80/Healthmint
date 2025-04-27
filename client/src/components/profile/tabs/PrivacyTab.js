@@ -1,11 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-/**
- * PrivacyTab Component
- *
- * Manages user privacy and data sharing settings
- */
 const PrivacyTab = ({ userRole, formState, handleFormChange }) => {
   return (
     <>

@@ -820,7 +820,7 @@ const DataBrowserView = ({
               </button>
             </div>
           </div>
-          
+
           {/* Content - allow scrolling in the middle section */}
           <div className="p-6 overflow-y-auto flex-grow">
             {detailsLoading ? (
@@ -847,7 +847,7 @@ const DataBrowserView = ({
               </div>
             )}
           </div>
-          
+
           {/* Footer - make it sticky */}
           <div className="p-6 border-t border-gray-200 bg-gray-50 sticky bottom-0 z-10">
             <div className="flex flex-wrap justify-end gap-3">
