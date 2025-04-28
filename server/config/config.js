@@ -1,11 +1,4 @@
 // /server/config/config.js
-/**
- * Healthmint Application Configuration
- *
- * This module centralizes all application configuration settings,
- * providing a single source of truth for configuration values
- * with sensible defaults and environment variable overrides.
- */
 
 // Constants
 const DEFAULT_PORT = 5000;
@@ -60,6 +53,7 @@ if (env.NODE_ENV === "production") {
   }
 }
 
+// Check for required environment variables
 const config = {
   // Server settings
   PORT: env.PORT,

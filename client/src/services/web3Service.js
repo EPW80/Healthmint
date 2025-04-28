@@ -1,7 +1,10 @@
 // src/services/web3Service.js
 import { ethers } from "ethers";
+import { create } from "@web3-storage/w3up-client";
 import networkConfig from "../config/networkConfig.js";
 import HealthDataMarketplace from "../contracts/HealthDataMarketplace.json";
+import hipaaComplianceService from "./hipaaComplianceService";
+import CryptoJS from "crypto-js";
 
 // Error handling for Web3-related issues
 class Web3Error extends Error {
@@ -17,16 +20,23 @@ class Web3Error extends Error {
 // Initialize Web3 provider and contract
 class Web3Service {
   constructor() {
+    // Ethereum-related properties
     this.provider = null;
     this.signer = null;
     this.contract = null;
     this.network = null;
     this.initialized = false;
 
+    // Web3.Storage-related properties
+    this.w3upClient = null;
+    this.storageInitialized = false;
+
     // Configuration
     this.requiredNetwork = networkConfig.SEPOLIA;
     this.contractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
     this.contractABI = HealthDataMarketplace.abi;
+    this.ipfsGateway =
+      process.env.REACT_APP_IPFS_GATEWAY || "https://dweb.link/ipfs/";
 
     // Initialize retry parameters
     this.MAX_RETRIES = 3;
@@ -36,6 +46,8 @@ class Web3Service {
     this.initialize = this.initialize.bind(this);
     this.getContract = this.getContract.bind(this);
     this.executeTransaction = this.executeTransaction.bind(this);
+    this.initializeStorage = this.initializeStorage.bind(this);
+    this.storeHealthData = this.storeHealthData.bind(this);
   }
 
   // Initialize the Web3 provider and contract
@@ -117,6 +129,194 @@ class Web3Service {
 
       // Format error for consistent handling
       throw this._formatError(error);
+    }
+  }
+
+  // Initialize Web3.Storage w3up client
+  async initializeStorage(options = {}) {
+    try {
+      if (this.storageInitialized && !options.force) {
+        console.log("Storage already initialized");
+        return true;
+      }
+
+      console.log("Initializing Web3.Storage client...");
+
+      // Create a new w3up client instance
+      this.w3upClient = await create();
+
+      // If a proof is provided directly in options, use it
+      if (options.proof) {
+        console.log("Adding provided proof to w3up client");
+        await this.w3upClient.addProof(options.proof);
+      }
+      // If a delegation is provided, add it to the client
+      else if (options.delegation) {
+        console.log("Adding delegation to w3up client");
+        await this.w3upClient.addSpace(options.delegation);
+      }
+      // If a principal is provided, authorize with it
+      else if (options.principal) {
+        console.log("Authorizing with principal");
+        await this.w3upClient.authorize(options.principal);
+      }
+      // Try to load proof from file in public directory
+      else {
+        try {
+          console.log("Loading proof.ucan from public directory");
+          const proofResponse = await fetch("/proof.ucan");
+
+          if (!proofResponse.ok) {
+            throw new Error(
+              `Failed to load proof.ucan: ${proofResponse.status}`
+            );
+          }
+
+          // Get the proof as array buffer
+          const proofData = await proofResponse.arrayBuffer();
+
+          // Add proof to client
+          await this.w3upClient.addProof(new Uint8Array(proofData));
+          console.log("Successfully loaded and added proof from file");
+        } catch (proofError) {
+          console.error("Error loading proof file:", proofError);
+
+          // Fall back to checking for token if proof loading fails
+          const token = process.env.REACT_APP_WEB3_STORAGE_TOKEN;
+          if (!token) {
+            throw new Web3Error(
+              "No authentication method available for Web3.Storage. Please provide a proof file or token.",
+              "STORAGE_AUTH_MISSING"
+            );
+          }
+
+          console.log("Attempting to authenticate with DID token");
+          try {
+            // For DID-based authentication
+            await this.w3upClient.setCurrentSpace(token);
+            console.log("Successfully authenticated with DID token");
+          } catch (tokenError) {
+            console.error("Failed to authenticate with token:", tokenError);
+            throw new Web3Error(
+              "All authentication methods for Web3.Storage failed. Check your token or proof file.",
+              "STORAGE_AUTH_FAILED",
+              { proofError, tokenError }
+            );
+          }
+        }
+      }
+
+      this.storageInitialized = true;
+      console.log("Web3.Storage client initialized successfully");
+      return true;
+    } catch (error) {
+      console.error("Web3.Storage initialization error:", error);
+      this.storageInitialized = false;
+      throw this._formatError(error, "STORAGE_INIT_ERROR");
+    }
+  }
+
+  // Store health data using Web3.Storage with HIPAA compliance
+  async storeHealthData(healthData) {
+    try {
+      if (!this.storageInitialized) {
+        console.log("Storage not initialized, attempting initialization...");
+        await this.initializeStorage();
+      }
+
+      // Generate encryption key
+      const encryptionKey = CryptoJS.lib.WordArray.random(32).toString();
+
+      // Check for PHI (Protected Health Information)
+      const containsPHI = Object.values(healthData).some((value) => {
+        if (typeof value === "string") {
+          return hipaaComplianceService.containsPHI(value);
+        }
+        return false;
+      });
+
+      if (containsPHI) {
+        // Log access to PHI
+        await hipaaComplianceService.createAuditLog("PHI_DETECTED", {
+          operation: "IPFS_UPLOAD",
+          dataType: "health_data",
+          userInfo: hipaaComplianceService.getUserInfo(),
+        });
+
+        // Verify user has proper consent
+        const hasConsent = await hipaaComplianceService.verifyConsent(
+          hipaaComplianceService.CONSENT_TYPES.DATA_SHARING
+        );
+
+        if (!hasConsent) {
+          throw new Web3Error(
+            "User consent for data sharing is required for uploading PHI data",
+            "CONSENT_REQUIRED"
+          );
+        }
+      }
+
+      console.log("Preparing health data for upload:", healthData);
+
+      // Encrypt the data using real encryption (not mock)
+      const encryptedData = CryptoJS.AES.encrypt(
+        JSON.stringify(healthData),
+        encryptionKey
+      ).toString();
+
+      // Create a Blob from the encrypted data
+      const blob = new Blob([encryptedData], {
+        type: "application/encrypted+json",
+      });
+
+      // Create a File object which w3up-client expects
+      const fileName = `health-data-${Date.now()}.enc`;
+      const file = new File([blob], fileName, {
+        type: "application/encrypted+json",
+      });
+
+      // Log the upload attempt (required for HIPAA)
+      await hipaaComplianceService.createAuditLog("IPFS_UPLOAD_ATTEMPT", {
+        fileName,
+        dataType: "health_data",
+        encrypted: true,
+        userInfo: hipaaComplianceService.getUserInfo(),
+      });
+
+      console.log(
+        "Uploading encrypted health data to IPFS via Web3.Storage..."
+      );
+      // Upload to Web3.Storage
+      const cid = await this.w3upClient.upload([file]);
+      console.log("Upload successful, CID:", cid);
+
+      // Log the successful upload (required for HIPAA)
+      await hipaaComplianceService.createAuditLog("IPFS_UPLOAD_SUCCESS", {
+        cid: cid.toString(),
+        fileName,
+        dataType: "health_data",
+        encrypted: true,
+        userInfo: hipaaComplianceService.getUserInfo(),
+      });
+
+      // Return IPFS URL and encryption key
+      return {
+        cid: cid.toString(),
+        ipfsUrl: `${this.ipfsGateway}${cid}`,
+        encryptionKey, // The client should store this securely
+      };
+    } catch (error) {
+      console.error("Error storing health data:", error);
+
+      // Log the failure (required for HIPAA)
+      await hipaaComplianceService.createAuditLog("IPFS_UPLOAD_FAILURE", {
+        error: error.message,
+        errorCode: error.code,
+        dataType: "health_data",
+        userInfo: hipaaComplianceService.getUserInfo(),
+      });
+
+      throw this._formatError(error, "STORAGE_UPLOAD_ERROR");
     }
   }
 
@@ -255,7 +455,7 @@ class Web3Service {
   }
 
   // Format error for consistent handling
-  _formatError(error) {
+  _formatError(error, defaultCode = "WEB3_ERROR") {
     // Already formatted
     if (error instanceof Web3Error) {
       return error;
@@ -295,7 +495,7 @@ class Web3Service {
     // Default error format
     return new Web3Error(
       error.message || "An error occurred during blockchain interaction",
-      "BLOCKCHAIN_ERROR",
+      defaultCode,
       { originalError: error }
     );
   }
@@ -449,6 +649,79 @@ class Web3Service {
     return () => {
       this.contract.removeListener(eventName, callback);
     };
+  }
+
+  // Add this method to the Web3Service class
+  async retrieveHealthData(cid, encryptionKey) {
+    try {
+      if (!encryptionKey) {
+        throw new Web3Error(
+          "Encryption key is required to retrieve encrypted health data",
+          "MISSING_ENCRYPTION_KEY"
+        );
+      }
+
+      // Log the retrieval attempt (required for HIPAA)
+      await hipaaComplianceService.createAuditLog("IPFS_RETRIEVAL_ATTEMPT", {
+        cid: cid.toString(),
+        userInfo: hipaaComplianceService.getUserInfo(),
+      });
+
+      // Fetch the data from IPFS
+      const url = `${this.ipfsGateway}${cid}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Web3Error(
+          `Failed to retrieve data from IPFS: ${response.status}`,
+          "IPFS_RETRIEVAL_ERROR"
+        );
+      }
+
+      // Get encrypted data as text
+      const encryptedData = await response.text();
+
+      try {
+        // Decrypt the data
+        const bytes = CryptoJS.AES.decrypt(encryptedData, encryptionKey);
+        const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+
+        // Log successful retrieval (required for HIPAA)
+        await hipaaComplianceService.createAuditLog("IPFS_RETRIEVAL_SUCCESS", {
+          cid: cid.toString(),
+          dataType: "health_data",
+          userInfo: hipaaComplianceService.getUserInfo(),
+        });
+
+        return decryptedData;
+      } catch (decryptError) {
+        console.error("Decryption error:", decryptError);
+
+        // Log decryption failure
+        await hipaaComplianceService.createAuditLog("DECRYPTION_FAILURE", {
+          cid: cid.toString(),
+          error: "Invalid encryption key or corrupted data",
+          userInfo: hipaaComplianceService.getUserInfo(),
+        });
+
+        throw new Web3Error(
+          "Failed to decrypt data: Invalid encryption key or corrupted data",
+          "DECRYPTION_ERROR"
+        );
+      }
+    } catch (error) {
+      console.error("Error retrieving health data:", error);
+
+      // Log the retrieval failure
+      await hipaaComplianceService.createAuditLog("IPFS_RETRIEVAL_FAILURE", {
+        cid: cid.toString(),
+        error: error.message,
+        errorCode: error.code,
+        userInfo: hipaaComplianceService.getUserInfo(),
+      });
+
+      throw this._formatError(error, "DATA_RETRIEVAL_ERROR");
+    }
   }
 }
 

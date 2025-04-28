@@ -1,9 +1,7 @@
 import mongoose from "mongoose";
 import hipaaConfig from "./hipaaConfig.js";
 
-/**
- * Custom error class for database-related errors
- */
+// Custom error class for database errors
 class DatabaseError extends Error {
   constructor(message, code = "DB_ERROR") {
     super(message);
@@ -13,10 +11,7 @@ class DatabaseError extends Error {
   }
 }
 
-/**
- * Validates required environment variables for database connection
- * @throws {DatabaseError} If required variables are missing
- */
+// Check for required environment variables
 const validateConfig = (options = {}) => {
   // Check for required environment variables or provided options
   const requiredVars = ["MONGODB_URI", "ENCRYPTION_KEY"];
@@ -33,11 +28,7 @@ const validateConfig = (options = {}) => {
   }
 };
 
-/**
- * Gets MongoDB connection options based on environment
- * @param {Object} customOptions - Optional overrides for connection options
- * @returns {Object} MongoDB connection options
- */
+// gets MongoDB connection options
 const getMongoOptions = (customOptions = {}) => ({
   serverSelectionTimeoutMS: customOptions.serverSelectionTimeout || 5000,
   maxPoolSize: customOptions.maxPoolSize || 50,
@@ -57,9 +48,7 @@ const getMongoOptions = (customOptions = {}) => ({
   ...customOptions, // Allow any other custom options to override defaults
 });
 
-/**
- * Sets up Mongoose middleware for encryption and auditing
- */
+// sets up Mongoose middleware for encryption and logging
 const setupMongooseMiddleware = () => {
   // Encrypt sensitive fields before saving
   mongoose.plugin((schema) => {
@@ -114,12 +103,7 @@ const setupMongooseMiddleware = () => {
   }
 };
 
-/**
- * Connect to MongoDB with retry logic
- * @param {Object} options - Custom connection options
- * @returns {Promise<mongoose.Connection>} Mongoose connection
- * @throws {DatabaseError} If connection fails after retries
- */
+// Connect to MongoDB
 const connectDB = async (options = {}) => {
   const maxRetries = options.maxRetries || 3;
   const retryDelayMs = options.retryDelayMs || 5000;
@@ -229,9 +213,7 @@ const connectDB = async (options = {}) => {
   }
 };
 
-/**
- * Set up process event handlers for graceful shutdown
- */
+// setupShutdownHandlers function to handle graceful shutdown
 const setupShutdownHandlers = () => {
   // Only add handlers once
   if (!process.shutdownHandlersAdded) {
@@ -255,12 +237,7 @@ const setupShutdownHandlers = () => {
   }
 };
 
-/**
- * Disconnect from MongoDB
- * @param {Object} options - Disconnect options
- * @returns {Promise<void>}
- * @throws {DatabaseError} If disconnection fails
- */
+// disconnectDB function to gracefully disconnect from MongoDB
 const disconnectDB = async (options = {}) => {
   const timeoutMs = options.timeoutMs || 10000;
 

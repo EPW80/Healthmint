@@ -65,3 +65,7 @@ artifacts
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local env files
+w3cli-install.log
+healthmint-delegation.car

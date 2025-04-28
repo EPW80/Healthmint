@@ -136,11 +136,7 @@ class HIPAAConfig {
     this.initialized = false;
   }
 
-  /**
-   * Initialize the configuration with environment variables
-   * @returns {Object} Initialized configuration
-   * @throws {HIPAAError} If required environment variables are missing
-   */
+  // initialize the HIPAA configuration
   initialize() {
     if (this.initialized) {
       return this;
@@ -180,10 +176,7 @@ class HIPAAConfig {
     }
   }
 
-  /**
-   * Validate required environment variables
-   * @throws {HIPAAError} If required variables are missing
-   */
+  // validate required environment variables
   validateEnvironment() {
     const requiredEnvVars = [
       "ENCRYPTION_KEY",
@@ -204,9 +197,7 @@ class HIPAAConfig {
     }
   }
 
-  /**
-   * Apply environment-specific overrides to default configuration
-   */
+  // apply environment variable overrides to the config
   applyEnvironmentOverrides() {
     // Example of environment variable overrides (can add more as needed)
     if (process.env.HIPAA_SESSION_TIMEOUT) {
@@ -226,11 +217,7 @@ class HIPAAConfig {
     }
   }
 
-  /**
-   * Encrypt data using HIPAA-compliant encryption
-   * @param {string|Object} data - Data to encrypt
-   * @returns {Object} Encrypted data object with IV and auth tag
-   */
+  // Encrypt data using HIPAA-compliant encryption
   encrypt(data) {
     try {
       if (!this.initialized) {
@@ -272,13 +259,7 @@ class HIPAAConfig {
     }
   }
 
-  /**
-   * Decrypt data using HIPAA-compliant decryption
-   * @param {string} encryptedData - Encrypted data hex string
-   * @param {string} iv - Initialization vector hex string
-   * @param {string} authTag - Authentication tag hex string
-   * @returns {string|Object} Decrypted data
-   */
+  // Decrypt data using HIPAA-compliant decryption
   decrypt(encryptedData, iv, authTag) {
     try {
       if (!this.initialized) {
@@ -315,11 +296,7 @@ class HIPAAConfig {
     }
   }
 
-  /**
-   * Generate a secure hash for data integrity checks
-   * @param {string} data - Data to hash
-   * @returns {string} Hash string
-   */
+  // generate a secure hash of the data
   generateHash(data) {
     return crypto
       .createHash(this.config.security.encryption.digest)
@@ -327,12 +304,7 @@ class HIPAAConfig {
       .digest("hex");
   }
 
-  /**
-   * Create an audit log entry
-   * @param {string} action - Action performed
-   * @param {Object} details - Audit details
-   * @returns {boolean} Success status
-   */
+  // create an audit log entry
   createAuditLog(action, details = {}) {
     if (!this.config.audit.enabled) {
       return false;
