@@ -1,10 +1,7 @@
 // server/errors/errors.js
 import { ERROR_CODES } from "../config/networkConfig.js";
 
-/**
- * Base Application Error Class
- * All other error types extend this class for consistent structure
- */
+// Error class for the application
 export class AppError extends Error {
   constructor(code = "SERVER_ERROR", message, details = {}, statusCode = null) {
     super(message || ERROR_CODES[code]?.message || "An error occurred");
@@ -19,20 +16,12 @@ export class AppError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 
-  /**
-   * Maps error codes to HTTP status codes
-   * @param {string} code - Error code
-   * @returns {number} HTTP status code
-   */
+  // map error codes to HTTP status codes
   getStatusCode(code) {
     return ERROR_CODES[code]?.status || 500;
   }
 
-  /**
-   * Formats error for API response
-   * @param {boolean} includeDetails - Whether to include error details
-   * @returns {Object} Formatted error response
-   */
+  // format error response as JSON
   toJSON(includeDetails = process.env.NODE_ENV === "development") {
     const response = {
       success: false,
@@ -57,9 +46,7 @@ export class AppError extends Error {
   }
 }
 
-/**
- * API Error - Use for REST API related errors
- */
+// api-specific error class
 export class ApiError extends AppError {
   constructor(
     code = ERROR_CODES.SERVER_ERROR.code,
@@ -71,9 +58,7 @@ export class ApiError extends AppError {
   }
 }
 
-/**
- * HIPAA Compliance Error - Use for HIPAA related compliance errors
- */
+// HIPAA-specific error class
 export class HIPAAError extends AppError {
   constructor(code = "HIPAA_ERROR", message, details = {}, statusCode = null) {
     super(code, message, details, statusCode);
@@ -85,18 +70,14 @@ export class HIPAAError extends AppError {
   }
 }
 
-/**
- * Database Error - Use for database related errors
- */
+// Database Error - Use for database related errors
 export class DatabaseError extends AppError {
   constructor(code = "DB_ERROR", message, details = {}, statusCode = null) {
     super(code, message, details, statusCode);
   }
 }
 
-/**
- * Authentication Error - Use for auth related errors
- */
+// Authentication Error - Use for authentication related errors
 export class AuthError extends AppError {
   constructor(
     code = ERROR_CODES.UNAUTHORIZED.code,
@@ -108,9 +89,7 @@ export class AuthError extends AppError {
   }
 }
 
-/**
- * Validation Error - Use for input validation errors
- */
+// Validation Error - Use for validation related errors
 export class ValidationError extends AppError {
   constructor(
     code = ERROR_CODES.VALIDATION_ERROR.code,
@@ -122,9 +101,7 @@ export class ValidationError extends AppError {
   }
 }
 
-/**
- * Transaction Error - Use for blockchain transaction errors
- */
+// transaction Error - Use for blockchain transaction related errors
 export class TransactionError extends AppError {
   constructor(
     code = "TRANSACTION_ERROR",

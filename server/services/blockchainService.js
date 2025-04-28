@@ -1,131 +1,237 @@
-// Verify the refresh token
 import { ethers } from "ethers";
-import transactionService from "./transactionService.js";
-import { logger } from "../config/loggerConfig.js";
-import { createError } from "../errors/index.js";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+import { createError } from "../errors/index.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load contract ABIs from filesystem
+const loadContractAbi = (filePath) => {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8")).abi;
+  } catch (error) {
+    console.error(`Failed to load ABI from ${filePath}:`, error);
+    return null;
+  }
+};
 
 class BlockchainService {
   constructor() {
-    this.transactionService = transactionService;
-    logger.info("BlockchainService initialized");
+    this.provider = null;
+    this.wallet = null;
+    this.contracts = {};
+    this.networkConfig = null;
+    this.contractAddresses = {};
+    this.initialized = false;
   }
 
-  // Get provider from the existing service
-  getProvider() {
-    if (!this.transactionService || !this.transactionService.provider) {
-      // This is a fallback if transactionService isn't available
-      const network = process.env.NETWORK_ID || "11155111"; // Default to Sepolia
-      const rpcUrl = process.env.RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY"; 
-      return new ethers.providers.JsonRpcProvider(rpcUrl);
-    }
-    return this.transactionService.provider;
-  }
-
-  // Verify message signature (for wallet authentication)
-  verifySignature(message, signature, address) {
+  async initialize() {
     try {
-      const recoveredAddress = ethers.utils.verifyMessage(message, signature);
-      return recoveredAddress.toLowerCase() === address.toLowerCase();
-    } catch (error) {
-      logger.error("Signature verification failed", { error: error.message });
-      return false;
-    }
-  }
-
-  // Generate a challenge message for user authentication
-  generateChallengeMessage(address) {
-    const timestamp = Date.now();
-    return `Sign this message to authenticate with Healthmint: ${address.toLowerCase()} at ${timestamp}`;
-  }
-
-  // Access multiple contracts beyond the marketplace
-  async getContract(contractName, address, abi) {
-    try {
-      if (!address) {
-        console.warn(`No address provided for ${contractName}, using fallback mode`);
-        return this.createMockContract(contractName);
+      // Load network configuration
+      this.networkConfig = {
+        MAINNET: {
+          CHAIN_ID: 1,
+          NETWORK_NAME: "Ethereum Mainnet",
+          RPC_URL: process.env.MAINNET_RPC_URL || "https://mainnet.infura.io/v3/YOUR-PROJECT-ID",
+          BLOCK_EXPLORER: "https://etherscan.io",
+          IS_TESTNET: false,
+        },
+        SEPOLIA: {
+          CHAIN_ID: 11155111,
+          NETWORK_NAME: "Sepolia Testnet",
+          RPC_URL: process.env.SEPOLIA_RPC_URL || "https://sepolia.infura.io/v3/574fd0b6fe6e4c46bae3728f1b9019ea",
+          BLOCK_EXPLORER: "https://sepolia.etherscan.io",
+          IS_TESTNET: true,
+        },
+        TRANSACTION_CONFIRMATIONS: 3,
+        GAS_LIMIT: 3000000,
+        GAS_PRICE_STRATEGY: "medium",
+        MAX_GAS_PRICE: "100",
+        CONTRACT_ADDRESSES: {},
+      };
+      
+      console.log("✅ NETWORK_CONFIG:", this.networkConfig);
+      
+      // Initialize provider
+      const network = process.env.BLOCKCHAIN_NETWORK || "SEPOLIA";
+      const rpcUrl = this.networkConfig[network]?.RPC_URL;
+      
+      if (!rpcUrl) {
+        throw new Error(`Invalid network configuration for ${network}`);
       }
       
-      const contract = new ethers.Contract(address, abi, this.provider);
+      this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      console.log("✅ Provider successfully initialized:", rpcUrl);
       
-      // Add the validation code here
-      if (!contract || !contract.interface) {
-        console.error(`Contract ${contractName} not properly initialized. Check ABI and address configuration.`);
-        this.useFallbackMode = true;
-        return this.createMockContract(contractName);
+      // IMPORTANT: Never log the private key!
+      const privateKey = process.env.PRIVATE_KEY;
+      if (privateKey) {
+        this.wallet = new ethers.Wallet(privateKey, this.provider);
       } else {
-        console.log(`✅ Contract ${contractName} initialized successfully:`, contract.address);
-        this.useFallbackMode = false;
-        return contract;
+        console.warn("⚠️ No private key provided, transaction signing unavailable");
       }
-    } catch (error) {
-      console.error(`Error initializing ${contractName} contract:`, error);
-      this.useFallbackMode = true;
-      return this.createMockContract(contractName);
-    }
-  }
-
-  // Get a patient's consent records
-  async getPatientConsents(patientAddress) {
-    try {
-      const marketplaceAddress = process.env.CONTRACT_HEALTH_DATA_MARKETPLACE;
-      // Load ABI dynamically
-      const abiPath = path.resolve(__dirname, "../../client/src/contracts/HealthDataMarketplace.json");
-      const abi = JSON.parse(fs.readFileSync(abiPath, "utf8")).abi;
       
-      const contract = await this.getContract(
-        "HealthDataMarketplace",
-        marketplaceAddress,
-        abi
+      // Load contract addresses
+      this.contractAddresses = {
+        PATIENT_CONSENT: process.env.CONTRACT_PATIENT_CONSENT,
+        HEALTH_DATA_REGISTRY: process.env.CONTRACT_HEALTH_DATA_REGISTRY,
+        HEALTH_DATA_MARKETPLACE: process.env.CONTRACT_HEALTH_DATA_MARKETPLACE,
+      };
+      
+      // Initialize contracts if addresses are available
+      if (this.wallet && this.contractAddresses.PATIENT_CONSENT) {
+        const consentAbi = loadContractAbi(
+          path.resolve(__dirname, "../contracts/PatientConsent.json")
+        );
+        this.contracts.PatientConsent = new ethers.Contract(
+          this.contractAddresses.PATIENT_CONSENT,
+          consentAbi,
+          this.wallet
+        );
+      }
+      
+      if (this.wallet && this.contractAddresses.HEALTH_DATA_REGISTRY) {
+        const registryAbi = loadContractAbi(
+          path.resolve(__dirname, "../contracts/HealthDataRegistry.json")
+        );
+        this.contracts.HealthDataRegistry = new ethers.Contract(
+          this.contractAddresses.HEALTH_DATA_REGISTRY,
+          registryAbi,
+          this.wallet
+        );
+      }
+      
+      if (this.wallet && this.contractAddresses.HEALTH_DATA_MARKETPLACE) {
+        const marketplaceAbi = loadContractAbi(
+          path.resolve(__dirname, "../../client/src/contracts/HealthDataMarketplace.json")
+        );
+        this.contracts.HealthDataMarketplace = new ethers.Contract(
+          this.contractAddresses.HEALTH_DATA_MARKETPLACE,
+          marketplaceAbi,
+          this.wallet
+        );
+      }
+      
+      if (Object.keys(this.contracts).length === 0) {
+        console.log("ℹ️ No valid contract address provided, skipping contract initialization");
+      }
+      
+      this.initialized = true;
+      console.log("2025-04-28 01:07:47 info: BlockchainService initialized ");
+    } catch (error) {
+      console.error("❌ Failed to initialize blockchain service:", error);
+      throw error;
+    }
+  }
+  
+  // New secure methods for blockchain operations
+  async grantConsent(patientAddress, providerAddress, dataId, expiryTime) {
+    if (!this.initialized || !this.wallet) {
+      throw createError.serviceUnavailable("Blockchain service not initialized");
+    }
+    
+    if (!this.contracts.PatientConsent) {
+      throw createError.serviceUnavailable("Patient consent contract not initialized");
+    }
+    
+    try {
+      const tx = await this.contracts.PatientConsent.grantConsent(
+        providerAddress, 
+        dataId,
+        expiryTime,
+        { 
+          gasLimit: this.networkConfig.GAS_LIMIT,
+          from: patientAddress  // This acts as a check, not actual signing
+        }
       );
       
-      // This assumes your contract has this method - adjust to match your actual contract
-      return await contract.getPatientConsents(patientAddress);
-    } catch (error) {
-      logger.error("Failed to retrieve patient consents", {
-        error: error.message,
-      });
-      throw createError.api(
-        "CONSENT_RETRIEVAL_FAILED",
-        `Failed to get patient consents: ${error.message}`
-      );
-    }
-  }
-
-  // Create a hash of medical data for on-chain reference
-  createDataHash(data) {
-    try {
-      // Create a deterministic hash of the data
-      return ethers.utils.keccak256(
-        ethers.utils.toUtf8Bytes(JSON.stringify(data))
-      );
-    } catch (error) {
-      logger.error("Failed to create data hash", { error: error.message });
-      throw createError.api(
-        "HASH_CREATION_FAILED",
-        `Failed to create data hash: ${error.message}`
-      );
-    }
-  }
-
-  // Get network details
-  async getNetworkInfo() {
-    try {
-      const network = await this.getProvider().getNetwork();
+      const receipt = await tx.wait(this.networkConfig.TRANSACTION_CONFIRMATIONS);
       return {
-        name: network.name,
-        chainId: network.chainId,
-        ensAddress: network.ensAddress,
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        events: receipt.events
       };
     } catch (error) {
-      logger.error("Failed to get network info", { error: error.message });
-      throw createError.api(
-        "NETWORK_INFO_FAILED",
-        `Failed to get network information: ${error.message}`
-      );
+      console.error("Error granting consent:", error);
+      throw createError.badRequest(`Failed to grant consent: ${error.message}`);
     }
+  }
+  
+  async revokeConsent(patientAddress, providerAddress, dataId) {
+    if (!this.initialized || !this.wallet) {
+      throw createError.serviceUnavailable("Blockchain service not initialized");
+    }
+    
+    try {
+      const tx = await this.contracts.PatientConsent.revokeConsent(
+        providerAddress,
+        dataId,
+        { 
+          gasLimit: this.networkConfig.GAS_LIMIT,
+          from: patientAddress  // For verification
+        }
+      );
+      
+      const receipt = await tx.wait(this.networkConfig.TRANSACTION_CONFIRMATIONS);
+      return {
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber
+      };
+    } catch (error) {
+      console.error("Error revoking consent:", error);
+      throw createError.badRequest(`Failed to revoke consent: ${error.message}`);
+    }
+  }
+  
+  async registerDataOnChain(patientAddress, dataHash, metadata, price) {
+    if (!this.initialized || !this.wallet) {
+      throw createError.serviceUnavailable("Blockchain service not initialized");
+    }
+    
+    try {
+      const priceWei = ethers.utils.parseEther(price.toString());
+      
+      const tx = await this.contracts.HealthDataRegistry.registerData(
+        dataHash,
+        JSON.stringify(metadata),
+        priceWei,
+        { 
+          gasLimit: this.networkConfig.GAS_LIMIT,
+          from: patientAddress  // For verification
+        }
+      );
+      
+      const receipt = await tx.wait(this.networkConfig.TRANSACTION_CONFIRMATIONS);
+      return {
+        transactionHash: receipt.transactionHash,
+        dataId: receipt.events.find(e => e.event === "DataRegistered")?.args?.dataId,
+        blockNumber: receipt.blockNumber
+      };
+    } catch (error) {
+      console.error("Error registering data:", error);
+      throw createError.badRequest(`Failed to register data: ${error.message}`);
+    }
+  }
+  
+  // Utility methods
+  getNetworkInfo() {
+    if (!this.initialized) {
+      throw createError.serviceUnavailable("Blockchain service not initialized");
+    }
+    
+    const network = process.env.BLOCKCHAIN_NETWORK || "SEPOLIA";
+    return {
+      network: this.networkConfig[network].NETWORK_NAME,
+      chainId: this.networkConfig[network].CHAIN_ID,
+      isTestnet: this.networkConfig[network].IS_TESTNET,
+      blockExplorer: this.networkConfig[network].BLOCK_EXPLORER
+    };
+  }
+  
+  createDataHash(data) {
+    return ethers.utils.id(JSON.stringify(data));
   }
 }
 

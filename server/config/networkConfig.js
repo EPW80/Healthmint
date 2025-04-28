@@ -1,10 +1,4 @@
-/**
- * Network Configuration Module
- *
- * Centralizes all network and API-related configurations for the application,
- * providing structured access to blockchain networks, API endpoints,
- * and error handling.
- */
+// server/config/networkConfig.js
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
@@ -22,13 +16,7 @@ try {
   console.warn("Warning: Error loading .env file:", error.message);
 }
 
-/**
- * Safe environment variable parser with type checking and defaults
- * @param {string} key - Environment variable key
- * @param {*} defaultValue - Default value if not found
- * @param {Function} parser - Optional parsing function
- * @returns {*} The parsed value or default
- */
+// safe-parse function to handle environment variables
 const env = (key, defaultValue, parser = (x) => x) => {
   const value = process.env[key];
   if (value === undefined) return defaultValue;
@@ -43,9 +31,7 @@ const env = (key, defaultValue, parser = (x) => x) => {
   }
 };
 
-/**
- * Application Environment Configuration
- */
+// application-wide constants
 export const ENV = {
   // Core environment settings
   NODE_ENV: env("NODE_ENV", "development"),
@@ -79,10 +65,7 @@ export const ENV = {
   ),
 };
 
-/**
- * Blockchain Networks Configuration
- * Security note: RPC URLs with API keys should be provided via environment variables
- */
+// Network configuration
 export const NETWORKS = {
   MAINNET: {
     NAME: "mainnet",
@@ -119,10 +102,7 @@ export const NETWORKS = {
   },
 };
 
-/**
- * Get information about the current network from environment
- * @returns {Object} Network configuration object
- */
+// Add more networks as needed
 export const getCurrentNetwork = () => {
   const networkName = env("NETWORK", "SEPOLIA").toUpperCase();
   if (!NETWORKS[networkName]) {
@@ -134,9 +114,7 @@ export const getCurrentNetwork = () => {
   return NETWORKS[networkName];
 };
 
-/**
- * Transaction parameters configuration
- */
+// Set the default network
 export const TRANSACTION_CONFIG = {
   // Default gas settings
   gasLimit: ENV.DEFAULT_GAS_LIMIT,
@@ -152,9 +130,7 @@ export const TRANSACTION_CONFIG = {
   replacementRetryWaitTime: 30000, // 30 seconds
 };
 
-/**
- * API Request Configuration
- */
+// Request configuration
 export const REQUEST_CONFIG = {
   timeout: ENV.REQUEST_TIMEOUT,
   retryAttempts: ENV.RETRY_ATTEMPTS,
@@ -170,9 +146,7 @@ export const REQUEST_CONFIG = {
   }),
 };
 
-/**
- * Standardized Error Codes
- */
+// standard error codes
 export const ERROR_CODES = {
   // 400 range (client errors)
   VALIDATION_ERROR: {
@@ -236,9 +210,7 @@ export const ERROR_CODES = {
   },
 };
 
-/**
- * API Endpoints Configuration
- */
+// api endpoints
 export const ENDPOINTS = {
   USERS: {
     BASE: "/users",
@@ -282,15 +254,9 @@ export const ENDPOINTS = {
   getFullUrl: (endpoint) => `${ENV.API_URL}${endpoint}`,
 };
 
-/**
- * Network Utilities
- */
+// network utility functions
 export const NetworkUtils = {
-  /**
-   * Verify if a network is properly configured
-   * @param {Object} network - Network configuration object
-   * @returns {boolean} Whether the network is valid
-   */
+  // Get the current network configuration
   isValidNetwork: (network) => {
     return !!(
       network &&
@@ -300,13 +266,7 @@ export const NetworkUtils = {
     );
   },
 
-  /**
-   * Format an address for display
-   * @param {string} address - Ethereum address
-   * @param {number} prefixLength - Number of characters to show at start
-   * @param {number} suffixLength - Number of characters to show at end
-   * @returns {string} Formatted address
-   */
+  // format a wallet address for display
   formatAddress: (address, prefixLength = 6, suffixLength = 4) => {
     if (!address || address.length < prefixLength + suffixLength) {
       return address;
@@ -314,24 +274,13 @@ export const NetworkUtils = {
     return `${address.slice(0, prefixLength)}...${address.slice(-suffixLength)}`;
   },
 
-  /**
-   * Format a transaction hash for display
-   * @param {string} hash - Transaction hash
-   * @param {number} length - Number of characters to show
-   * @returns {string} Formatted hash
-   */
+  // format a transaction hash for display
   formatTxHash: (hash, length = 10) => {
     if (!hash || hash.length <= length) return hash;
     return `${hash.slice(0, length)}...`;
   },
 
-  /**
-   * Get a block explorer URL for an address, transaction, or token
-   * @param {string} type - Type of explorer URL ('address', 'tx', 'token')
-   * @param {string} value - Value to look up
-   * @param {Object} network - Network configuration object
-   * @returns {string} Explorer URL
-   */
+  // format a block number for display
   getExplorerUrl: (type, value, network = getCurrentNetwork()) => {
     if (!value || !network || !network.EXPLORER_URL) return "";
 

@@ -1,5 +1,5 @@
 // middleware/hipaaCompliance.js
-import { createError, asyncHandler } from "../errors/index.js";
+import { createError } from "../errors/index.js";
 import crypto from "crypto";
 import validation from "../validation/index.js";
 

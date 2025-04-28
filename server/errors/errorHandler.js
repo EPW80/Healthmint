@@ -3,12 +3,8 @@ import { AppError } from "./errors.js";
 import createError from "./errorFactory.js";
 import { logger } from "../config/loggerConfig.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
-import { ERROR_CODES } from "../config/networkConfig.js";
 
-/**
- * PHI Pattern detection for redaction
- * Used to sanitize error stacks and details
- */
+// Define patterns for PHI (Protected Health Information) to redact
 const PHI_PATTERNS = [
   // SSN pattern
   /\b\d{3}[-.]?\d{2}[-.]?\d{4}\b/g,
@@ -24,11 +20,7 @@ const PHI_PATTERNS = [
   /\b(?:\d[ -]*?){13,16}\b/g,
 ];
 
-/**
- * Sanitize error stack to remove sensitive information
- * @param {string} stack - Error stack trace
- * @returns {string} Sanitized stack trace
- */
+// Sanitize error stack trace to remove sensitive information
 const sanitizeErrorStack = (stack) => {
   if (!stack) return undefined;
 
@@ -52,20 +44,12 @@ const sanitizeErrorStack = (stack) => {
   return sanitized;
 };
 
-/**
- * Generate unique error ID for tracking
- * @returns {string} Unique error ID
- */
+// generate a unique error ID
 const generateErrorId = () => {
   return `err_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
 };
 
-/**
- * Log error with appropriate severity level
- * @param {AppError} error - Error object
- * @param {Object} req - Express request object
- * @param {string} errorId - Generated error ID
- */
+// Log error details to the console and/or external logging service
 const logError = (error, req, errorId) => {
   const errorData = {
     errorId,
@@ -110,11 +94,7 @@ const logError = (error, req, errorId) => {
   }
 };
 
-/**
- * Async route handler wrapper to catch errors
- * @param {Function} fn - Async route handler
- * @returns {Function} Wrapped function that catches errors
- */
+// asyncHandler to wrap async route handlers
 export const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((error) => {
     // If the error is already one of our custom types, pass it through
@@ -129,14 +109,7 @@ export const asyncHandler = (fn) => (req, res, next) => {
   });
 };
 
-/**
- * Global error handler middleware for Express
- * @param {Error} err - Error object
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next function
- * @returns {Object} Error response
- */
+// global error handler middleware
 export const errorHandler = (err, req, res, next) => {
   // Generate a unique error ID for tracking
   const errorId = generateErrorId();

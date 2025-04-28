@@ -4,17 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-/**
- * Enhanced logging configuration for HIPAA-compliant applications
- * Features:
- * - Environment-specific configurations
- * - Log rotation and retention policies
- * - Secure PHI redaction
- * - Request correlation through request IDs
- * - Configurable via environment variables
- */
-
-// Get __dirname equivalent in ES modules
+// Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -73,9 +63,7 @@ const colors = {
 // Add colors to Winston
 winston.addColors(colors);
 
-/**
- * Custom format to redact PHI from logs
- */
+// Custom format for redacting PHI
 const redactPHI = winston.format((info) => {
   // Only process strings to avoid errors with objects
   if (typeof info.message === "string") {
@@ -107,9 +95,7 @@ const redactPHI = winston.format((info) => {
   return info;
 });
 
-/**
- * Format for development logs (human-readable, colorized)
- */
+// Custom format for development logs
 const developmentFormat = winston.format.combine(
   redactPHI(),
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
@@ -141,9 +127,7 @@ const developmentFormat = winston.format.combine(
   })
 );
 
-/**
- * Format for production logs (structured JSON)
- */
+// Custom format for production logs
 const productionFormat = winston.format.combine(
   redactPHI(),
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
@@ -151,9 +135,7 @@ const productionFormat = winston.format.combine(
   winston.format.json()
 );
 
-/**
- * Daily file rotation transport factory
- */
+// daily log rotation
 const createFileTransport = (filename, level) => {
   return new winston.transports.File({
     filename: path.join(LOG_DIR, filename),
@@ -166,9 +148,7 @@ const createFileTransport = (filename, level) => {
   });
 };
 
-/**
- * Environment-specific logger configurations
- */
+// Logger configuration for different environments
 const loggerConfig = {
   development: {
     format: "dev",
@@ -270,21 +250,12 @@ const logger = winston.createLogger({
   ],
 });
 
-/**
- * Add request ID to log context
- * @param {string} requestId - The request ID to add
- * @returns {Object} A child logger with request ID context
- */
+// Set the logger level based on the environment
 logger.forRequest = (requestId) => {
   return logger.child({ requestId });
 };
 
-/**
- * Enhanced request logger middleware
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next function
- */
+// Set the logger level based on the environment
 logger.requestLogger = (req, res, next) => {
   // Skip logging for excluded paths
   const skipPaths = loggerConfig[currentEnv]?.skipPaths || [];

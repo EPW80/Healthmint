@@ -1,8 +1,6 @@
 // server/constants/index.js
 // This file contains various constants and configurations used throughout the application.
 import dotenv from "dotenv";
-
-// Load environment variables with additional security checks
 const loadEnv = () => {
   try {
     dotenv.config();
@@ -178,10 +176,7 @@ export const FILE_CONSTRAINTS = Object.freeze({
   },
 });
 
-/**
- * Security settings for authentication and data protection
- * Configures password requirements, lockout policies, etc.
- */
+// Security settings
 export const SECURITY_SETTINGS = Object.freeze({
   // Password requirements
   PASSWORD_MIN_LENGTH: process.env.NODE_ENV === "production" ? 14 : 8,

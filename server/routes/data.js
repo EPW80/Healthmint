@@ -1,9 +1,6 @@
 import express from "express";
 import browseRoutes from "./data/browse.js";
-import {
-  validateAddress,
-  validateHealthData,
-} from "../validation/index.js"; // Updated import path
+import { validateAddress, validateHealthData } from "../validation/index.js";
 import { ERROR_CODES } from "../config/hipaaConfig.js";
 import { asyncHandler, createError } from "../errors/index.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";

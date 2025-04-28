@@ -241,6 +241,4 @@ userSchema.index({ "security.lastActive": 1 });
 
 // Create the User model - named export
 export const User = mongoose.model("User", userSchema);
-
-// Default export (for easier imports)
 export default User;

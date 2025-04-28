@@ -1,11 +1,6 @@
 import express from "express";
-// Remove this import to break the circular dependency
-// import hipaaComplianceService from "../services/hipaaComplianceService.js"; 
-import { logger } from "../config/loggerConfig.js";
 
 const router = express.Router();
-
-// Create audit log endpoint - DIRECTLY handle logs without calling the service
 router.post("/log", async (req, res) => {
   try {
     const { action, details, severity = "info" } = req.body;
@@ -23,14 +18,14 @@ router.post("/log", async (req, res) => {
       timestamp: new Date().toISOString(),
       user: req.user?.id || "anonymous",
       details: details || {},
-      severity
+      severity,
     };
-    
+
     // Log to console
     console.log(`[AUDIT] ${action}:`, JSON.stringify(logEntry));
-    
+
     // If you have a database, you would write to it here
-    
+
     return res.json({
       success: true,
       message: "Audit log created",

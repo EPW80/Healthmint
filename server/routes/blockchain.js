@@ -1,50 +1,53 @@
+// src/routes/blockchainRoutes.js
 import express from "express";
-import { asyncHandler } from "../errors/index.js";
-import { createError } from "../errors/index.js";
+import { asyncHandler, createError } from "../errors/index.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import blockchainService from "../services/blockchainService.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
+import secureStorageService from "../services/secureStorageService.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
-import { Readable } from "stream";
-import secureStorageService from "../services/secureStorageService.js";
-
-// Load ABIs
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const consentAbiPath = path.resolve(
-  __dirname,
-  "../contracts/PatientConsent.json"
-);
-const registryAbiPath = path.resolve(
-  __dirname,
-  "../contracts/HealthDataRegistry.json"
-);
-const marketplaceAbiPath = path.resolve(
-  __dirname,
-  "../../client/src/contracts/HealthDataMarketplace.json"
-);
-
-// Parse ABIs
-const consentAbi = JSON.parse(fs.readFileSync(consentAbiPath, "utf8")).abi;
-const registryAbi = JSON.parse(fs.readFileSync(registryAbiPath, "utf8")).abi;
-const marketplaceAbi = JSON.parse(
-  fs.readFileSync(marketplaceAbiPath, "utf8")
-).abi;
-
-// Get contract addresses from environment
-const CONSENT_CONTRACT = process.env.CONTRACT_PATIENT_CONSENT;
-const REGISTRY_CONTRACT = process.env.CONTRACT_HEALTH_DATA_REGISTRY;
-const MARKETPLACE_CONTRACT = process.env.CONTRACT_HEALTH_DATA_MARKETPLACE;
 
 const router = express.Router();
 
-// Middleware to protect routes
-router.use(authMiddleware);
+// Setup path and ABI loading
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Set up multer for file uploads
+// Helper function to load contract ABI
+const loadContractAbi = (filePath) => {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8")).abi;
+  } catch (error) {
+    console.error(`Failed to load ABI from ${filePath}:`, error);
+    return null;
+  }
+};
+
+// Load contract ABIs
+const consentAbi = loadContractAbi(
+  path.resolve(__dirname, "../contracts/PatientConsent.json")
+);
+const registryAbi = loadContractAbi(
+  path.resolve(__dirname, "../contracts/HealthDataRegistry.json")
+);
+const marketplaceAbi = loadContractAbi(
+  path.resolve(
+    __dirname,
+    "../../client/src/contracts/HealthDataMarketplace.json"
+  )
+);
+
+// Contract addresses from environment
+const CONTRACTS = {
+  CONSENT: process.env.CONTRACT_PATIENT_CONSENT,
+  REGISTRY: process.env.CONTRACT_HEALTH_DATA_REGISTRY,
+  MARKETPLACE: process.env.CONTRACT_HEALTH_DATA_MARKETPLACE,
+};
+
+// Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -52,7 +55,22 @@ const upload = multer({
   },
 });
 
-// Get network information
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
+
+// Helper: Get marketplace contract instance
+const getMarketplaceContract = async () => {
+  return blockchainService.getContract(
+    "HealthDataMarketplace",
+    CONTRACTS.MARKETPLACE,
+    marketplaceAbi
+  );
+};
+
+/**
+ * Get network information
+ * Returns the current blockchain network details
+ */
 router.get(
   "/network",
   asyncHandler(async (req, res) => {
@@ -64,36 +82,34 @@ router.get(
   })
 );
 
-// Get patient consents - using the marketplace contract
+/**
+ * Get patient consents
+ * Returns all consent records for a specific patient address
+ */
 router.get(
   "/consent/:address",
   asyncHandler(async (req, res) => {
     const { address } = req.params;
 
     // Verify access permissions
-    if (
-      req.user.address.toLowerCase() !== address.toLowerCase() &&
-      !req.user.roles.includes("admin") &&
-      !req.user.roles.includes("provider")
-    ) {
+    const requesterAddress = req.user.address.toLowerCase();
+    const targetAddress = address.toLowerCase();
+    const isAuthorized =
+      requesterAddress === targetAddress ||
+      req.user.roles.includes("admin") ||
+      req.user.roles.includes("provider");
+
+    if (!isAuthorized) {
       throw createError.forbidden(
         "You don't have permission to access this data"
       );
     }
 
-    // Get marketplace contract
-    const marketplaceContract = await blockchainService.getContract(
-      "HealthDataMarketplace",
-      MARKETPLACE_CONTRACT,
-      marketplaceAbi
-    );
-
-    // Get consents using the marketplace contract
-    // This assumes the marketplace contract has a method to get consents
-    // If not, you'll need to adapt this to your contract's actual methods
+    // Get consents from marketplace contract
+    const marketplaceContract = await getMarketplaceContract();
     const consents = await marketplaceContract.getPatientConsents(address);
 
-    // Create audit log
+    // Log access for HIPAA compliance
     await hipaaCompliance.createAuditLog("CONSENT_DATA_ACCESSED", {
       userId: req.user.id,
       userAddress: req.user.address,
@@ -108,22 +124,34 @@ router.get(
   })
 );
 
-// Grant consent to a provider
+/**
+ * Grant consent to a provider
+ * Records patient consent for data access by a provider
+ */
 router.post(
   "/consent",
   asyncHandler(async (req, res) => {
     const { providerAddress, accessType, granted } = req.body;
 
+    // Validate required fields
     if (!providerAddress || !accessType) {
       throw createError.validation(
         "Provider address and access type are required"
       );
     }
 
-    // TODO: Implement actual blockchain transaction to set consent
-    // This would require a wallet signer, which typically happens client-side
-    // For server implementation, you'd need a server wallet or relay
+    // Create audit log for consent action
+    await hipaaCompliance.createAuditLog("CONSENT_UPDATED", {
+      userId: req.user.id,
+      userAddress: req.user.address,
+      providerAddress,
+      accessType,
+      granted,
+      ip: req.ip,
+    });
 
+    // Note: Actual blockchain transaction would happen client-side
+    // This endpoint prepares and returns the necessary information
     res.json({
       success: true,
       message: "Consent request submitted",
@@ -138,7 +166,89 @@ router.post(
   })
 );
 
-// Register health data hash on blockchain
+/**
+ * Process blockchain consent transaction
+ * This route securely handles consent transactions on the blockchain
+ */
+router.post(
+  "/consent/process",
+  asyncHandler(async (req, res) => {
+    const { providerAddress, dataId, expiryTime, granted } = req.body;
+
+    // Validate required fields
+    if (!providerAddress || !dataId) {
+      throw createError.validation(
+        "Provider address and data ID are required"
+      );
+    }
+
+    // Verify the user is operating on their own data
+    const patientAddress = req.user.address.toLowerCase();
+    
+    // Create audit log for consent action
+    await hipaaCompliance.createAuditLog("CONSENT_TRANSACTION_INITIATED", {
+      userId: req.user.id,
+      userAddress: patientAddress,
+      providerAddress,
+      dataId,
+      granted,
+      ip: req.ip,
+    });
+
+    let result;
+    try {
+      if (granted) {
+        // Calculate expiry time if not provided (default 30 days)
+        const actualExpiryTime = expiryTime || Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60);
+        result = await blockchainService.grantConsent(
+          patientAddress,
+          providerAddress,
+          dataId,
+          actualExpiryTime
+        );
+      } else {
+        result = await blockchainService.revokeConsent(
+          patientAddress,
+          providerAddress,
+          dataId
+        );
+      }
+
+      await hipaaCompliance.createAuditLog("CONSENT_TRANSACTION_COMPLETED", {
+        userId: req.user.id,
+        userAddress: patientAddress,
+        providerAddress,
+        dataId,
+        granted,
+        transactionHash: result.transactionHash,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        message: granted ? "Consent granted successfully" : "Consent revoked successfully",
+        transaction: result
+      });
+    } catch (error) {
+      await hipaaCompliance.createAuditLog("CONSENT_TRANSACTION_FAILED", {
+        userId: req.user.id,
+        userAddress: patientAddress,
+        providerAddress,
+        dataId,
+        granted,
+        error: error.message,
+        ip: req.ip,
+      });
+      
+      throw error; // Will be caught by the asyncHandler
+    }
+  })
+);
+
+/**
+ * Register health data hash
+ * Creates and returns a hash of health data for blockchain registration
+ */
 router.post(
   "/register-data",
   asyncHandler(async (req, res) => {
@@ -151,24 +261,14 @@ router.post(
     // Create hash of the data
     const dataHash = blockchainService.createDataHash(data);
 
-    // Sanitize data for logging
+    // Sanitize data for logging (HIPAA compliance)
     const sanitizedData = await hipaaCompliance.sanitizeResponse(data);
-
-    // Get marketplace contract
-    const marketplaceContract = await blockchainService.getContract(
-      "HealthDataMarketplace",
-      MARKETPLACE_CONTRACT,
-      marketplaceAbi
-    );
-
-    // This endpoint doesn't perform the transaction - it just returns the hash
-    // The actual transaction would be performed by the client
 
     // Create audit log
     await hipaaCompliance.createAuditLog("HEALTH_DATA_HASH_GENERATED", {
       userId: req.user.id,
       userAddress: req.user.address,
-      dataHash: dataHash.substring(0, 10) + "...", // Only log part of the hash
+      dataHash: dataHash.substring(0, 10) + "...", // Only log part of the hash for security
       ip: req.ip,
     });
 
@@ -183,40 +283,74 @@ router.post(
   })
 );
 
-// Verify data hash on blockchain
+/**
+ * Verify data hash
+ * Checks if a data hash exists on the blockchain
+ */
 router.get(
   "/verify-data/:hash",
   asyncHandler(async (req, res) => {
     const { hash } = req.params;
 
-    // TODO: Implement blockchain verification of data hash
+    // Get registry contract
+    const registryContract = await blockchainService.getContract(
+      "HealthDataRegistry",
+      CONTRACTS.REGISTRY,
+      registryAbi
+    );
+
+    // Attempt to verify the hash on the blockchain
+    // Note: Implementation depends on actual contract methods
+    const verificationResult = { verified: false, timestamp: null };
+
+    try {
+      // This is placeholder code - implement based on actual contract methods
+      // const result = await registryContract.verifyDataHash(hash);
+      // verificationResult.verified = result.verified;
+      // verificationResult.timestamp = result.timestamp;
+
+      // Log the verification attempt
+      await hipaaCompliance.createAuditLog("DATA_HASH_VERIFICATION", {
+        userId: req.user.id,
+        userAddress: req.user.address,
+        dataHash: hash.substring(0, 10) + "...",
+        result: verificationResult.verified,
+        ip: req.ip,
+      });
+    } catch (error) {
+      console.error("Hash verification error:", error);
+    }
 
     res.json({
       success: true,
-      message: "Data verification request received",
+      message: "Data verification processed",
       data: {
         hash,
-        verified: false, // Replace with actual verification result
-        timestamp: new Date(),
+        ...verificationResult,
+        requestTimestamp: new Date(),
       },
     });
   })
 );
 
-// Additional routes for marketplace-specific features
+/**
+ * Get marketplace listings
+ * Returns all available health data listings in the marketplace
+ */
 router.get(
   "/marketplace/listings",
   asyncHandler(async (req, res) => {
-    // Get marketplace contract
-    const marketplaceContract = await blockchainService.getContract(
-      "HealthDataMarketplace",
-      MARKETPLACE_CONTRACT,
-      marketplaceAbi
-    );
+    const marketplaceContract = await getMarketplaceContract();
 
     // Get available data listings
-    // This is placeholder code - adjust to your contract's actual methods
     const listings = await marketplaceContract.getAvailableDataListings();
+
+    // Log the data access
+    await hipaaCompliance.createAuditLog("MARKETPLACE_LISTINGS_ACCESSED", {
+      userId: req.user.id,
+      userAddress: req.user.address,
+      ip: req.ip,
+    });
 
     res.json({
       success: true,
@@ -225,43 +359,99 @@ router.get(
   })
 );
 
-// Add this test endpoint
-router.post('/test-upload', upload.single('file'), async (req, res) => {
-  try {
+/**
+ * Test file upload to IPFS
+ * Uploads a file to IPFS via Web3Storage for testing purposes
+ */
+router.post(
+  "/test-upload",
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file provided',
-      });
+      throw createError.validation("No file provided");
     }
 
-    console.log(`Received file: ${req.file.originalname}, size: ${req.file.size} bytes`);
-    
-    // Create a File object that Web3Storage can use
-    const fileData = new File(
-      [req.file.buffer], 
-      req.file.originalname, 
-      { type: req.file.mimetype }
+    console.log(
+      `Received file: ${req.file.originalname}, size: ${req.file.size} bytes`
     );
-    
+
+    // Create a File object for Web3Storage
+    const fileData = new File([req.file.buffer], req.file.originalname, {
+      type: req.file.mimetype,
+    });
+
     // Upload to IPFS via Web3Storage
     const cid = await secureStorageService.storeFiles([fileData]);
-    
+
+    // Log the upload (HIPAA compliance)
+    await hipaaCompliance.createAuditLog("FILE_UPLOADED_TO_IPFS", {
+      userId: req.user.id,
+      userAddress: req.user.address,
+      fileType: req.file.mimetype,
+      fileSize: req.file.size,
+      cid: cid,
+      ip: req.ip,
+    });
+
     res.json({
       success: true,
-      message: 'File uploaded successfully',
+      message: "File uploaded successfully",
       fileName: req.file.originalname,
       cid: cid,
-      retrievalUrl: `https://${cid}.ipfs.dweb.link/${encodeURIComponent(req.file.originalname)}`
+      retrievalUrl: `https://${cid}.ipfs.dweb.link/${encodeURIComponent(req.file.originalname)}`,
     });
-  } catch (error) {
-    console.error('File upload error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'File upload failed',
-      error: error.message
-    });
-  }
-});
+  })
+);
+
+/**
+ * Register data on blockchain
+ * Securely registers health data hash and metadata on the blockchain
+ */
+router.post(
+  "/data/register-on-chain",
+  asyncHandler(async (req, res) => {
+    const { dataHash, metadata, price } = req.body;
+
+    if (!dataHash || !metadata) {
+      throw createError.validation("Data hash and metadata are required");
+    }
+
+    const patientAddress = req.user.address.toLowerCase();
+    
+    try {
+      const result = await blockchainService.registerDataOnChain(
+        patientAddress,
+        dataHash,
+        metadata,
+        price || 0
+      );
+      
+      await hipaaCompliance.createAuditLog("DATA_REGISTERED_ON_CHAIN", {
+        userId: req.user.id,
+        userAddress: patientAddress,
+        dataHash: dataHash.substring(0, 10) + "...",
+        transactionHash: result.transactionHash,
+        dataId: result.dataId,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        message: "Health data registered on blockchain",
+        transaction: result
+      });
+    } catch (error) {
+      await hipaaCompliance.createAuditLog("DATA_REGISTRATION_FAILED", {
+        userId: req.user.id,
+        userAddress: patientAddress,
+        dataHash: dataHash.substring(0, 10) + "...",
+        error: error.message,
+        ip: req.ip,
+      });
+      
+      throw error;
+    }
+  })
+);
 
 export default router;

@@ -70,9 +70,12 @@ router.get(
       parsedMaxAge !== undefined &&
       parsedMinAge > parsedMaxAge
     ) {
-      throw createError.validation("Invalid age range: minAge cannot be greater than maxAge", {
-        code: ERROR_CODES.VALIDATION_ERROR.code,
-      });
+      throw createError.validation(
+        "Invalid age range: minAge cannot be greater than maxAge",
+        {
+          code: ERROR_CODES.VALIDATION_ERROR.code,
+        }
+      );
     }
 
     // Create request metadata for audit logging
@@ -126,9 +129,12 @@ router.get(
     // Validate access purpose
     const accessPurpose = req.headers["x-access-purpose"];
     if (!accessPurpose) {
-      throw createError.validation("Access purpose is required in x-access-purpose header", {
-        code: ERROR_CODES.VALIDATION_ERROR.code,
-      });
+      throw createError.validation(
+        "Access purpose is required in x-access-purpose header",
+        {
+          code: ERROR_CODES.VALIDATION_ERROR.code,
+        }
+      );
     }
 
     // Create request metadata

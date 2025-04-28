@@ -3,10 +3,10 @@ import express from "express";
 import {
   validateAddress,
   validateProfile as validateProfileUpdate,
-} from "../validation/index.js"; // Updated import
+} from "../validation/index.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { ENDPOINTS } from "../config/networkConfig.js";
-import { asyncHandler, createError } from "../errors/index.js"; // Updated import
+import { asyncHandler, createError } from "../errors/index.js";
 import { rateLimiters } from "../middleware/rateLimiter.js";
 import { userService } from "../services/userService.js";
 import authMiddleware, { authorize } from "../middleware/authMiddleware.js";
@@ -114,7 +114,7 @@ router.put(
         { errors: validateResult.errors }
       );
     }
-    const validatedData = updateData; // We've validated it, but keep the original data
+    const validatedData = updateData; 
 
     // Check if user is updating their own profile or has admin access
     const isSelf = normalizedAddress === requestedBy;

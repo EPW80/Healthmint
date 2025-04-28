@@ -1,6 +1,4 @@
 // server/errors/index.js
-
-// Just keep the exports
 export const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
@@ -71,7 +69,6 @@ export class HIPAAError extends Error {
   }
 }
 
-// Import any other error classes you need
 import * as errorClasses from "./errors.js";
 
 export default {
