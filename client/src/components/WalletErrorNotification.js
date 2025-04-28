@@ -9,12 +9,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import "./WalletErrorNotification.css"; // Add this import
+import "./WalletErrorNotification.css";
 
-/**
- * Enhanced notification for wallet connection errors
- * Features improved design, animations, and countdown timer
- */
+// This component displays a notification when there is an error with the wallet connection.
 const WalletErrorNotification = ({
   message = "Wallet address not found. Please reconnect your wallet.",
   isVisible = true,

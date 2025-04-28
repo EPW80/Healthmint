@@ -373,6 +373,65 @@ apiRouter.post(
   }
 );
 
+// Production file upload route
+apiRouter.post("/storage/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file provided",
+      });
+    }
+
+    // Parse metadata if provided
+    let metadata = {};
+    if (req.body.metadata) {
+      try {
+        metadata = JSON.parse(req.body.metadata);
+      } catch (e) {
+        console.warn("Invalid metadata JSON:", e);
+      }
+    }
+
+    // Add user information if authenticated
+    if (req.user) {
+      metadata.userId = req.user.id;
+      metadata.userAddress = req.user.address;
+    }
+
+    // Add IP address for audit
+    metadata.ipAddress = req.ip;
+
+    // Upload file to IPFS
+    const uploadResult = await secureStorageService.uploadToIPFS({
+      buffer: req.file.buffer,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    });
+
+    // Return success response
+    return res.json({
+      success: true,
+      reference: uploadResult.cid,
+      cid: uploadResult.cid,
+      url: uploadResult.url || `https://dweb.link/ipfs/${uploadResult.cid}`,
+      fileName: req.file.originalname,
+      metadata: {
+        ...metadata,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+      },
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Upload failed",
+    });
+  }
+});
+
 // Mount the API Router to the app
 app.use("/api", apiRouter);
 

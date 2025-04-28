@@ -468,7 +468,8 @@ class ApiService {
       await secureStorageService.initialize();
     }
 
-    return secureStorageService.storeFile(file);
+    // Use the correct method name that exists in secureStorageService
+    return secureStorageService.uploadToIPFS(file);
   }
 
   async downloadFile(endpoint, progressCallback) {
