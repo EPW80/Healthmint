@@ -1,34 +1,51 @@
 import express from 'express';
-import databaseTestController from '../controllers/databaseTestController.js';
-import storageTestController from '../controllers/storageTestController.js';
+import multer from 'multer';
+import secureStorageService from '../services/secureStorageService.js';
 import testEndpointMiddleware from '../middleware/testEndpointMiddleware.js';
 
 const router = express.Router();
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
 
-// Storage test endpoint
-router.post('/storage', 
-  testEndpointMiddleware,
-  (req, res) => {
+// Test file upload endpoint that bypasses authentication
+router.post('/file-upload', 
+  testEndpointMiddleware,  // This will set a test user
+  upload.single('file'),   // Process file upload
+  async (req, res) => {
     try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file provided'
+        });
+      }
+
+      console.log('Test upload received file:', req.file.originalname);
+      
+      // Use the secure storage service to upload
+      const result = await secureStorageService.uploadFile(req.file);
+      
       return res.json({
         success: true,
-        message: 'Storage test endpoint working',
-        timestamp: new Date().toISOString()
+        message: 'File uploaded successfully',
+        fileDetails: {
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype
+        },
+        storageResult: result
       });
     } catch (error) {
+      console.error('Test upload error:', error);
       return res.status(500).json({
         success: false,
+        message: 'File upload failed',
         error: error.message
       });
     }
   }
-);
-
-// MongoDB test endpoint - choose ONE approach:
-// Option 1: Using the controller (recommended if controller exists)
-router.get('/mongodb', 
-  testEndpointMiddleware,
-  databaseTestController.testDatabaseConnection
 );
 
 export default router;

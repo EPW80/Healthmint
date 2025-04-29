@@ -316,8 +316,9 @@ apiRouter.use("/storage", storageRoutes);
 // Add this with your other route imports
 import testRoutes from './routes/test.js';
 
-// Add with your other route registrations
+// Add this with your other route registrations (before the catch-all routes)
 app.use('/api/test', testRoutes);
+console.log('Mounting test routes at /api/test');
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);
