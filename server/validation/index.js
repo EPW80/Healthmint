@@ -19,6 +19,7 @@ const ValidationModule = {
   ValidationError,
 
   // Pure validators
+  validateToken: validators.validateToken,  // Add this line
   validateAddress: validators.validateAddress,
   validateProfile: validators.validateProfile,
   validateHealthData: validators.validateHealthData,
@@ -46,6 +47,9 @@ const ValidationModule = {
    */
   validate(type, data) {
     switch (type.toLowerCase()) {
+      case "token":
+      case "jwt":
+        return validators.validateToken(data);  // Add this case
       case "address":
         return validators.validateAddress(data);
       case "profile":
@@ -95,6 +99,21 @@ const ValidationModule = {
         throw new ValidationError(`Unknown middleware type: ${type}`);
     }
   },
+
+  // Add this helper for test endpoints
+  getTestEndpointAuth(req, res, next) {
+    // For test endpoints, bypass normal auth in development
+    if (process.env.NODE_ENV === 'development' && req.path.includes('/test-')) {
+      req.user = { 
+        id: 'test-user',
+        roles: ['admin'],
+        role: 'admin',
+        address: '0x0000000000000000000000000000000000000000'
+      };
+      return true; // Indicate auth can be bypassed
+    }
+    return false; // Proceed with normal auth
+  }
 };
 
 // Export default consolidated API

@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import mongoose from 'mongoose';
 
 // Create equivalents of __dirname and __filename for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -90,6 +91,33 @@ console.log("✅ Allowed Origins:", ALLOWED_ORIGINS);
 
 // Connect services after they are both initialized
 console.log("✅ Services initialized successfully");
+
+// MongoDB Connection
+console.log("Connecting to MongoDB...");
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log("✅ Connected to MongoDB successfully");
+    console.log(`Database: ${mongoose.connection.name}`);
+    console.log(`Host: ${mongoose.connection.host}`);
+  })
+  .catch(err => {
+    console.error("❌ MongoDB connection error:", err.message);
+    // Consider whether you want to exit or continue with limited functionality
+    // process.exit(1);  // Uncomment this if you want to fail hard when MongoDB is unavailable
+  });
+
+// Add connection event listeners
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected');
+});
 
 // Initialize Express app
 const app = express();
@@ -284,6 +312,12 @@ import storageRoutes from "./routes/storage.js";
 // Replace existing storage test routes with this comprehensive version
 console.log("Mounting storage routes at /api/storage");
 apiRouter.use("/storage", storageRoutes);
+
+// Add this with your other route imports
+import testRoutes from './routes/test.js';
+
+// Add with your other route registrations
+app.use('/api/test', testRoutes);
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);

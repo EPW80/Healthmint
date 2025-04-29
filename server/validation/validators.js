@@ -425,6 +425,42 @@ export const sanitizeUserData = (userData) => {
   };
 };
 
+/**
+ * Validates JWT token structure and format (not the signature)
+ * @param {string} token - JWT token to validate
+ * @returns {object} Validation result
+ */
+export const validateToken = (token) => {
+  try {
+    if (!token) {
+      return { isValid: false, code: 'MISSING_TOKEN', message: 'Token is required' };
+    }
+    
+    // Basic format validation
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return { isValid: false, code: 'INVALID_FORMAT', message: 'Token must have 3 parts' };
+    }
+    
+    try {
+      // Try to decode without verifying signature (just to validate structure)
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
+      
+      if (!payload) {
+        return { isValid: false, code: 'DECODE_FAILED', message: 'Token payload could not be decoded' };
+      }
+      
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: false, code: 'DECODE_ERROR', message: error.message };
+    }
+  } catch (error) {
+    return { isValid: false, code: 'VALIDATION_ERROR', message: error.message };
+  }
+};
+
 // Export grouped validators for convenience
 export default {
   validateAddress,
