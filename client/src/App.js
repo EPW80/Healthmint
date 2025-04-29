@@ -139,6 +139,16 @@ const App = () => {
                 Reset Mock Data
               </button>
             )}
+
+            {/* Test/Upload Page Link */}
+            <div className="pt-2 mt-2 border-t border-gray-200">
+              <a
+                href="/test/upload"
+                className="block w-full py-2 px-4 text-center rounded bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Test/Upload Page
+              </a>
+            </div>
           </div>
         ) : (
           <button
