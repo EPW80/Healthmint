@@ -231,59 +231,113 @@ class SecureStorageService {
         throw new Error("Web3Storage client not initialized");
       }
 
-      // Convert to File object if needed
-      const fileObject = new File([file.buffer], file.originalname, { type: file.mimetype });
-      
-      // Get the current space for debugging
-      const space = this.client.currentSpace();
-      const spaceDid = space?.did ? space.did() : String(space);
-      console.log(`Uploading to space: ${spaceDid}`);
-      
-      let cid;
+      console.log(`Preparing to upload file: ${file.originalname} to IPFS...`);
 
-      // Try different upload methods available in newer w3up-client versions
-      if (typeof this.client.uploadFile === 'function') {
-        console.log("Using client.uploadFile method");
-        cid = await this.client.uploadFile(fileObject);
-      } 
-      else if (typeof this.client.upload === 'function') {
-        console.log("Using client.upload method");
-        cid = await this.client.upload(fileObject);
+      // Convert to File object if needed (using modern approach)
+      const fileObject = new File([file.buffer], file.originalname, {
+        type: file.mimetype,
+      });
+
+      // Calculate checksum for integrity verification
+      const checksum = await this.calculateFileHash(file.buffer);
+      console.log(`File checksum (SHA-256): ${checksum}`);
+
+      // First try modern Web3Storage API methods
+      let cid;
+      console.log(`Using modern Web3Storage API...`);
+
+      try {
+        // Use the put method directly with array of File objects (modern approach)
+        console.log("Attempting upload with client.put()");
+        cid = await this.client.put([fileObject], {
+          name: file.originalname,
+          maxRetries: 3,
+          wrapWithDirectory: false,
+        });
+      } catch (putError) {
+        console.log(
+          "put() method failed, trying alternative methods:",
+          putError.message
+        );
+
+        // Try different upload methods available in various client versions
+        if (typeof this.client.uploadFile === "function") {
+          console.log("Using client.uploadFile method");
+          cid = await this.client.uploadFile(fileObject);
+        } else if (typeof this.client.upload === "function") {
+          console.log("Using client.upload method");
+          cid = await this.client.upload(fileObject);
+        } else if (
+          this.client.store &&
+          typeof this.client.store.add === "function"
+        ) {
+          console.log("Using client.store.add method");
+          const result = await this.client.store.add(fileObject);
+          cid = result.cid || result.toString();
+        } else if (typeof this.client.uploadDirectory === "function") {
+          console.log("Using client.uploadDirectory method with single file");
+          cid = await this.client.uploadDirectory([fileObject]);
+        } else {
+          throw new Error(
+            "No compatible upload method found in Web3Storage client"
+          );
+        }
       }
-      else if (this.client.store && typeof this.client.store.add === 'function') {
-        console.log("Using client.store.add method");
-        const result = await this.client.store.add(fileObject);
-        cid = result.cid || result.toString();
-      }
-      else if (typeof this.client.uploadDirectory === 'function') {
-        console.log("Using client.uploadDirectory method with single file");
-        // Create a directory with a single file
-        cid = await this.client.uploadDirectory([fileObject]);
-      }
-      else {
-        throw new Error("No compatible upload method found in Web3Storage client");
-      }
-      
-      console.log(`File uploaded successfully with CID: ${cid}`);
-      
+
+      console.log(`✅ File uploaded successfully with CID: ${cid}`);
+
+      // Generate proper gateway URLs (using modern gateway)
+      const w3sUrl = `https://w3s.link/ipfs/${cid}`;
+      const dwebUrl = `https://dweb.link/ipfs/${cid}`;
+
       return {
         success: true,
         cid: cid.toString(),
         fileName: file.originalname,
-        url: `https://dweb.link/ipfs/${cid}`
+        url: w3sUrl,
+        alternateUrl: dwebUrl,
+        checksum,
+        mimeType: file.mimetype,
+        size: file.size || file.buffer?.length,
       };
     } catch (error) {
       console.error("Failed to upload to IPFS:", error);
-      
-      // If the upload fails due to method not found, fall back to local storage
-      if (error.message.includes("not a function")) {
-        console.log("Web3Storage method incompatibility detected, falling back to local storage");
+
+      // If the upload fails due to method not found or API sunset, fall back to local storage
+      if (
+        error.message.includes("not a function") ||
+        error.message.includes("API feature has been sunset")
+      ) {
+        console.log(
+          "Web3Storage API has changed, falling back to local storage"
+        );
         if (this.storageService) {
           return await this.storageService.storeFile(file);
         }
       }
-      
+
       throw error;
+    }
+  }
+
+  // Helper method to calculate file hash
+  async calculateFileHash(buffer) {
+    try {
+      // Use crypto.subtle in browser environments or crypto in Node
+      if (typeof crypto !== "undefined" && crypto.subtle) {
+        const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+      } else {
+        // Node.js environment
+        const crypto = require("crypto");
+        const hash = crypto.createHash("sha256");
+        hash.update(buffer);
+        return hash.digest("hex");
+      }
+    } catch (error) {
+      console.warn("Failed to calculate file hash:", error.message);
+      return "hash-unavailable";
     }
   }
 
@@ -421,7 +475,7 @@ class SecureStorageService {
         success: true,
         cid: `mock-${Date.now().toString(16).slice(-10)}`,
         fileName: file.originalname,
-        url: `https://dweb.link/ipfs/mock-${Date.now().toString(16).slice(-10)}`,
+        url: `https://w3s.link/ipfs/mock-${Date.now().toString(16).slice(-10)}`,
       };
     }
   }
@@ -645,13 +699,26 @@ class SecureStorageService {
       // Use Web3Storage to retrieve the content
       progressCallback?.(40);
 
-      // Get the data from Web3Storage - use the HTTP gateway pattern
-      const gateway = process.env.IPFS_GATEWAY || "https://dweb.link/ipfs/";
+      // Get the data from Web3Storage - use the modern gateway URL pattern
+      // Try w3s.link first (modern gateway), then fallback to dweb.link
+      const gateway = process.env.IPFS_GATEWAY || "https://w3s.link/ipfs/";
       const url = `${gateway}${hash}`;
 
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch from IPFS: ${response.statusText}`);
+      console.log(`Fetching from IPFS gateway: ${url}`);
+
+      let response;
+      try {
+        response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed response: ${response.status}`);
+        }
+      } catch (primaryError) {
+        console.log(`Primary gateway failed, trying fallback gateway`);
+        const fallbackUrl = `https://dweb.link/ipfs/${hash}`;
+        response = await fetch(fallbackUrl);
+        if (!response.ok) {
+          throw new Error(`Fallback gateway failed: ${response.status}`);
+        }
       }
 
       progressCallback?.(50);
@@ -690,55 +757,70 @@ class SecureStorageService {
       console.log("Testing Web3Storage connection...");
 
       try {
-        // In newer w3up-client versions, the API is different
-        // Instead of client.put(), use the correct methods
-        
-        // First try to get the current space
-        const space = await this.client.currentSpace();
-        if (!space) {
-          throw new Error("No space selected");
+        // Create a small test file for connection validation
+        const testContent = JSON.stringify({
+          test: "connection_validation",
+          timestamp: new Date().toISOString(),
+        });
+
+        const testBuffer =
+          typeof TextEncoder !== "undefined"
+            ? new TextEncoder().encode(testContent)
+            : Buffer.from(testContent);
+
+        const testBlob = new Blob([testBuffer], { type: "application/json" });
+        const testFile = new File([testBlob], "connection-test.json", {
+          type: "application/json",
+        });
+
+        console.log("Uploading test file to validate connection");
+
+        // Try multiple ways to upload based on available methods in the client
+        try {
+          // Modern put method with appropriate options
+          console.log("Attempting with client.put()");
+          await this.client.put([testFile], {
+            maxRetries: 2,
+            wrapWithDirectory: false,
+          });
+        } catch (putError) {
+          console.log(
+            "put() failed, trying alternative methods:",
+            putError.message
+          );
+
+          // Try different API methods in sequence
+          if (typeof this.client.uploadFile === "function") {
+            await this.client.uploadFile(testFile);
+          } else if (typeof this.client.upload === "function") {
+            await this.client.upload(testFile);
+          } else if (
+            this.client.store &&
+            typeof this.client.store.add === "function"
+          ) {
+            await this.client.store.add(testFile);
+          } else {
+            // Just check if connected to space
+            const space = this.client.currentSpace?.();
+            if (!space) {
+              throw new Error(
+                "No space connected and no upload methods available"
+              );
+            }
+          }
         }
-        
-        // Create a tiny test file to verify upload functionality
-        const testContent = new TextEncoder().encode(JSON.stringify({
-          test: "connection",
-          timestamp: new Date().toISOString()
-        }));
-        
-        // Create a test blob with the right structure
-        const testBlob = new Blob([testContent], { type: 'application/json' });
-        
-        // Use the correct upload method for newer w3up-client versions
-        // The method might be called upload, uploadFile, or store.add
-        if (typeof this.client.uploadFile === 'function') {
-          // Try uploadFile method
-          await this.client.uploadFile(testBlob);
-        } else if (typeof this.client.upload === 'function') {
-          // Try upload method
-          await this.client.upload(testBlob);
-        } else if (this.client.store && typeof this.client.store.add === 'function') {
-          // Try store.add method
-          await this.client.store.add(testBlob);
-        } else if (typeof this.client.capability === 'function') {
-          // Just check if we have upload capability
-          const caps = await this.client.capability();
-          console.log("Client has capabilities:", caps);
-        } else {
-          // Just check if we're connected to a space
-          console.log("Connected to space:", space.did());
-        }
-        
+
         console.log("✅ Web3Storage connection validated successfully");
         return true;
       } catch (error) {
         console.error("❌ IPFS validation failed:", error);
-        
+
         // Try to reinitialize if connection failed
         console.log("Attempting to reinitialize connection...");
-        
+
         // Wait 2 seconds before attempting reinitialization
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         await this.initialize();
         return this.client && this.initialized;
       }

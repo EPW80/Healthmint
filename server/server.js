@@ -1,18 +1,40 @@
-// server.js
+import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
+import fs from "fs"; // Add this for basic fs operations
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import fs from "fs";
-import multer from "multer";
 
-// Load environment variables first thing
+// Create equivalents of __dirname and __filename for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+// Try multiple locations for the .env file
+const envPaths = [
+  "./.env", // Server directory
+  "../.env", // Project root
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(process.cwd(), "../.env"),
+];
+
+let envLoaded = false;
+
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    console.log(`Found .env file at: ${envPath}`);
+    dotenv.config({ path: envPath });
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  console.warn(
+    "⚠️ No .env file found! Using environment variables if available."
+  );
+}
 
 // Import standardized error handling
 import { errorHandler } from "./errors/index.js";
@@ -256,181 +278,12 @@ apiRouter.use("/blockchain", blockchainRoutes);
 console.log("Mounting audit routes at /api/audit");
 apiRouter.use("/audit", auditRoutes);
 
-// Storage test routes
-console.log("Mounting storage test routes at /api/storage");
-const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+// Import storage routes
+import storageRoutes from "./routes/storage.js";
 
-apiRouter.post(
-  "/storage/test-upload",
-  upload.single("file"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res
-          .status(400)
-          .json({ success: false, message: "No file provided" });
-      }
-
-      console.log(
-        `Test upload: ${req.file.originalname}, size: ${req.file.size} bytes`
-      );
-
-      // Upload to IPFS
-      const uploadResult = await secureStorageService.uploadToIPFS(
-        req.file.buffer,
-        {
-          fileName: req.file.originalname,
-          mimeType: req.file.mimetype,
-        }
-      );
-
-      return res.json({
-        success: true,
-        cid: uploadResult.cid,
-        fileName: req.file.originalname,
-        url: `https://dweb.link/ipfs/${uploadResult.cid}`,
-      });
-    } catch (error) {
-      console.error("Upload error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Upload failed",
-      });
-    }
-  }
-);
-
-apiRouter.post(
-  "/storage/test-ipfs-flow",
-  upload.single("file"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res
-          .status(400)
-          .json({ success: false, message: "No file provided" });
-      }
-
-      console.log(
-        `Testing IPFS flow: ${req.file.originalname}, size: ${req.file.size} bytes`
-      );
-
-      // 1. Upload to IPFS
-      const uploadResult = await secureStorageService.uploadToIPFS(
-        req.file.buffer,
-        {
-          fileName: req.file.originalname,
-          mimeType: req.file.mimetype,
-        }
-      );
-
-      console.log("Upload successful, CID:", uploadResult.cid);
-
-      try {
-        // 2. Try to retrieve it
-        console.log("Attempting to retrieve content from IPFS...");
-        const retrievedContent = await secureStorageService.fetchFromIPFS(
-          uploadResult.cid
-        );
-
-        return res.json({
-          success: true,
-          uploaded: {
-            cid: uploadResult.cid,
-            fileName: req.file.originalname,
-            url: `https://dweb.link/ipfs/${uploadResult.cid}`,
-          },
-          retrieved: {
-            success: true,
-            contentPreview:
-              typeof retrievedContent === "object"
-                ? JSON.stringify(retrievedContent).substring(0, 100) + "..."
-                : String(retrievedContent).substring(0, 100) + "...",
-          },
-        });
-      } catch (retrievalError) {
-        console.error("Retrieval error:", retrievalError);
-        return res.json({
-          success: true,
-          uploaded: {
-            cid: uploadResult.cid,
-            fileName: req.file.originalname,
-            url: `https://dweb.link/ipfs/${uploadResult.cid}`,
-          },
-          retrieved: {
-            success: false,
-            error: retrievalError.message,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("IPFS flow test error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "IPFS flow test failed",
-      });
-    }
-  }
-);
-
-// Production file upload route
-apiRouter.post("/storage/upload", upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "No file provided",
-      });
-    }
-
-    // Parse metadata if provided
-    let metadata = {};
-    if (req.body.metadata) {
-      try {
-        metadata = JSON.parse(req.body.metadata);
-      } catch (e) {
-        console.warn("Invalid metadata JSON:", e);
-      }
-    }
-
-    // Add user information if authenticated
-    if (req.user) {
-      metadata.userId = req.user.id;
-      metadata.userAddress = req.user.address;
-    }
-
-    // Add IP address for audit
-    metadata.ipAddress = req.ip;
-
-    // Upload file to IPFS
-    const uploadResult = await secureStorageService.uploadToIPFS({
-      buffer: req.file.buffer,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-    });
-
-    // Return success response
-    return res.json({
-      success: true,
-      reference: uploadResult.cid,
-      cid: uploadResult.cid,
-      url: uploadResult.url || `https://dweb.link/ipfs/${uploadResult.cid}`,
-      fileName: req.file.originalname,
-      metadata: {
-        ...metadata,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-      },
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Upload failed",
-    });
-  }
-});
+// Replace existing storage test routes with this comprehensive version
+console.log("Mounting storage routes at /api/storage");
+apiRouter.use("/storage", storageRoutes);
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);

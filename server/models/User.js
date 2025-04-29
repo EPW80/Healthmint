@@ -2,6 +2,8 @@
 import mongoose from "mongoose";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 
+// User Schema
+// This schema is designed to comply with HIPAA regulations 
 const userSchema = new mongoose.Schema(
   {
     // Non-PHI Fields (not encrypted)
