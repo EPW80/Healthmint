@@ -64,3 +64,5 @@ artifacts
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.ucan
+*.txt

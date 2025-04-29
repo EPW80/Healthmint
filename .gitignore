@@ -69,3 +69,10 @@ Thumbs.db
 # Local env files
 w3cli-install.log
 healthmint-delegation.car
+
+// Text files
+*.txt
+*.log
+*.csv
+*.ucan
+*.bak
