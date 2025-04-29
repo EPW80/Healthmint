@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { createStore } from "redux";
-import LogoutButton from "./LogoutButton";
+import LogoutButton from "../components/LogoutButton";
 import { performLogout } from "../utils/authLoopPrevention";
 
 jest.mock("../utils/authLoopPrevention", () => ({
