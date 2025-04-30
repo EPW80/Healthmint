@@ -101,7 +101,7 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
     // Common items for all roles
     const baseItems = [
       { to: "/", label: "Home", icon: Home },
-      { to: "/storage", label: "Health Storage", icon: HardDrive }, // Add this line
+      // Remove Health Storage from here
       { to: "/transactions", label: "Transactions", icon: Clock },
       { to: "/profile", label: "Profile Settings", icon: Settings },
     ];
@@ -109,11 +109,20 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
     // Role-specific items
     if (userRole === "patient") {
       // Add patient-specific items - insert after Home
-      baseItems.splice(1, 0, {
-        to: "/contribute",
-        label: "Contribute Data",
-        icon: HeartPulse,
-      });
+      baseItems.splice(
+        1, 
+        0,
+        {
+          to: "/storage", // Add Health Storage only for patients
+          label: "Health Storage", 
+          icon: HardDrive,
+        },
+        {
+          to: "/contribute",
+          label: "Contribute Data",
+          icon: HeartPulse,
+        }
+      );
     } else if (userRole === "researcher") {
       baseItems.splice(
         1,
@@ -129,6 +138,7 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
           icon: ShoppingCart,
         }
       );
+      // No Health Storage option for researchers
     }
 
     return baseItems;
