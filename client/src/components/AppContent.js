@@ -46,6 +46,7 @@ import DataVisualization from "./analytics/DataVisualization.js";
 import StatisticalAnalysis from "./analytics/StatisticalAnalysis.js";
 import PopulationStudies from "./analytics/PopulationStudies.js";
 import FileUploader from "../components/FileUploader";
+import StoragePage from '../pages/StoragePage';
 
 // Logout Confirmation Dialog
 const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
@@ -618,6 +619,20 @@ const AppContent = () => {
             }
           />
           <Route path="/test/upload" element={<FileUploader />} />
+          <Route
+            path="/storage"
+            element={
+              !isConnected ? (
+                <Navigate to="/login" replace />
+              ) : isNewUser ? (
+                <Navigate to="/register" replace />
+              ) : !isRoleSelected ? (
+                <Navigate to="/select-role" replace />
+              ) : (
+                <StoragePage />
+              )
+            }
+          />
           <Route
             path="/"
             element={
