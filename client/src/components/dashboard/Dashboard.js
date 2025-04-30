@@ -71,14 +71,15 @@ const Dashboard = ({ onNavigate }) => {
   const {
     userRecords = [],
     healthData = [],
-    getRecordDetails = () => Promise.resolve(null),
-    downloadRecord = () => Promise.resolve(null),
+    getRecordDetails,
+    downloadRecord,
     loading: healthDataLoading = false,
+    refreshData,
   } = useHealthData({
     userRole,
     loadOnMount: true,
     initialData: [],
-  }) || {};
+  });
 
   // Set up async operation handling
   const { loading: asyncLoading = false, execute: executeAsync } =
@@ -247,6 +248,11 @@ const Dashboard = ({ onNavigate }) => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    // Refresh data when component mounts or when returning to dashboard
+    refreshData();
+  }, [refreshData]);
 
   // Navigation handler
   const handleNavigateTo = useCallback(
@@ -554,7 +560,7 @@ const Dashboard = ({ onNavigate }) => {
         {/* Quick Actions - Patient */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <button
-            onClick={() => handleNavigateTo("/upload")}
+            onClick={() => handleNavigateTo("/storage")}
             className="p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 font-medium"
           >
             <Upload className="w-5 h-5" />
@@ -663,7 +669,7 @@ const Dashboard = ({ onNavigate }) => {
                 You don't have any health records yet
               </p>
               <button
-                onClick={() => handleNavigateTo("/upload")}
+                onClick={() => handleNavigateTo("/storage")}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
                 Upload Your First Record

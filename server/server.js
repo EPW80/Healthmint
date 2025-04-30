@@ -6,7 +6,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 // Create equivalents of __dirname and __filename for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -94,29 +94,30 @@ console.log("✅ Services initialized successfully");
 
 // MongoDB Connection
 console.log("Connecting to MongoDB...");
-mongoose.connect(process.env.MONGODB_URI)
+mongoose
+  .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB successfully");
     console.log(`Database: ${mongoose.connection.name}`);
     console.log(`Host: ${mongoose.connection.host}`);
   })
-  .catch(err => {
+  .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
     // Consider whether you want to exit or continue with limited functionality
     // process.exit(1);  // Uncomment this if you want to fail hard when MongoDB is unavailable
   });
 
 // Add connection event listeners
-mongoose.connection.on('error', (err) => {
-  console.error('MongoDB connection error:', err.message);
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err.message);
 });
 
-mongoose.connection.on('disconnected', () => {
-  console.warn('MongoDB disconnected');
+mongoose.connection.on("disconnected", () => {
+  console.warn("MongoDB disconnected");
 });
 
-mongoose.connection.on('reconnected', () => {
-  console.log('MongoDB reconnected');
+mongoose.connection.on("reconnected", () => {
+  console.log("MongoDB reconnected");
 });
 
 // Initialize Express app
@@ -314,11 +315,17 @@ console.log("Mounting storage routes at /api/storage");
 apiRouter.use("/storage", storageRoutes);
 
 // Add this with your other route imports
-import testRoutes from './routes/test.js';
+import testRoutes from "./routes/test.js";
 
 // Add this with your other route registrations (before the catch-all routes)
-app.use('/api/test', testRoutes);
-console.log('Mounting test routes at /api/test');
+app.use("/api/test", testRoutes);
+console.log("Mounting test routes at /api/test");
+
+// Import the researcher routes
+import researcherRoutes from "./routes/researcher.js";
+
+// Register the routes
+app.use("/api/researcher", researcherRoutes);
 
 // Mount the API Router to the app
 app.use("/api", apiRouter);

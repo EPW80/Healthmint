@@ -2,7 +2,6 @@ import express from 'express';
 import multer from 'multer';
 import { verifyToken } from '../middleware/authMiddleware.js';
 import storageIntegrationService from '../services/storageIntegrationService.js';
-import hipaaCompliance from '../services/hipaaComplianceService.js';
 import testEndpointMiddleware from '../middleware/testEndpointMiddleware.js';
 import storageTestController from '../controllers/storageTestController.js';
 
@@ -12,7 +11,6 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
-// ADD TEST ENDPOINTS HERE - BEFORE authentication is applied to all routes
 router.post('/test-ipfs-flow', 
   testEndpointMiddleware,
   storageTestController.testIpfsFlow

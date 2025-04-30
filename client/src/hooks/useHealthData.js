@@ -1,195 +1,211 @@
 // src/hooks/useHealthData.js
-// Update this file to use mock data when API fails
+
 import { useState, useEffect, useCallback } from "react";
-import { useDispatch } from "react-redux";
-import apiService from "../services/apiService.js";
-import { addNotification } from "../redux/slices/notificationSlice.js";
+import axios from "axios";
 import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
 
 const useHealthData = (options = {}) => {
   const {
     initialFilters = {},
     loadOnMount = true,
-    useMockData = false, // Force using mock data
+    useMockData = false,
   } = options;
 
-  const dispatch = useDispatch();
   const [healthData, setHealthData] = useState([]);
+  const [userRecords, setUserRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState(initialFilters);
   const [totalCount, setTotalCount] = useState(0);
   const [apiFailure, setApiFailure] = useState(false);
 
-  // Function to load health records from API or mock data
-  const loadHealthData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
+  // Function to load user's storage files
+  const loadUserStorageFiles = useCallback(async () => {
     try {
-      const response = await apiService.get("/api/data/records", filters);
+      setLoading(true);
+      setError(null);
 
-      if (!response.success || !response.data || response.data.length === 0) {
-        // API returned no data or failed
-        setApiFailure(true);
-        throw new Error("No data returned from API");
+      const token = localStorage.getItem("token");
+
+      if (!useMockData && token) {
+        try {
+          // Try loading real data from storage API
+          const response = await axios.get("/api/storage/files", {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 8000, // 8 second timeout
+          });
+
+          console.log("Storage API response:", response.data);
+
+          // Check if we have files in the response
+          if (
+            response.data &&
+            (response.data.files ||
+              (response.data.results && response.data.results.length > 0))
+          ) {
+            // Handle different response formats
+            const files = response.data.files || response.data.results || [];
+            console.log("Files loaded from API:", files.length);
+
+            if (files.length > 0) {
+              // Map the storage files to match the health records format
+              const formattedRecords = files.map((file) => ({
+                id: file._id || file.id,
+                title: file.fileName || file.name || "Untitled Record",
+                description:
+                  file.description ||
+                  `${file.category || "Health"} data record`,
+                category: file.category || "Health",
+                verified: file.registeredOnChain || false,
+                anonymized: file.anonymized || !file.containsPHI,
+                format:
+                  file.fileType ||
+                  file.format ||
+                  (file.mimeType
+                    ? file.mimeType.split("/")[1].toUpperCase()
+                    : "PDF"),
+                recordCount: 1,
+                uploadDate:
+                  file.createdAt || file.uploadDate || new Date().toISOString(),
+                fileSize: file.fileSize || 0,
+                tags: file.tags || [],
+                shared: file.shared || false,
+                owner: file.owner,
+              }));
+
+              setUserRecords(formattedRecords);
+              setHealthData(formattedRecords);
+              setTotalCount(formattedRecords.length);
+              setLoading(false);
+              return; // Exit early with real data
+            }
+          }
+        } catch (apiError) {
+          console.warn(
+            "API request failed, using mock data:",
+            apiError.message
+          );
+          setApiFailure(true);
+          // Continue to mock data
+        }
       }
 
-      setHealthData(response.data);
-      setTotalCount(response.total || response.data.length);
-      setApiFailure(false);
+      console.log("Using mock health records");
+      const mockRecords = generateMockHealthRecords(10);
+      setUserRecords(mockRecords);
+      setHealthData(mockRecords);
+      setTotalCount(mockRecords.length);
     } catch (err) {
-      console.error("Failed to load health data from API:", err);
-      setApiFailure(true);
-      setError("Failed to load health records");
+      console.error("Error loading health data:", err);
+      setError(err.message || "Could not load health records");
 
-      const mockData = generateMockHealthRecords();
-      setHealthData(mockData);
-      setTotalCount(mockData.length);
-
-      // Silently remove those error notifications after using mock data
-      dispatch(
-        addNotification({
-          type: "info",
-          message: "Using mock health data for demonstration",
-          duration: 3000,
-        })
-      );
+      // Fallback to mock data even on error
+      const fallbackMockRecords = generateMockHealthRecords(5);
+      setUserRecords(fallbackMockRecords);
+      setHealthData(fallbackMockRecords);
+      setTotalCount(fallbackMockRecords.length);
     } finally {
       setLoading(false);
     }
-  }, [filters, dispatch]);
+  }, [useMockData]);
 
-  // Function to force using mock data
-  const forceMockData = useCallback(() => {
-    const mockData = generateMockHealthRecords();
-    setHealthData(mockData);
-    setTotalCount(mockData.length);
-    setApiFailure(true);
-    setError(null);
-
-    dispatch(
-      addNotification({
-        type: "info",
-        message: "Using mock health data for demonstration",
-        duration: 3000,
-      })
-    );
-  }, [dispatch]);
-
-  // Load data initially if requested
   useEffect(() => {
-    if (loadOnMount || useMockData) {
-      if (useMockData) {
-        forceMockData();
-      } else {
-        loadHealthData();
-      }
+    if (loadOnMount) {
+      loadUserStorageFiles();
     }
-  }, [loadOnMount, useMockData, loadHealthData, forceMockData]);
+  }, [loadOnMount, loadUserStorageFiles]);
 
-  // Update a specific filter
-  const updateFilter = useCallback((key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  // Add helper functions needed for Dashboard and Storage pages
+  const getRecordDetails = useCallback(
+    async (recordId) => {
+      if (!recordId) return null;
 
-  // Reset filters to initial state
-  const resetFilters = useCallback(() => {
-    setFilters(initialFilters);
-  }, [initialFilters]);
+      // First check if we have it locally
+      const localRecord = userRecords.find((r) => r.id === recordId);
+      if (localRecord) return localRecord;
 
-  // Purchase data (mock implementation)
-  const purchaseData = useCallback(
-    async (id) => {
+      // If not found locally, try API
       try {
-        setLoading(true);
-
-        if (apiFailure) {
-          // Mock purchase
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Update the mock data to show as purchased
-          setHealthData((prevData) =>
-            prevData.map((item) =>
-              item.id === id ? { ...item, purchased: true } : item
-            )
-          );
-
-          return { success: true };
+        const token = localStorage.getItem("token");
+        if (token) {
+          const response = await axios.get(`/api/storage/files/${recordId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.data && response.data.file) {
+            // Format the response
+            return {
+              id: response.data.file._id || response.data.file.id,
+              title: response.data.file.fileName || response.data.file.name,
+              description: response.data.file.description,
+              category: response.data.file.category || "Health",
+              // ...other fields
+            };
+          }
         }
-
-        // Real purchase API call (if API is working)
-        const response = await apiService.post("/api/data/purchase", {
-          dataId: id,
-        });
-        return response;
-      } catch (err) {
-        console.error("Purchase error:", err);
-        throw err;
-      } finally {
-        setLoading(false);
+        return null;
+      } catch (error) {
+        console.error("Error fetching record details:", error);
+        return null;
       }
     },
-    [apiFailure]
+    [userRecords]
   );
 
-  // Get health data details (mock implementation)
-  const getHealthDataDetails = useCallback(
-    async (id) => {
+  const downloadRecord = useCallback(
+    async (recordId) => {
       try {
-        setLoading(true);
+        const token = localStorage.getItem("token");
+        if (!token) return { success: false, error: "Not authenticated" };
 
-        if (apiFailure) {
-          // Find the data in our mock data
-          const record = healthData.find((item) => item.id === id);
-
-          if (!record) {
-            throw new Error("Record not found");
+        // Make API call to download endpoint
+        const response = await axios.get(
+          `/api/storage/files/${recordId}?content=true`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            responseType: "blob",
           }
+        );
 
-          // Create a detailed record with mock data
-          const enhancedRecord = {
-            ...record,
-            detailedDescription: `Detailed information about ${record.title}. This record contains comprehensive health data related to ${record.category.toLowerCase()} collected on ${new Date(record.uploadDate).toLocaleDateString()}.`,
-            provider: "Healthmint Medical Center",
-            downloadAvailable: true,
-            lastUpdated: new Date().toISOString(),
-            viewCount: Math.floor(Math.random() * 100),
-            fileSize: `${(record.recordCount / 1000).toFixed(1)} MB`,
-          };
+        // Find record to get file name
+        const record = userRecords.find((r) => r.id === recordId);
+        const fileName = record?.title || `health-record-${recordId}.pdf`;
 
-          // Simulate API delay
-          await new Promise((resolve) => setTimeout(resolve, 800));
+        // Create download link
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
 
-          return enhancedRecord;
-        }
-
-        // Real API call (if API is working)
-        const response = await apiService.get(`/api/data/record/${id}`);
-        return response.data;
-      } catch (err) {
-        console.error("Failed to get record details:", err);
-        throw err;
-      } finally {
-        setLoading(false);
+        return { success: true };
+      } catch (error) {
+        console.error("Error downloading record:", error);
+        return { success: false, error: error.message };
       }
     },
-    [apiFailure, healthData]
+    [userRecords]
   );
 
   return {
     healthData,
+    userRecords,
     loading,
     error,
     filters,
     totalCount,
     apiFailure,
-    loadHealthData,
-    updateFilter,
-    resetFilters,
-    purchaseData,
-    getHealthDataDetails,
-    forceMockData,
+    getRecordDetails,
+    downloadRecord,
+    loadUserStorageFiles,
+    updateFilter: (key, value) => {
+      setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    resetFilters: () => {
+      setFilters(initialFilters);
+    },
+    refreshData: loadUserStorageFiles,
   };
 };
 
