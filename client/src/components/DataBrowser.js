@@ -15,26 +15,17 @@ import FilteredSubsetCreator from "./FilteredSubsetCreator.js";
 // Categories from backend
 const CATEGORIES = [
   "All",
-  "General Health",
   "Cardiology",
-  "Physical Exam",
-  "Laboratory",
-  "Immunization",
-  "Genetics",
-  "Psychology",
-  "Dental",
-  "Ophthalmology",
-  "Allergy",
   "Neurology",
-  "Physical Therapy",
-  "Nutrition",
-  "Dermatology",
-  "Orthopedics",
-  "Pulmonology",
-  "Endocrinology",
-  "Obstetrics",
   "Pediatrics",
-  "Sports Medicine",
+  "Oncology",
+  "Radiology",
+  "Endocrinology",
+  "Psychology",
+  "General Health",
+  "Laboratory",
+  "Genetics",
+  "Immunization"
 ];
 
 // Study types for research-specific filtering
