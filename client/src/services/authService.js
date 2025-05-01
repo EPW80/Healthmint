@@ -12,6 +12,17 @@ class AuthService {
     this.walletAddressKey = "healthmint_wallet_address";
     this.isNewUserKey = "healthmint_is_new_user";
 
+    this.apiBaseUrl = process.env.REACT_APP_API_URL || '/api';
+    this.mockMode = process.env.NODE_ENV !== 'production' || !process.env.REACT_APP_API_URL;
+
+    // Add mock users for testing
+    if (this.mockMode) {
+      this.mockUsers = {
+        '0x123...': { address: '0x123...', role: 'patient', name: 'Test Patient' },
+        // Add more mock users as needed
+      };
+    }
+
     // Load auth state from localStorage on init
     this.loadAuthState();
   }
@@ -32,7 +43,13 @@ class AuthService {
     this._isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
   }
 
-  async verifyAuth() {
+  async verifyAuth(token) {
+    if (this.mockMode) {
+      console.log('Using mock auth service in development mode');
+      // Return mock authentication data
+      return { authenticated: true, user: { id: '123', role: 'patient' } };
+    }
+
     try {
       // Check if we have a wallet address in localStorage
       const walletAddress = localStorage.getItem(this.walletAddressKey);
