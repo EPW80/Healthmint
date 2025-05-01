@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import { ethers } from "ethers";
-import HealthDataABI from "../contracts/HealthDataABI.json";
+import HealthDataABI from "./HealthDataABI.json";
 
 const CONTRACT_ADDRESSES = {
   sepolia: "0x82B037679b8b79E2Dbde17895a15419876921Cff",
