@@ -1,0 +1,53 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "patient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "ipfsHash",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "name": "metadata",
+        "type": "string"
+      }
+    ],
+    "name": "DataUploaded",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "name": "patient",
+        "type": "address"
+      },
+      {
+        "name": "dataHash",
+        "type": "string"
+      },
+      {
+        "name": "metadata",
+        "type": "string"
+      },
+      {
+        "name": "permissions",
+        "type": "address[]"
+      }
+    ],
+    "name": "uploadHealthData",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
