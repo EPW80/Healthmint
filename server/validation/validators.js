@@ -6,12 +6,6 @@ import {
   USER_ROLES,
 } from "../constants/index.js";
 
-/**
- * Validates Ethereum address
- * @param {string} address - Ethereum address to validate
- * @param {Object} options - Additional validation options
- * @returns {Object} Validation result
- */
 export const validateAddress = (address, options = {}) => {
   try {
     // Check if address is provided
@@ -37,8 +31,6 @@ export const validateAddress = (address, options = {}) => {
 
     // Check if this is a contract address if requested
     if (options.checkContract && options.provider) {
-      // This should be handled asynchronously by the caller
-      // We're just indicating that it needs to be checked
       return {
         isValid: true,
         normalizedAddress,
@@ -61,11 +53,7 @@ export const validateAddress = (address, options = {}) => {
   }
 };
 
-/**
- * Validates user profile data
- * @param {Object} data - Profile data to validate
- * @returns {Object} Validation result
- */
+// Validates user profile data
 export const validateProfile = (data) => {
   const errors = [];
 
@@ -147,11 +135,7 @@ export const validateProfile = (data) => {
   };
 };
 
-/**
- * Validates health data
- * @param {Object} data - Health data to validate
- * @returns {Object} Validation result
- */
+// Validates health data
 export const validateHealthData = (data) => {
   const errors = [];
   const warnings = [];
@@ -230,11 +214,7 @@ export const validateHealthData = (data) => {
   };
 };
 
-/**
- * Validates transaction data
- * @param {Object} data - Transaction data to validate
- * @returns {Object} Validation result
- */
+// Validates transaction data
 export const validateTransaction = (data) => {
   const errors = [];
 
@@ -294,11 +274,7 @@ export const validateTransaction = (data) => {
   };
 };
 
-/**
- * Validates access grant data
- * @param {Object} data - Access grant data to validate
- * @returns {Object} Validation result
- */
+// Validates access grant data
 export const validateAccessGrant = (data) => {
   const errors = [];
 
@@ -368,11 +344,7 @@ export const validateAccessGrant = (data) => {
   };
 };
 
-/**
- * Validates IPFS hash
- * @param {string} hash - IPFS hash to validate
- * @returns {Object} Validation result
- */
+// Validates IPFS hash format
 export const validateIPFSHash = (hash) => {
   if (!hash) {
     return {
@@ -399,11 +371,7 @@ export const validateIPFSHash = (hash) => {
   };
 };
 
-/**
- * Sanitizes user data by trimming strings and normalizing values
- * @param {Object} userData - User data to sanitize
- * @returns {Object} Sanitized user data
- */
+// Sanitizes user data
 export const sanitizeUserData = (userData) => {
   if (!userData || typeof userData !== "object") {
     return {};
@@ -425,39 +393,47 @@ export const sanitizeUserData = (userData) => {
   };
 };
 
-/**
- * Validates JWT token structure and format (not the signature)
- * @param {string} token - JWT token to validate
- * @returns {object} Validation result
- */
+// Validates JWT token format
 export const validateToken = (token) => {
   try {
     if (!token) {
-      return { isValid: false, code: 'MISSING_TOKEN', message: 'Token is required' };
+      return {
+        isValid: false,
+        code: "MISSING_TOKEN",
+        message: "Token is required",
+      };
     }
-    
+
     // Basic format validation
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 3) {
-      return { isValid: false, code: 'INVALID_FORMAT', message: 'Token must have 3 parts' };
+      return {
+        isValid: false,
+        code: "INVALID_FORMAT",
+        message: "Token must have 3 parts",
+      };
     }
-    
+
     try {
       // Try to decode without verifying signature (just to validate structure)
       const base64Url = parts[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-      
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(Buffer.from(base64, "base64").toString());
+
       if (!payload) {
-        return { isValid: false, code: 'DECODE_FAILED', message: 'Token payload could not be decoded' };
+        return {
+          isValid: false,
+          code: "DECODE_FAILED",
+          message: "Token payload could not be decoded",
+        };
       }
-      
+
       return { isValid: true };
     } catch (error) {
-      return { isValid: false, code: 'DECODE_ERROR', message: error.message };
+      return { isValid: false, code: "DECODE_ERROR", message: error.message };
     }
   } catch (error) {
-    return { isValid: false, code: 'VALIDATION_ERROR', message: error.message };
+    return { isValid: false, code: "VALIDATION_ERROR", message: error.message };
   }
 };
 

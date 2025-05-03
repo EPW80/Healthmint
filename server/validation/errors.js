@@ -1,9 +1,4 @@
 // validation/errors.js
-
-/**
- * Unified validation error class
- * Standardizes error handling across validation functions
- */
 export class ValidationError extends Error {
   constructor(message, code = "VALIDATION_ERROR", field = null, details = {}) {
     super(message);
@@ -14,10 +9,7 @@ export class ValidationError extends Error {
     this.timestamp = new Date().toISOString();
   }
 
-  /**
-   * Format the error for API responses
-   * @returns {Object} Formatted error object
-   */
+  // Custom method to format the error message
   toJSON() {
     return {
       success: false,
@@ -33,5 +25,4 @@ export class ValidationError extends Error {
   }
 }
 
-// Export named class
 export default ValidationError;

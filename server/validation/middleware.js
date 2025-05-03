@@ -11,11 +11,7 @@ import {
 } from "./validators.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 
-/**
- * Middleware to validate Ethereum address
- * @param {Object} options - Options for address validation
- * @returns {Function} Express middleware
- */
+// Middleware for validating user profile data
 export const addressValidator = (options = {}) => {
   const {
     source = "body", // 'body', 'query', 'params', or function
@@ -95,10 +91,7 @@ export const addressValidator = (options = {}) => {
   };
 };
 
-/**
- * Middleware to validate profile data
- * @returns {Function} Express middleware
- */
+// Middleware for validating user profile data
 export const profileValidator = (req, res, next) => {
   try {
     const profileData = req.body;
@@ -137,10 +130,7 @@ export const profileValidator = (req, res, next) => {
   }
 };
 
-/**
- * Middleware to validate health data
- * @returns {Function} Express middleware
- */
+// Middleware for validating health data
 export const healthDataValidator = (req, res, next) => {
   try {
     const healthData = req.body;
@@ -181,10 +171,7 @@ export const healthDataValidator = (req, res, next) => {
   }
 };
 
-/**
- * Middleware to validate transaction data
- * @returns {Function} Express middleware
- */
+// Middleware for validating transaction data
 export const transactionValidator = (req, res, next) => {
   try {
     const transactionData = req.body;
@@ -220,10 +207,7 @@ export const transactionValidator = (req, res, next) => {
   }
 };
 
-/**
- * Middleware to validate access grant data
- * @returns {Function} Express middleware
- */
+// Middleware for validating access grant data
 export const accessGrantValidator = (req, res, next) => {
   try {
     const accessData = req.body;
@@ -259,11 +243,7 @@ export const accessGrantValidator = (req, res, next) => {
   }
 };
 
-/**
- * Middleware to validate IPFS hash
- * @param {Object} options - Options for IPFS hash validation
- * @returns {Function} Express middleware
- */
+// Middleware for validating IPFS hash
 export const ipfsHashValidator = (options = {}) => {
   const { source = "body", paramName = "ipfsHash", required = true } = options;
 
@@ -317,10 +297,7 @@ export const ipfsHashValidator = (options = {}) => {
   };
 };
 
-/**
- * Comprehensive registration validator with HIPAA compliance checks
- * @returns {Function} Express middleware
- */
+// Middleware for validating registration data
 export const registrationValidator = async (req, res, next) => {
   try {
     const {
@@ -527,7 +504,6 @@ export const registrationValidator = async (req, res, next) => {
   }
 };
 
-// Export all middleware validators
 export default {
   addressValidator,
   profileValidator,

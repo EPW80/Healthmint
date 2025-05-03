@@ -46,83 +46,58 @@ class AuthService {
   async verifyAuth(token) {
     if (this.mockMode) {
       console.log('Using mock auth service in development mode');
-      // Return mock authentication data
-      return { authenticated: true, user: { id: '123', role: 'patient' } };
-    }
-
-    try {
-      // Check if we have a wallet address in localStorage
-      const walletAddress = localStorage.getItem(this.walletAddressKey);
-      if (!walletAddress) {
-        console.log("[AuthService] No wallet address found in localStorage");
-        return null;
-      }
-
-      // Check if wallet is connected
-      const isWalletConnected =
-        localStorage.getItem("healthmint_wallet_connection") === "true";
-      if (!isWalletConnected) {
-        console.log(
-          "[AuthService] Wallet not connected according to localStorage"
-        );
-        return null;
-      }
-
-      // Check if we have user data
-      const userData = this.getCurrentUser();
-      if (!userData) {
-        console.log("[AuthService] No user data found");
-        return null;
-      }
-
-      // Check if user is registered
-      const isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
-      if (isNewUser) {
-        console.log(
-          "[AuthService] User is marked as new, registration required"
-        );
-        return { ...userData, isNewUser: true, isRegistrationComplete: false };
-      }
-
-      // Get user role
-      const userRole = localStorage.getItem("healthmint_user_role");
-
-      // Log auth verification for HIPAA compliance
-      await hipaaComplianceService
-        .createAuditLog("AUTH_VERIFICATION", {
-          action: "VERIFY_AUTH",
-          walletAddress,
-          timestamp: new Date().toISOString(),
-        })
-        .catch((err) =>
-          console.error("[AuthService] Error logging auth verification:", err)
-        );
-
-      // Return authenticated user data
-      return {
-        ...userData,
-        address: walletAddress,
-        isAuthenticated: true,
-        isNewUser: false,
-        isRegistrationComplete: true,
-        role: userRole || null,
+      // Return mock authentication data after a short delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return { 
+        authenticated: true, 
+        user: { 
+          id: '123', 
+          role: 'patient',
+          address: '0x123...456',
+          name: 'Test Patient'
+        } 
       };
+    }
+    
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/auth/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Check if response type is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('API returned non-JSON response:', await response.text());
+        throw new Error('API returned non-JSON response');
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Auth verification failed with status: ${response.status}`);
+      }
+      
+      return await response.json();
     } catch (error) {
-      console.error("[AuthService] Auth verification error:", error);
-
-      // Log verification failure
-      await hipaaComplianceService
-        .createAuditLog("AUTH_VERIFICATION_FAILURE", {
-          action: "VERIFY_AUTH",
-          walletAddress: this.walletAddress,
-          timestamp: new Date().toISOString(),
-          errorMessage: error.message,
-        })
-        .catch((err) =>
-          console.error("[AuthService] Error logging auth failure:", err)
-        );
-
-      return null;
+      console.error('Auth verification error:', error);
+      
+      // Fallback to mock mode if in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Falling back to mock auth data');
+        return { 
+          authenticated: true, 
+          user: { 
+            id: '123', 
+            role: 'patient',
+            address: '0x123...456',
+            name: 'Test Patient (Mock)'
+          } 
+        };
+      }
+      throw error;
     }
   }
 

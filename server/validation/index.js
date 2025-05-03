@@ -10,16 +10,13 @@ export * from "./errors.js";
 export * from "./validators.js";
 export * from "./middleware.js";
 
-/**
- * High-level validation API for convenience
- * Provides access to both validation functions and middleware
- */
+// Consolidate all validators and middleware into a single module
 const ValidationModule = {
   // Error handling
   ValidationError,
 
   // Pure validators
-  validateToken: validators.validateToken,  // Add this line
+  validateToken: validators.validateToken, // Add this line
   validateAddress: validators.validateAddress,
   validateProfile: validators.validateProfile,
   validateHealthData: validators.validateHealthData,
@@ -39,17 +36,12 @@ const ValidationModule = {
     registration: middleware.registrationValidator,
   },
 
-  /**
-   * Validate input data with appropriate validator based on type
-   * @param {string} type - Type of data to validate
-   * @param {Object} data - Data to validate
-   * @returns {Object} Validation result
-   */
+  // Validation function
   validate(type, data) {
     switch (type.toLowerCase()) {
       case "token":
       case "jwt":
-        return validators.validateToken(data);  // Add this case
+        return validators.validateToken(data); // Add this case
       case "address":
         return validators.validateAddress(data);
       case "profile":
@@ -70,12 +62,7 @@ const ValidationModule = {
     }
   },
 
-  /**
-   * Get middleware for the specified validation type
-   * @param {string} type - Type of validation middleware
-   * @param {Object} options - Options for the middleware
-   * @returns {Function} Express middleware function
-   */
+  // Middleware function
   getMiddleware(type, options = {}) {
     switch (type.toLowerCase()) {
       case "address":
@@ -103,17 +90,17 @@ const ValidationModule = {
   // Add this helper for test endpoints
   getTestEndpointAuth(req, res, next) {
     // For test endpoints, bypass normal auth in development
-    if (process.env.NODE_ENV === 'development' && req.path.includes('/test-')) {
-      req.user = { 
-        id: 'test-user',
-        roles: ['admin'],
-        role: 'admin',
-        address: '0x0000000000000000000000000000000000000000'
+    if (process.env.NODE_ENV === "development" && req.path.includes("/test-")) {
+      req.user = {
+        id: "test-user",
+        roles: ["admin"],
+        role: "admin",
+        address: "0x0000000000000000000000000000000000000000",
       };
-      return true; // Indicate auth can be bypassed
+      return true;
     }
     return false; // Proceed with normal auth
-  }
+  },
 };
 
 // Export default consolidated API

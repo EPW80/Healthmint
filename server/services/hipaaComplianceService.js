@@ -2,7 +2,7 @@
 
 import apiService from "./apiService.js";
 import CryptoJS from "crypto-js";
-import { createError, HIPAAError } from "../errors/index.js";
+import { createError } from "../errors/index.js";
 import { logger } from "../config/loggerConfig.js";
 
 class ServerHipaaComplianceService {

@@ -1,97 +1,93 @@
-import FileDocument from '../models/FileDocument.js';
-import secureStorageService from './secureStorageService.js';
-import mongoose from 'mongoose';
-import hipaaCompliance from '../services/hipaaComplianceService.js';
-import crypto from 'crypto';
+import FileDocument from "../models/FileDocument.js";
+import secureStorageService from "./secureStorageService.js";
+import mongoose from "mongoose";
+import hipaaCompliance from "../services/hipaaComplianceService.js";
+import crypto from "crypto";
 
 /**
  * Hybrid Storage Service
  * Integrates Web3Storage (IPFS) with MongoDB metadata storage
  */
 class StorageIntegrationService {
-  /**
-   * Upload a file to Web3Storage and store its metadata in MongoDB
-   * 
-   * @param {Object} file - The file to upload (with buffer, originalname, mimetype, etc.)
-   * @param {String} userId - The ID of the user uploading the file
-   * @param {Object} metadata - Additional metadata for the file
-   * @returns {Promise<Object>} - The upload result with file details
-   */
   async uploadFile(file, userId, metadata = {}) {
     try {
-      console.log(`Processing upload for user ${userId}: ${file.originalname} (${file.size} bytes)`);
-      
+      console.log(
+        `Processing upload for user ${userId}: ${file.originalname} (${file.size} bytes)`
+      );
+
       // Calculate file extension
-      const extension = file.originalname.split('.').pop().toLowerCase();
-      
+      const extension = file.originalname.split(".").pop().toLowerCase();
+
       // Generate checksum of file for integrity verification
       const checksum = crypto
-        .createHash('sha256')
+        .createHash("sha256")
         .update(file.buffer)
-        .digest('hex');
-      
+        .digest("hex");
+
       // 1. First create a processing placeholder in MongoDB
       const fileDoc = new FileDocument({
         fileName: file.originalname,
-        description: metadata.description || '',
+        description: metadata.description || "",
         mimeType: file.mimetype,
         fileSize: file.size,
         extension,
         owner: new mongoose.Types.ObjectId(userId),
-        category: metadata.category || 'General Health',
+        category: metadata.category || "General Health",
         tags: metadata.tags || [],
         containsPHI: metadata.containsPHI !== false, // Default to true for HIPAA compliance
-        status: 'processing',
-        sensitivity: metadata.sensitivity || 'medium',
+        status: "processing",
+        sensitivity: metadata.sensitivity || "medium",
         isPublic: metadata.isPublic === true,
         checksum: {
-          algorithm: 'sha256',
-          value: checksum
+          algorithm: "sha256",
+          value: checksum,
         },
-        dataTypes: metadata.dataTypes || ['other']
+        dataTypes: metadata.dataTypes || ["other"],
       });
-      
+
       // Add optional fields from metadata
       if (metadata.price) fileDoc.price = parseFloat(metadata.price);
       if (metadata.dataset) fileDoc.dataset = metadata.dataset;
-      if (metadata.accessPassphrase) fileDoc.accessPassphrase = metadata.accessPassphrase;
-      
+      if (metadata.accessPassphrase)
+        fileDoc.accessPassphrase = metadata.accessPassphrase;
+
       // Save initial record before upload (helps with tracking)
       await fileDoc.save();
-      
+
       // 2. Log the upload attempt for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_UPLOAD_ATTEMPT', {
+      await hipaaCompliance.createAuditLog("FILE_UPLOAD_ATTEMPT", {
         userId,
         fileId: fileDoc._id,
         fileName: file.originalname,
         fileSize: file.size,
         mimeType: file.mimetype,
-        category: metadata.category
+        category: metadata.category,
       });
-      
+
       // 3. Upload to Web3Storage
       const uploadResult = await secureStorageService.uploadToIPFS(file);
-      
+
       if (!uploadResult || !uploadResult.cid) {
-        throw new Error('Failed to upload to IPFS: No CID returned');
+        throw new Error("Failed to upload to IPFS: No CID returned");
       }
-      
+
       // 4. Update MongoDB record with IPFS details
       fileDoc.cid = uploadResult.cid;
-      fileDoc.ipfsUrl = uploadResult.url || `https://dweb.link/ipfs/${uploadResult.cid}`;
-      fileDoc.status = 'available';
-      
+      fileDoc.ipfsUrl =
+        uploadResult.url || `https://dweb.link/ipfs/${uploadResult.cid}`;
+      fileDoc.status = "available";
+
       await fileDoc.save();
-      
+
       // 5. Log successful upload for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_UPLOAD_SUCCESS', {
+      await hipaaCompliance.createAuditLog("FILE_UPLOAD_SUCCESS", {
         userId,
         fileId: fileDoc._id,
         fileName: file.originalname,
         cid: uploadResult.cid,
-        category: metadata.category
+        category: metadata.category,
       });
-      
+
       return {
         success: true,
         fileId: fileDoc._id,
@@ -102,65 +98,61 @@ class StorageIntegrationService {
           fileSize: file.size,
           mimeType: file.mimetype,
           category: fileDoc.category,
-          containsPHI: fileDoc.containsPHI
-        }
+          containsPHI: fileDoc.containsPHI,
+        },
       };
     } catch (error) {
-      console.error('Storage integration error:', error);
-      
+      console.error("Storage integration error:", error);
+
       // Log upload failure
-      await hipaaCompliance.createAuditLog('FILE_UPLOAD_FAILED', {
+      await hipaaCompliance.createAuditLog("FILE_UPLOAD_FAILED", {
         userId,
         fileName: file?.originalname,
-        error: error.message
+        error: error.message,
       });
-      
+
       throw error;
     }
   }
-  
-  /**
-   * Get file metadata and optionally content from its ID
-   * 
-   * @param {String} fileId - The MongoDB ID of the file
-   * @param {String} userId - The ID of the user requesting the file
-   * @param {Object} options - Options for retrieval
-   * @returns {Promise<Object>} - File metadata and optional content
-   */
+
   async getFile(fileId, userId, options = {}) {
     try {
       // Find file in MongoDB
       const fileDoc = await FileDocument.findById(fileId);
-      
+
       if (!fileDoc) {
-        throw new Error('File not found');
+        throw new Error("File not found");
       }
-      
+
       // Check access permissions
-      const hasAccess = 
-        fileDoc.isPublic || 
-        fileDoc.owner.equals(userId) || 
-        fileDoc.authorizedUsers.some(id => id.equals(userId));
-        
+      const hasAccess =
+        fileDoc.isPublic ||
+        fileDoc.owner.equals(userId) ||
+        fileDoc.authorizedUsers.some((id) => id.equals(userId));
+
       if (!hasAccess && !options.adminOverride) {
-        throw new Error('Access denied: You do not have permission to access this file');
+        throw new Error(
+          "Access denied: You do not have permission to access this file"
+        );
       }
-      
+
       // Validate passphrase if provided and required
       if (fileDoc.accessPassphrase && options.passphrase) {
-        const isValidPassphrase = await fileDoc.validatePassphrase(options.passphrase);
+        const isValidPassphrase = await fileDoc.validatePassphrase(
+          options.passphrase
+        );
         if (!isValidPassphrase) {
-          throw new Error('Invalid access passphrase');
+          throw new Error("Invalid access passphrase");
         }
       }
-      
+
       // Log metadata access for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_METADATA_ACCESSED', {
+      await hipaaCompliance.createAuditLog("FILE_METADATA_ACCESSED", {
         userId,
         fileId: fileDoc._id,
-        cid: fileDoc.cid
+        cid: fileDoc.cid,
       });
-      
+
       // If content not requested, just return metadata
       if (!options.includeContent) {
         return {
@@ -180,20 +172,20 @@ class StorageIntegrationService {
           registeredOnChain: fileDoc.registeredOnChain,
           transactionHash: fileDoc.transactionHash,
           status: fileDoc.status,
-          containsPHI: fileDoc.containsPHI
+          containsPHI: fileDoc.containsPHI,
         };
       }
-      
+
       // If content requested, fetch from Web3Storage
       const content = await secureStorageService.fetchFromIPFS(fileDoc.cid);
-      
+
       // Log content access for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_CONTENT_ACCESSED', {
+      await hipaaCompliance.createAuditLog("FILE_CONTENT_ACCESSED", {
         userId,
         fileId: fileDoc._id,
-        cid: fileDoc.cid
+        cid: fileDoc.cid,
       });
-      
+
       return {
         metadata: {
           fileId: fileDoc._id,
@@ -205,285 +197,253 @@ class StorageIntegrationService {
           fileSize: fileDoc.fileSize,
           category: fileDoc.category,
           containsPHI: fileDoc.containsPHI,
-          status: fileDoc.status
+          status: fileDoc.status,
         },
-        content
+        content,
       };
     } catch (error) {
-      console.error('Error retrieving file:', error);
-      
+      console.error("Error retrieving file:", error);
+
       // Log access failure for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_ACCESS_FAILED', {
+      await hipaaCompliance.createAuditLog("FILE_ACCESS_FAILED", {
         userId,
         fileId,
-        error: error.message
+        error: error.message,
       });
-      
+
       throw error;
     }
   }
-  
-  /**
-   * List files for a specific user with pagination and filtering
-   * 
-   * @param {String} userId - The ID of the user
-   * @param {Object} options - Filtering and pagination options
-   * @returns {Promise<Object>} - List of files with pagination info
-   */
+
+  // List files with optional filters
   async listFiles(userId, options = {}) {
     try {
-      const query = options.includePublic 
+      const query = options.includePublic
         ? { $or: [{ owner: userId }, { isPublic: true }] }
         : { owner: userId };
-      
+
       // Only show non-deleted files by default
       if (options.includeDeleted !== true) {
         query.isDeleted = false;
       }
-        
+
       // Add category filter if specified
       if (options.category) {
         query.category = options.category;
       }
-      
+
       // Add search query if specified
       if (options.search) {
         query.$text = { $search: options.search };
       }
-      
+
       // Add blockchain filter if specified
       if (options.onChain === true) {
         query.registeredOnChain = true;
       }
-      
+
       // Pagination
       const page = parseInt(options.page) || 1;
       const limit = parseInt(options.limit) || 20;
       const skip = (page - 1) * limit;
-      
+
       // Sorting
-      const sortField = options.sortField || 'createdAt';
-      const sortDirection = options.sortDirection === 'asc' ? 1 : -1;
+      const sortField = options.sortField || "createdAt";
+      const sortDirection = options.sortDirection === "asc" ? 1 : -1;
       const sort = { [sortField]: sortDirection };
-      
+
       // Execute query
       const files = await FileDocument.find(query)
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select('-__v');
-        
+        .select("-__v");
+
       // Get total count for pagination
       const total = await FileDocument.countDocuments(query);
-      
+
       // Log list request for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILES_LISTED', {
+      await hipaaCompliance.createAuditLog("FILES_LISTED", {
         userId,
         count: files.length,
-        filters: JSON.stringify(query)
+        filters: JSON.stringify(query),
       });
-      
+
       return {
         files,
         pagination: {
           total,
           page,
           limit,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       };
     } catch (error) {
-      console.error('Error listing files:', error);
+      console.error("Error listing files:", error);
       throw error;
     }
   }
-  
-  /**
-   * Update blockchain registration status after registering on chain
-   * 
-   * @param {String} fileId - The ID of the file
-   * @param {String} transactionHash - The blockchain transaction hash
-   * @param {Object} blockchainData - Additional blockchain data
-   * @returns {Promise<Object>} - Updated file document
-   */
+
+  // Update blockchain status
   async updateBlockchainStatus(fileId, transactionHash, blockchainData = {}) {
     try {
       const updateData = {
         registeredOnChain: true,
-        transactionHash
+        transactionHash,
       };
-      
+
       if (blockchainData.blockNumber) {
         updateData.blockNumber = blockchainData.blockNumber;
       }
-      
+
       if (blockchainData.smartContractAddress) {
         updateData.smartContractAddress = blockchainData.smartContractAddress;
       }
-      
-      const updated = await FileDocument.findByIdAndUpdate(fileId, updateData, { new: true });
-      
+
+      const updated = await FileDocument.findByIdAndUpdate(fileId, updateData, {
+        new: true,
+      });
+
       if (!updated) {
         throw new Error(`File with ID ${fileId} not found`);
       }
-      
+
       // Log blockchain registration for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_BLOCKCHAIN_REGISTERED', {
+      await hipaaCompliance.createAuditLog("FILE_BLOCKCHAIN_REGISTERED", {
         fileId,
         transactionHash,
-        userId: updated.owner
+        userId: updated.owner,
       });
-      
+
       return updated;
     } catch (error) {
-      console.error('Error updating blockchain status:', error);
+      console.error("Error updating blockchain status:", error);
       throw error;
     }
   }
-  
-  /**
-   * Delete file (soft delete in MongoDB)
-   * Note: Actual IPFS content cannot be deleted from the network
-   * 
-   * @param {String} fileId - The ID of the file to delete
-   * @param {String} userId - The ID of the user performing the deletion
-   * @returns {Promise<Object>} - Result of deletion operation
-   */
+
+  // Delete a file (soft delete)
   async deleteFile(fileId, userId) {
     try {
       // Find the file first to check ownership
       const fileDoc = await FileDocument.findById(fileId);
-      
+
       if (!fileDoc) {
-        throw new Error('File not found');
+        throw new Error("File not found");
       }
-      
+
       // Check if user is allowed to delete
       if (!fileDoc.owner.equals(userId)) {
-        throw new Error('Access denied: You do not own this file');
+        throw new Error("Access denied: You do not own this file");
       }
-      
+
       // Use the soft delete method from our model
       const result = await FileDocument.softDelete(fileId, userId);
-      
-      return { 
-        success: true, 
-        message: 'File deleted successfully',
-        fileId
+
+      return {
+        success: true,
+        message: "File deleted successfully",
+        fileId,
       };
     } catch (error) {
-      console.error('Error deleting file:', error);
+      console.error("Error deleting file:", error);
       throw error;
     }
   }
-  
-  /**
-   * Update file details (metadata only)
-   * 
-   * @param {String} fileId - The ID of the file to update
-   * @param {String} userId - The ID of the user performing the update
-   * @param {Object} updates - The fields to update
-   * @returns {Promise<Object>} - Updated file document
-   */
+
+  // Update file metadata
   async updateFile(fileId, userId, updates) {
     try {
       // Find the file first to check ownership
       const fileDoc = await FileDocument.findById(fileId);
-      
+
       if (!fileDoc) {
-        throw new Error('File not found');
+        throw new Error("File not found");
       }
-      
+
       // Check if user is allowed to update
       if (!fileDoc.owner.equals(userId)) {
-        throw new Error('Access denied: You do not own this file');
+        throw new Error("Access denied: You do not own this file");
       }
-      
+
       // Fields that can be updated
       const allowedUpdates = [
-        'fileName', 
-        'description', 
-        'category', 
-        'tags',
-        'isPublic', 
-        'price',
-        'authorizedUsers',
-        'authorizedRoles',
-        'sensitivity',
-        'dataTypes'
+        "fileName",
+        "description",
+        "category",
+        "tags",
+        "isPublic",
+        "price",
+        "authorizedUsers",
+        "authorizedRoles",
+        "sensitivity",
+        "dataTypes",
       ];
-      
+
       // Filter out any fields that aren't allowed
       const filteredUpdates = Object.keys(updates)
-        .filter(key => allowedUpdates.includes(key))
+        .filter((key) => allowedUpdates.includes(key))
         .reduce((obj, key) => {
           obj[key] = updates[key];
           return obj;
         }, {});
-      
+
       // Apply updates
       const updated = await FileDocument.findByIdAndUpdate(
         fileId,
         filteredUpdates,
         { new: true, runValidators: true }
       );
-      
+
       // Log update for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_UPDATED', {
+      await hipaaCompliance.createAuditLog("FILE_UPDATED", {
         userId,
         fileId,
-        updatedFields: Object.keys(filteredUpdates)
+        updatedFields: Object.keys(filteredUpdates),
       });
-      
+
       return updated;
     } catch (error) {
-      console.error('Error updating file:', error);
+      console.error("Error updating file:", error);
       throw error;
     }
   }
-  
-  /**
-   * Share a file with another user
-   * 
-   * @param {String} fileId - ID of the file to share
-   * @param {String} ownerId - ID of the file owner
-   * @param {String|Array} userIds - ID(s) of users to share with
-   * @returns {Promise<Object>} - Updated file document
-   */
+
+  // Share file with other users
   async shareFile(fileId, ownerId, userIds) {
     try {
       // Find the file first to check ownership
       const fileDoc = await FileDocument.findById(fileId);
-      
+
       if (!fileDoc) {
-        throw new Error('File not found');
+        throw new Error("File not found");
       }
-      
+
       // Check if user is allowed to share
       if (!fileDoc.owner.equals(ownerId)) {
-        throw new Error('Access denied: You do not own this file');
+        throw new Error("Access denied: You do not own this file");
       }
-      
+
       // Convert single ID to array if needed
       const userIdArray = Array.isArray(userIds) ? userIds : [userIds];
-      
+
       // Add users to authorizedUsers array (avoid duplicates)
       const updated = await FileDocument.findByIdAndUpdate(
         fileId,
         { $addToSet: { authorizedUsers: { $each: userIdArray } } },
         { new: true }
       );
-      
+
       // Log share action for HIPAA compliance
-      await hipaaCompliance.createAuditLog('FILE_SHARED', {
+      await hipaaCompliance.createAuditLog("FILE_SHARED", {
         ownerId,
         fileId,
-        sharedWith: userIdArray
+        sharedWith: userIdArray,
       });
-      
+
       return updated;
     } catch (error) {
-      console.error('Error sharing file:', error);
+      console.error("Error sharing file:", error);
       throw error;
     }
   }
