@@ -124,6 +124,15 @@ mongoose.connection.on("reconnected", () => {
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
+// Add this to your server.js or app.js file
+const frontendURL = process.env.FRONTEND_URL || 'https://healthmint-copyone.vercel.app';
+
+// Configure CORS
+app.use(cors({
+  origin: [frontendURL, 'http://localhost:3000'],
+  credentials: true
+}));
+
 // CORS Configuration - Make sure this is properly set up
 const corsOptions = {
   origin: function (origin, callback) {
