@@ -1,0 +1,67 @@
+{
+  "name": "healthmint",
+  "version": "1.0.0",
+  "description": "Decentralized Health Data Marketplace",
+  "main": "server/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "client": "cd client && npm start",
+    "server": "cd server && nodemon --experimental-specifier-resolution=node server.js --ignore client/",
+    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\"",
+    "install-all": "npm install && concurrently \"cd client && npm install\" \"cd server && npm install\"",
+    "kill-ports": "npx kill-port 3000 5000",
+    "clean": "rimraf node_modules package-lock.json client/node_modules client/package-lock.json server/node_modules server/package-lock.json",
+    "build": "cd client && npm run build",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "lint": "eslint .",
+    "lint-staged": "lint-staged",
+    "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
+    "prepare": "husky install",
+    "postinstall": "cd client && npm install && cd ../server && npm install"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "web3.storage": "^4.5.5"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "prettier": "^3.2.0",
+    "rimraf": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "nodemonConfig": {
+    "ext": "js,json",
+    "ignore": [
+      "client/*",
+      "node_modules/*"
+    ]
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/epw80/healthmint"
+  },
+  "keywords": [
+    "blockchain",
+    "healthcare",
+    "ethereum",
+    "web3",
+    "decentralized"
+  ],
+  "author": "",
+  "license": "ISC"
+}
