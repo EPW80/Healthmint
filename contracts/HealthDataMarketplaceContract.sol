@@ -24,7 +24,10 @@ contract HealthDataMarketplace is
         address payable owner;
         uint256 price;
         string encryptedDataHash; // IPFS hash of encrypted data
-        string encryptionKey; // Symmetric key to decrypt the IPFS payload
+        // Symmetric encryption keys are NEVER stored on-chain.
+        // The key is held by the server in MongoDB, wrapped with a KEK,
+        // and released only to authorized callers via /api/data/keys/:cid.
+        // See SECURITY.md.
         bool isAvailable;
         bool isVerified;
         string category;
@@ -183,7 +186,6 @@ contract HealthDataMarketplace is
 
     function listHealthData(
         string memory _encryptedDataHash,
-        string memory _encryptionKey,
         uint256 _price,
         string memory _category,
         uint256 _retentionPeriod,
@@ -203,7 +205,6 @@ contract HealthDataMarketplace is
         newData.owner = payable(msg.sender);
         newData.price = _price;
         newData.encryptedDataHash = _encryptedDataHash;
-        newData.encryptionKey = _encryptionKey;
         newData.isAvailable = true;
         newData.category = _category;
         newData.uploadTime = block.timestamp;
