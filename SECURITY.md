@@ -19,6 +19,13 @@ and found six issues a careful reader would catch quickly. Each was fixed in a
 focused commit; the "before" state is the initial commit, so every fix below is
 a real diff you can read.
 
+> **On history.** This `main` branch presents the audit as a clean,
+> commit-per-fix narrative. The original, unpolished development history —
+> including the genuine pre-audit vulnerable code — is preserved verbatim on
+> the [`archive/pre-audit`](https://github.com/EPW80/Healthmint/tree/archive/pre-audit)
+> branch (tag `pre-audit-2025-05`). The findings below were reconstructed
+> faithfully from that real code; nothing was invented.
+
 | # | Issue | Severity | Fix |
 |---|-------|----------|-----|
 | 1 | **On-chain encryption key leak.** The `HealthData` struct stored the symmetric `encryptionKey` as a public string next to the IPFS CID. Anyone reading contract state on Sepolia could fetch ciphertext + key and decrypt every dataset. | Critical | [`b305766`](https://github.com/EPW80/Healthmint/commit/b305766) |
