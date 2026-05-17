@@ -17,8 +17,11 @@ async function main() {
   const contractJson = JSON.parse(fs.readFileSync(contractPath));
 
   // Connect to Sepolia RPC
-  const sepoliaRpcUrl =
-    "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
+  const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL;
+  if (!sepoliaRpcUrl) {
+    console.error("❌ SEPOLIA_RPC_URL is not set in .env — cannot deploy");
+    process.exit(1);
+  }
   console.log("Connecting to Sepolia endpoint...");
   const provider = new ethers.providers.JsonRpcProvider(
     sepoliaRpcUrl,
