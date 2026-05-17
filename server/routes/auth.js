@@ -32,7 +32,10 @@ const validateAndNormalizeAddress = (address) => {
   return result.normalizedAddress;
 };
 const generateTokens = (user) => {
-  const jwtSecret = process.env.JWT_SECRET || "healthmint-dev-secret-key";
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("JWT_SECRET is not configured — server should have refused to start");
+  }
 
   // Create payload with essential user data
   const payload = {
