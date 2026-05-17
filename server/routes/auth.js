@@ -9,7 +9,10 @@ import userService from "../services/userService.js";
 import { USER_ROLES, AUDIT_TYPES } from "../constants/index.js";
 import jwt from "jsonwebtoken";
 import { validateAddress } from "../validation/index.js";
-import blockchainService from "../services/blockchainService.js";
+import blockchainService, {
+  WALLET_NONCE_TTL_MS,
+} from "../services/blockchainService.js";
+import WalletNonce from "../models/WalletNonce.js";
 import { ERROR_CODES } from "../config/networkConfig.js";
 
 const router = express.Router();
@@ -61,47 +64,23 @@ router.options("*", (req, res) => {
 });
 
 // POST /api/auth/wallet/connect
-// Connects a wallet and issues an auth token.
-router.post(
-  "/wallet/connect",
-  rateLimiters.auth,
-  asyncHandler(async (req, res) => {
-    applyCorsHeaders(res);
-    const { address } = req.body;
-
-    if (!address) {
-      throw createError.validation("Wallet address is required");
-    }
-
-    const normalizedAddress = validateAndNormalizeAddress(address);
-
-    // TODO: signature verification — skip for now so the demo flow works.
-    let user = await userService.getUserByAddress(normalizedAddress);
-    if (!user) {
-      user = await userService.createUser({
-        address: normalizedAddress.toLowerCase(),
-        roles: ["patient"],
-        createdAt: new Date(),
-        walletConnected: true,
-      });
-    }
-
-    const { token, refreshToken, expiresIn } = generateTokens({
-      id: user.id,
-      address: normalizedAddress,
-      role: user.role || "patient",
-    });
-
-    res.json({
-      success: true,
-      message: "Wallet connected",
-      token,
-      refreshToken,
-      expiresIn,
-      user: await hipaaCompliance.sanitizeResponse(user),
-    });
-  })
-);
+//
+// REMOVED. Previously this endpoint accepted a wallet address in the request
+// body and issued a JWT for that address with no proof of control. That made
+// every wallet on Ethereum effectively logged-in if its address was guessed
+// or scraped from chain. Clients must now use the two-step challenge /
+// authenticate flow below.
+router.post("/wallet/connect", rateLimiters.auth, (req, res) => {
+  applyCorsHeaders(res);
+  return res.status(410).json({
+    success: false,
+    code: "ENDPOINT_REMOVED",
+    message:
+      "POST /wallet/connect has been removed. Use POST /wallet/challenge " +
+      "to receive a message to sign, then POST /wallet/authenticate with " +
+      "the resulting { address, signature, message } to obtain a token.",
+  });
+});
 
 router.post(
   "/register",
@@ -381,6 +360,210 @@ router.post(
 
       throw createError.unauthorized("Failed to refresh token");
     }
+  })
+);
+
+// POST /api/auth/wallet/challenge
+//
+// Issues a single-use challenge message for the caller to sign with their
+// wallet. The full canonical message and a random 32-byte nonce are persisted
+// in the WalletNonce collection with a TTL so /wallet/authenticate can
+// validate the signature against a known-good message. Replaces the previous
+// implementation which stored the challenge on req.session — Express session
+// middleware is not wired up in this app, so that storage silently evaporated
+// between requests and the /wallet/authenticate replay check at L448–L452
+// had to be commented out for the flow to work at all.
+router.post(
+  "/wallet/challenge",
+  rateLimiters.auth,
+  asyncHandler(async (req, res) => {
+    applyCorsHeaders(res);
+    const { address } = req.body;
+
+    if (!address) {
+      throw createError.validation("Wallet address is required");
+    }
+
+    const addressValidation = validateAddress(address);
+    if (!addressValidation.isValid) {
+      throw createError.validation(
+        addressValidation.message || "Invalid wallet address format"
+      );
+    }
+
+    const normalized = addressValidation.normalizedAddress.toLowerCase();
+    const { message, nonce } = blockchainService.generateChallengeMessage(
+      normalized
+    );
+
+    // Persist. A new challenge supersedes any previous outstanding one for
+    // the same address (deleteMany), so a stale nonce can't be used to
+    // satisfy a fresh /wallet/authenticate call.
+    await WalletNonce.deleteMany({ address: normalized });
+    await WalletNonce.create({
+      address: normalized,
+      nonce,
+      message,
+      expiresAt: new Date(Date.now() + WALLET_NONCE_TTL_MS),
+    });
+
+    res.json({
+      success: true,
+      message: "Challenge message generated",
+      challengeMessage: message,
+    });
+  })
+);
+
+router.post(
+  "/wallet/authenticate",
+  rateLimiters.auth,
+  asyncHandler(async (req, res) => {
+    applyCorsHeaders(res);
+    const { address, signature, message } = req.body;
+
+    if (!address || !signature || !message) {
+      throw createError.validation("Missing required parameters", {
+        required: ["address", "signature", "message"],
+      });
+    }
+
+    const addressValidation = validateAddress(address);
+    if (!addressValidation.isValid) {
+      throw createError.validation(
+        addressValidation.message || "Invalid wallet address format"
+      );
+    }
+    const normalized = addressValidation.normalizedAddress.toLowerCase();
+
+    // Look up the outstanding nonce for this address. The challenge must
+    // have been issued by THIS server (no client-supplied messages), must
+    // not have expired, and must match the message string the client claims
+    // to have signed. Each /wallet/challenge supersedes its predecessor so
+    // there is at most one outstanding nonce per address.
+    const stored = await WalletNonce.findOne({ address: normalized });
+    if (!stored) {
+      await hipaaCompliance.createAuditLog("FAILED_AUTHENTICATION", {
+        address: normalized,
+        reason: "no_outstanding_challenge",
+        method: "wallet_signature",
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+      throw createError.unauthorized(
+        "No outstanding challenge for this address. POST /wallet/challenge first."
+      );
+    }
+    if (stored.expiresAt.getTime() < Date.now()) {
+      await WalletNonce.deleteOne({ _id: stored._id });
+      throw createError.unauthorized(
+        "Challenge has expired. Request a new one via POST /wallet/challenge."
+      );
+    }
+    if (stored.message !== message) {
+      await hipaaCompliance.createAuditLog("FAILED_AUTHENTICATION", {
+        address: normalized,
+        reason: "message_mismatch",
+        method: "wallet_signature",
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+      throw createError.unauthorized("Message does not match issued challenge");
+    }
+
+    // Verify the signature recovers to the claimed address. Single-use: the
+    // nonce is consumed regardless of signature validity to prevent online
+    // brute-forcing of a single challenge.
+    const isValid = blockchainService.verifySignature(
+      message,
+      signature,
+      normalized
+    );
+    await WalletNonce.deleteOne({ _id: stored._id });
+
+    if (!isValid) {
+      await hipaaCompliance.createAuditLog("FAILED_AUTHENTICATION", {
+        address: normalized,
+        reason: "invalid_signature",
+        method: "wallet_signature",
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+      throw createError.unauthorized("Invalid signature");
+    }
+
+    // Find or create user based on wallet address
+    let user;
+    try {
+      user = await userService.getUserByAddress(address);
+
+      // If user doesn't exist, create a new one
+      if (!user) {
+        user = await userService.createUser({
+          address: address.toLowerCase(),
+          roles: ["patient"], // Default role
+          createdAt: new Date(),
+          walletConnected: true,
+        });
+
+        logger.info("Created new user from wallet authentication", {
+          address: address.toLowerCase(),
+        });
+      }
+
+      // Update last login time
+      await userService.updateUser(address, { lastLogin: new Date() });
+    } catch (dbError) {
+      logger.error("Database error during authentication", {
+        error: dbError.message,
+        address,
+      });
+
+      throw createError.serverError("Authentication processing error", {
+        code: ERROR_CODES.SERVER_ERROR.code,
+      });
+    }
+
+    // Generate authentication token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        address: user.address.toLowerCase(),
+        roles: user.roles || [user.role], // Support both formats
+        iat: Math.floor(Date.now() / 1000),
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRY || "24h" }
+    );
+
+    // Create refresh token if your app uses them
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+        address: user.address.toLowerCase(),
+        tokenType: "refresh",
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "7d" }
+    );
+
+    // Create audit log for successful authentication
+    await hipaaCompliance.createAuditLog("SUCCESSFUL_AUTHENTICATION", {
+      userId: user.id,
+      address: user.address.toLowerCase(),
+      method: "wallet_signature",
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
+
+    // Return tokens and user information (sanitized)
+    res.json({
+      success: true,
+      message: "Authentication successful",
+      token,
+      refreshToken,
+      user: await hipaaCompliance.sanitizeResponse(user),
+    });
   })
 );
 
