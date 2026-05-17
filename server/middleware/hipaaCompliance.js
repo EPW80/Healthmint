@@ -2,6 +2,7 @@
 import { createError } from "../errors/index.js";
 import crypto from "crypto";
 import validation from "../validation/index.js";
+import auditLogService from "../services/auditLogService.js";
 
 // Function to create an audit log entry
 const createAuditLog = async (action, details = {}) => {
@@ -12,9 +13,13 @@ const createAuditLog = async (action, details = {}) => {
       ...details,
     };
 
-    // In a real HIPAA deployment we would persist this to a tamper-evident
-    // audit store here. For now just log it.
-    console.log(`[HIPAA AUDIT] ${action}:`, auditEntry);
+    // Persist to MongoDB. auditLogService.write() swallows its own errors, so
+    // a DB hiccup will never throw here.
+    await auditLogService.write(action, auditEntry);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[HIPAA AUDIT] ${action}:`, auditEntry);
+    }
 
     return true;
   } catch (error) {
@@ -115,7 +120,8 @@ const hipaaCompliance = {
         );
       }
 
-      // TODO: persist every API access to a real audit store.
+      // Persist every API access. Fire-and-forget — res.end must not block.
+      auditLogService.write("API_ACCESS", auditEntry);
 
       // Call the original end method
       originalEnd.apply(res, arguments);
