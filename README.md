@@ -1,5 +1,7 @@
 # Healthmint
 
+[![CI](https://github.com/EPW80/Healthmint/actions/workflows/ci.yml/badge.svg)](https://github.com/EPW80/Healthmint/actions/workflows/ci.yml)
+
 Healthmint is a decentralized health-data marketplace on Ethereum (Sepolia)
 that connects patients, providers, and researchers for consent-driven,
 encrypted data sharing. It's a portfolio project demonstrating **full-stack

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests (backend + contract)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # No committed lockfile (package-lock.json is gitignored), so use
+      # `npm install`. --ignore-scripts skips the root postinstall that would
+      # otherwise pull the whole CRA client we don't need for CI.
+      - name: Install root deps (truffle, jest)
+        run: npm install --ignore-scripts
+
+      - name: Install server deps
+        run: npm install --prefix server --ignore-scripts
+
+      - name: Backend tests (Jest)
+        run: npm test
+
+      - name: Start ganache
+        run: |
+          npx ganache --server.port 8545 --miner.blockGasLimit 12000000 \
+            > /tmp/ganache.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -s -X POST http://127.0.0.1:8545 \
+              -H 'content-type:application/json' \
+              --data '{"jsonrpc":"2.0","method":"eth_blockNumber","id":1}' \
+              && break || sleep 1
+          done
+
+      - name: Contract tests (Truffle)
+        run: npm run test:contract -- --network development
+
+  lint:
+    name: Lint (non-blocking)
+    runs-on: ubuntu-latest
+    # Legacy code predates this hardening pass; lint is reported but does not
+    # gate the build. Tracked as cleanup in SECURITY.md "What I'd do next".
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install --ignore-scripts
+      - run: npm run lint

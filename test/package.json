@@ -1,0 +1,4 @@
+{
+  "//": "Truffle test files are CommonJS. The repo root sets type:module, so this scopes test/ back to commonjs.",
+  "type": "commonjs"
+}

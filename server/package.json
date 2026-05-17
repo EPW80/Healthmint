@@ -8,7 +8,7 @@
     "start": "node server.js",
     "prestart": "npm install",
     "dev": "nodemon --experimental-specifier-resolution=node server.js",
-    "test": "jest --detectOpenHandles",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --testPathPattern=__tests__",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",
