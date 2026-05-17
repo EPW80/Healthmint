@@ -12,7 +12,6 @@ import notificationReducer from "./slices/notificationSlice.js";
 // Local storage keys
 const STORAGE_KEYS = {
   WALLET: "healthmint_wallet_state",
-  AUTH: "healthmint_auth_state",
 };
 
 // Persistence configuration
@@ -127,25 +126,13 @@ store.subscribe(() => {
     const state = store.getState();
     const { wallet, auth } = state;
 
-    // Persist wallet state for UX continuity.
+    // Persist wallet state (address, chainId — not secrets) for UX continuity.
+    // Auth tokens are intentionally NOT persisted — they live in memory only.
     if (wallet.isConnected) {
       const persistableWalletState = createPersistableWalletState(wallet);
       localStorage.setItem(
         STORAGE_KEYS.WALLET,
         JSON.stringify(persistableWalletState)
-      );
-    }
-
-    // Persist auth session so a page refresh keeps the user logged in.
-    if (auth.isAuthenticated) {
-      localStorage.setItem(
-        STORAGE_KEYS.AUTH,
-        JSON.stringify({
-          token: auth.token,
-          refreshToken: auth.refreshToken,
-          tokenExpiry: auth.tokenExpiry,
-          userRoles: auth.userRoles,
-        })
       );
     }
   } catch (error) {
@@ -188,35 +175,13 @@ const initializeStore = () => {
       return false;
     };
 
-    // Restore auth session so the user stays logged in across refreshes.
-    const restoreAuthState = () => {
-      const persistedAuthState = localStorage.getItem(STORAGE_KEYS.AUTH);
-      if (persistedAuthState) {
-        try {
-          const parsedAuth = JSON.parse(persistedAuthState);
-          if (parsedAuth.token) {
-            store.dispatch({
-              type: "auth/restoreSession",
-              payload: parsedAuth,
-            });
-            return true;
-          }
-        } catch (parseError) {
-          console.warn("Error parsing auth state:", parseError);
-          localStorage.removeItem(STORAGE_KEYS.AUTH);
-        }
-      }
-      return false;
-    };
-
+    // Attempt to restore wallet state (address, chainId) for UX continuity.
+    // Auth state is NOT restored — tokens are memory-only and re-established
+    // by wallet reconnect + signature on each page load.
     const walletRestored = restoreWalletState();
-    const authRestored = restoreAuthState();
 
     if (walletRestored) {
       console.log("Wallet state restored from localStorage");
-    }
-    if (authRestored) {
-      console.log("Auth session restored from localStorage");
     }
   } catch (error) {
     console.error("Failed to initialize store from persisted state:", error);
