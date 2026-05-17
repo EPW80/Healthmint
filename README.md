@@ -1,6 +1,17 @@
 # Healthmint
 
-Healthmint is a decentralized application (dApp) built on Ethereum for secure, HIPAA-compliant health information exchange. It connects patients, providers, and researchers through blockchain technology, enabling privacy-preserving, regulatory-compliant data sharing.
+Healthmint is a decentralized health-data marketplace on Ethereum (Sepolia)
+that connects patients, providers, and researchers for consent-driven,
+encrypted data sharing. It's a portfolio project demonstrating **full-stack
+Web3 engineering** (React/Redux + Node/Express + MongoDB + IPFS + a Solidity
+marketplace contract) and **security awareness** — I audited my own code,
+found six real vulnerabilities, and fixed each in a focused commit.
+
+> **HIPAA-aware, not HIPAA-compliant.** This project implements the patterns a
+> compliant system needs (encryption, consent, access control, audit logging)
+> but is not certified, audited, or production-defensible. See
+> [SECURITY.md](./SECURITY.md) for the self-audit write-up and an honest list
+> of limitations.
 
 ## Features
 
@@ -21,11 +32,12 @@ Healthmint is a decentralized application (dApp) built on Ethereum for secure, H
 
 ### Security 🔐
 
-- HIPAA-compliant design
-- End-to-end encryption
+- HIPAA-*aware* design (see [SECURITY.md](./SECURITY.md))
+- Off-chain encryption-key custody (keys never touch the chain)
+- Signed-nonce wallet authentication (EIP-191)
 - Blockchain-verified transactions
 - Explicit consent management
-- Comprehensive audit logs
+- Persistent, indexed audit log
 
 ## Technology Stack
 
@@ -126,13 +138,30 @@ Purchase datasets
 
 We welcome any contributions to the application.
 
-````
+```bash
 git checkout -b feature/my-feature
 git commit -m "Add feature"
-git push origin feature/my-feature```
-````
+git push origin feature/my-feature
+```
 
-- Submit request
+- Open a pull request
+
+## What I'd do next
+
+This was a deliberately surgical hardening pass. With more time, in rough
+priority order:
+
+- **Migrate IPFS pinning off the sunsetted Web3.Storage SDK** to Pinata
+  (`web3.storage` / `@web3-storage/w3up-client` are effectively unmaintained).
+- **Test footprint**: Truffle contract tests (reentrancy on `purchaseData`,
+  access control, refund path, paused-state), Jest backend tests (auth bypass
+  regression, audit-write, upload), and a single CI workflow.
+- **Harden key custody** — threshold/Shamir or a managed KMS instead of a
+  single server-held KEK (see [SECURITY.md](./SECURITY.md)).
+- **Modernize pinned deps** (`ethers` v5→v6, `web3.js`, `crypto-js`) — out of
+  scope for a surgical pass, intentionally deferred.
+- **Replace `console.*`** with the already-present Winston logger server-side
+  and gate client logging behind `NODE_ENV`.
 
 ### Licence
 
