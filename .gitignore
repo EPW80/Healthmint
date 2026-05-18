@@ -70,7 +70,7 @@ Thumbs.db
 w3cli-install.log
 healthmint-delegation.car
 
-// Text files
+# Text / data files
 *.txt
 *.log
 *.csv
