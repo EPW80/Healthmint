@@ -5,6 +5,10 @@ import errorHandlingService from "./errorHandlingService.js";
 import { STORAGE_CONFIG } from "../config/storageConfig.js";
 import localStorageService from "./localStorageService.js";
 import { createAuthenticatedClient } from "./web3StorageHelper.js";
+import {
+  uploadToPinata,
+  getPinataGatewayUrl,
+} from "./pinataService.js";
 import { logger } from "../config/loggerConfig.js";
 
 // Import encryptionService conditionally to avoid breaking the app if it doesn't exist
@@ -115,9 +119,19 @@ class SecureStorageService {
       // Always initialize local storage as a fallback
       await localStorageService.initialize();
 
-      if (process.env.IPFS_PROVIDER === "web3storage") {
+      if (process.env.IPFS_PROVIDER === "pinata") {
+        if (!process.env.PINATA_JWT) {
+          logger.warn("PINATA_JWT not set — falling back to local storage");
+          this.storageService = localStorageService;
+        } else {
+          logger.info("Using Pinata for IPFS storage");
+          this.storageType = "pinata";
+        }
+        this.initialized = true;
+        return this;
+      } else if (process.env.IPFS_PROVIDER === "web3storage") {
         try {
-          // Try Web3Storage
+          // Try Web3Storage (legacy — see SECURITY.md / W5 migration note)
           this.client = await createAuthenticatedClient();
           this.initialized = true;
           logger.info("Using Web3Storage for file storage");
@@ -228,6 +242,23 @@ class SecureStorageService {
 
   async uploadToIPFS(file) {
     try {
+      // Pinata upload path
+      if (this.storageType === "pinata") {
+        const checksum = await this.calculateFileHash(file.buffer);
+        const { cid, url } = await uploadToPinata(file);
+        return {
+          success: true,
+          cid,
+          fileName: file.originalname,
+          url,
+          alternateUrl: `https://ipfs.io/ipfs/${cid}`,
+          checksum,
+          mimeType: file.mimetype,
+          size: file.size || file.buffer?.length,
+        };
+      }
+
+      // Web3Storage upload path (legacy)
       if (!this.client) {
         throw new Error("Web3Storage client not initialized");
       }
@@ -700,10 +731,13 @@ class SecureStorageService {
       // Use Web3Storage to retrieve the content
       progressCallback?.(40);
 
-      // Get the data from Web3Storage - use the modern gateway URL pattern
-      // Try w3s.link first (modern gateway), then fallback to dweb.link
-      const gateway = process.env.IPFS_GATEWAY || "https://w3s.link/ipfs/";
-      const url = `${gateway}${hash}`;
+      // Resolve gateway: prefer provider-specific env var, then generic fallback
+      const gateway =
+        this.storageType === "pinata"
+          ? getPinataGatewayUrl(hash)
+          : `${process.env.IPFS_GATEWAY || "https://w3s.link/ipfs/"}${hash}`;
+      const url =
+        this.storageType === "pinata" ? gateway : `${gateway}`;
 
       logger.info(`Fetching from IPFS gateway: ${url}`);
 

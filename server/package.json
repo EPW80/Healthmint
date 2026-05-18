@@ -26,6 +26,7 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.6",
+    "@pinata/sdk": "^2.1.0",
     "@truffle/hdwallet-provider": "^2.1.15",
     "@web3-storage/w3up-client": "^17.2.0",
     "bcryptjs": "^2.4.3",

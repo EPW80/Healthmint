@@ -51,7 +51,7 @@ found six real vulnerabilities, and fixed each in a focused commit.
 
 ## Project Structure
 
-```
+```text
 healthmint/ ├── client/ ├── contracts/ ├── migrations/ ├── server/ └── truffle-config.js
 ```
 
@@ -65,15 +65,13 @@ healthmint/ ├── client/ ├── contracts/ ├── migrations/ ├─�
 
 ## API Overview
 
-```
-| Category          | Endpoints (examples)                     |
-|-------------------|------------------------------------------|
-| Authentication    | `/api/auth/wallet/connect`, `/register`   |
-| Health Data       | `/api/data/upload`, `/browse`, `/purchase`|
-| Storage           | `/api/storage/upload`, `/get/:id`         |
-| Users             | `/api/users/profile`, `/settings`, `/access-log`|
-| Tests             | `/api/test/mongodb`, `/test/web3storage`  |
-```
+| Category       | Endpoints (examples)                                    |
+|----------------|---------------------------------------------------------|
+| Authentication | `/api/auth/wallet/connect`, `/register`                 |
+| Health Data    | `/api/data/upload`, `/browse`, `/purchase`              |
+| Storage        | `/api/storage/upload`, `/get/:id`                       |
+| Users          | `/api/users/profile`, `/settings`, `/access-log`        |
+| Tests          | `/api/test/mongodb`, `/test/web3storage`                |
 
 ## Getting Started
 
@@ -81,7 +79,7 @@ healthmint/ ├── client/ ├── contracts/ ├── migrations/ ├─�
 
 - Node.js v16+
 - MongoDB Atlas account
-- Web3Storage account
+- [Pinata](https://pinata.cloud) account (free tier — for IPFS pinning)
 - MetaMask
 - Sepolia ETH
 
@@ -107,7 +105,7 @@ npm start
 
 ### Smart Contracts
 
-```
+```bash
 npm install -g truffle
 truffle compile
 truffle migrate --network sepolia
@@ -118,22 +116,11 @@ node server/scripts/deploy.js
 
 #### Connecting Wallet
 
-```
-Connect MetaMask
+```text
+Connect MetaMask → Register as Patient or Researcher
 
-Register as Patient or Researcher
-
-Patients
-Upload health records
-
-Manage data sharing
-
-View access history
-
-Researchers
-Browse and filter datasets
-
-Purchase datasets
+Patients: Upload health records · Manage data sharing · View access history
+Researchers: Browse and filter datasets · Purchase datasets
 ```
 
 ### Contributing
@@ -150,20 +137,17 @@ git push origin feature/my-feature
 
 ## What I'd do next
 
-This was a deliberately surgical hardening pass. With more time, in rough
-priority order:
+This was a deliberately surgical hardening pass. Done so far: six security
+fixes (W1), security write-up + README rewrite (W2), contract + backend tests
+and CI (W3), server Winston sweep + client logger shim + dead-code removal (W4),
+IPFS provider migration to Pinata (W5). Remaining:
 
-- **Migrate IPFS pinning off the sunsetted Web3.Storage SDK** to Pinata
-  (`web3.storage` / `@web3-storage/w3up-client` are effectively unmaintained).
-- **Test footprint**: Truffle contract tests (reentrancy on `purchaseData`,
-  access control, refund path, paused-state), Jest backend tests (auth bypass
-  regression, audit-write, upload), and a single CI workflow.
+- **Sepolia redeploy** (W6) — update `contractInfo.json` and re-verify artifacts
+  against the live Pinata-backed deployment.
 - **Harden key custody** — threshold/Shamir or a managed KMS instead of a
   single server-held KEK (see [SECURITY.md](./SECURITY.md)).
 - **Modernize pinned deps** (`ethers` v5→v6, `web3.js`, `crypto-js`) — out of
   scope for a surgical pass, intentionally deferred.
-- **Replace `console.*`** with the already-present Winston logger server-side
-  and gate client logging behind `NODE_ENV`.
 
 ### Licence
 
