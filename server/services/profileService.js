@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import { AUDIT_TYPES } from "../constants/index.js";
 import validation from "../validation/index.js";
+import { logger } from "../config/loggerConfig.js";
 
 export class ProfileServiceError extends Error {
   constructor(message, code = "PROFILE_SERVICE_ERROR", details = {}) {
@@ -64,7 +65,7 @@ const profileService = {
       return await hipaaCompliance.sanitizeResponse(user);
     } catch (error) {
       await session.abortTransaction();
-      console.error("Error updating profile image:", {
+      logger.error("Error updating profile image:", {
         error,
         address,
         timestamp: new Date(),
@@ -145,7 +146,7 @@ const profileService = {
       return await hipaaCompliance.sanitizeResponse(user);
     } catch (error) {
       await session.abortTransaction();
-      console.error("Error updating profile:", {
+      logger.error("Error updating profile:", {
         error,
         address,
         timestamp: new Date(),
@@ -203,7 +204,7 @@ const profileService = {
       return await hipaaCompliance.sanitizeResponse(enhancedStats);
     } catch (error) {
       await session.abortTransaction();
-      console.error("Error getting profile stats:", {
+      logger.error("Error getting profile stats:", {
         error,
         address,
         timestamp: new Date(),
@@ -251,7 +252,7 @@ const profileService = {
 
       return await hipaaCompliance.sanitizeAuditLog(auditLogs);
     } catch (error) {
-      console.error("Error getting audit log:", {
+      logger.error("Error getting audit log:", {
         error,
         address,
         timestamp: new Date(),
@@ -314,7 +315,7 @@ const profileService = {
       };
     } catch (error) {
       await session.abortTransaction();
-      console.error("Error deleting profile:", {
+      logger.error("Error deleting profile:", {
         error,
         address,
         timestamp: new Date(),

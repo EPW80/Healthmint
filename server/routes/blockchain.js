@@ -1,5 +1,6 @@
 // src/routes/blockchainRoutes.js
 import express from "express";
+import { logger } from "../config/loggerConfig.js";
 import { asyncHandler, createError } from "../errors/index.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import blockchainService from "../services/blockchainService.js";
@@ -21,7 +22,7 @@ const loadContractAbi = (filePath) => {
   try {
     return JSON.parse(fs.readFileSync(filePath, "utf8")).abi;
   } catch (error) {
-    console.error(`Failed to load ABI from ${filePath}:`, error);
+    logger.error(`Failed to load ABI from ${filePath}:`, error);
     return null;
   }
 };
@@ -318,7 +319,7 @@ router.get(
         ip: req.ip,
       });
     } catch (error) {
-      console.error("Hash verification error:", error);
+      logger.error("Hash verification error:", error);
     }
 
     res.json({
@@ -371,7 +372,7 @@ router.post(
       throw createError.validation("No file provided");
     }
 
-    console.log(
+    logger.info(
       `Received file: ${req.file.originalname}, size: ${req.file.size} bytes`
     );
 

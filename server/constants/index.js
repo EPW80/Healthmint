@@ -1,6 +1,8 @@
 // server/constants/index.js
 // This file contains various constants and configurations used throughout the application.
 import dotenv from "dotenv";
+import { logger } from "../config/loggerConfig.js";
+
 const loadEnv = () => {
   try {
     dotenv.config();
@@ -9,12 +11,12 @@ const loadEnv = () => {
     const missingVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
 
     if (missingVars.length > 0) {
-      console.warn(
-        `⚠️ Missing required environment variables: ${missingVars.join(", ")}`
+      logger.warn(
+        `Missing required environment variables: ${missingVars.join(", ")}`
       );
     }
   } catch (error) {
-    console.error("Error loading environment configuration:", error);
+    logger.error("Error loading environment configuration:", error);
   }
 };
 

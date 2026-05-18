@@ -5,20 +5,20 @@ import hipaaConfig from "../config/hipaaConfig.js";
 import { logger } from "../config/loggerConfig.js";
 
 const initializeServices = async () => {
-  console.log("Initializing services...");
+  logger.info("Initializing services...");
 
   try {
     // Validate environment variables
     hipaaConfig.validate();
-    console.log("✅ HIPAA config validated");
+    logger.info("✅ HIPAA config validated");
 
-    console.log("Initializing API service...");
+    logger.info("Initializing API service...");
     if (!apiService) {
       throw new Error("API service failed to initialize");
     }
 
     // Connect services that depend on each other
-    console.log("✅ Error handling system initialized");
+    logger.info("✅ Error handling system initialized");
 
     hipaaComplianceService.setLogger(logger); // If needed
 
@@ -27,19 +27,19 @@ const initializeServices = async () => {
       try {
         // Simple test to check provider connectivity
         const network = await transactionService.provider.getNetwork();
-        console.log(
+        logger.info(
           `✅ Connected to blockchain network: ${network.name} (${network.chainId})`
         );
       } catch (err) {
-        console.warn(`⚠️ Blockchain network connection failed: ${err.message}`);
+        logger.warn(`⚠️ Blockchain network connection failed: ${err.message}`);
         // Non-fatal error - just log warning
       }
     }
 
-    console.log("✅ All services initialized successfully");
+    logger.info("✅ All services initialized successfully");
     return true;
   } catch (error) {
-    console.error("❌ Service initialization failed:", error);
+    logger.error("❌ Service initialization failed:", error);
     throw error;
   }
 };

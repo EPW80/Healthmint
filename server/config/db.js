@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import hipaaConfig from "./hipaaConfig.js";
+import { logger } from "./loggerConfig.js";
 
 // Custom error class for database errors
 class DatabaseError extends Error {
@@ -66,7 +67,7 @@ const setupMongooseMiddleware = () => {
         }
         next();
       } catch (error) {
-        console.error("Encryption middleware error:", error);
+        logger.error("Encryption middleware error:", error);
         next(error);
       }
     });
@@ -94,7 +95,7 @@ const setupMongooseMiddleware = () => {
             });
             next();
           } catch (error) {
-            console.error("Audit logging middleware error:", error);
+            logger.error("Audit logging middleware error:", error);
             next(error);
           }
         });
@@ -126,18 +127,18 @@ const connectDB = async (options = {}) => {
     // Attempt connection with retries
     while (retryCount < maxRetries) {
       try {
-        console.log(
+        logger.info(
           `Connecting to MongoDB${retryCount > 0 ? ` (attempt ${retryCount + 1}/${maxRetries})` : ""}...`
         );
         await mongoose.connect(
           connectionUri,
           getMongoOptions(options.mongoOptions || {})
         );
-        console.log("✓ MongoDB connected successfully");
+        logger.info("MongoDB connected successfully");
 
         // Test connection
         await mongoose.connection.db.admin().ping();
-        console.log("✓ MongoDB connection verified");
+        logger.info("MongoDB connection verified");
 
         // Connection successful, break retry loop
         break;
@@ -149,7 +150,7 @@ const connectDB = async (options = {}) => {
           throw error; // Rethrow after max retries
         }
 
-        console.log(
+        logger.info(
           `Connection attempt failed. Retrying in ${retryDelayMs / 1000} seconds...`
         );
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
@@ -158,15 +159,15 @@ const connectDB = async (options = {}) => {
 
     // Log connection details in development
     if (process.env.NODE_ENV !== "production") {
-      console.log("MongoDB Connection Details:");
-      console.log("- Database:", mongoose.connection.name);
-      console.log("- Host:", mongoose.connection.host);
-      console.log("- Port:", mongoose.connection.port);
+      logger.info("MongoDB Connection Details:");
+      logger.info("- Database:", mongoose.connection.name);
+      logger.info("- Host:", mongoose.connection.host);
+      logger.info("- Port:", mongoose.connection.port);
     }
 
     // Setup connection event handlers
     mongoose.connection.on("error", (err) => {
-      console.error("MongoDB connection error:", err);
+      logger.error("MongoDB connection error:", err);
       hipaaConfig.audit.logError?.({
         type: "database_error",
         error: err.message,
@@ -175,7 +176,7 @@ const connectDB = async (options = {}) => {
     });
 
     mongoose.connection.on("disconnected", () => {
-      console.error("MongoDB disconnected. Attempting to reconnect...");
+      logger.error("MongoDB disconnected. Attempting to reconnect...");
       hipaaConfig.audit.logEvent?.({
         type: "database_disconnected",
         timestamp: new Date(),
@@ -183,7 +184,7 @@ const connectDB = async (options = {}) => {
     });
 
     mongoose.connection.on("reconnected", () => {
-      console.log("MongoDB reconnected successfully");
+      logger.info("MongoDB reconnected successfully");
       hipaaConfig.audit.logEvent?.({
         type: "database_reconnected",
         timestamp: new Date(),
@@ -195,7 +196,7 @@ const connectDB = async (options = {}) => {
 
     return mongoose.connection;
   } catch (error) {
-    console.error("MongoDB Connection Error:", {
+    logger.error("MongoDB Connection Error:", {
       message: error.message,
       stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
@@ -218,13 +219,13 @@ const setupShutdownHandlers = () => {
   // Only add handlers once
   if (!process.shutdownHandlersAdded) {
     const gracefulShutdown = async (signal) => {
-      console.log(`Received ${signal}, shutting down gracefully...`);
+      logger.info(`Received ${signal}, shutting down gracefully...`);
       try {
         await disconnectDB();
-        console.log("Graceful shutdown completed");
+        logger.info("Graceful shutdown completed");
         process.exit(0);
       } catch (err) {
-        console.error("Error during graceful shutdown:", err);
+        logger.error("Error during graceful shutdown:", err);
         process.exit(1);
       }
     };
@@ -252,14 +253,14 @@ const disconnectDB = async (options = {}) => {
     // Race the actual disconnect with the timeout
     await Promise.race([mongoose.disconnect(), timeoutPromise]);
 
-    console.log("✓ MongoDB disconnected successfully");
+    logger.info("MongoDB disconnected successfully");
 
     hipaaConfig.audit.logEvent?.({
       type: "database_shutdown",
       timestamp: new Date(),
     });
   } catch (error) {
-    console.error("Error disconnecting from MongoDB:", error);
+    logger.error("Error disconnecting from MongoDB:", error);
     throw new DatabaseError(
       `Failed to disconnect from database: ${error.message}`,
       "DISCONNECT_ERROR"

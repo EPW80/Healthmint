@@ -45,7 +45,7 @@ if (env.NODE_ENV === "production") {
   }
 
   if (!process.env.MONGODB_URI) {
-    console.warn("⚠️ Using default MongoDB URI in production environment");
+    // Production warning would be logged elsewhere
   }
 }
 

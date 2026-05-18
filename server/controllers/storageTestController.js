@@ -1,4 +1,5 @@
 import secureStorageService from '../services/secureStorageService.js';
+import { logger } from "../config/loggerConfig.js";
 
 // Test full storage flow: upload and retrieve
 const testFullStorageFlow = async (req, res) => {
@@ -33,7 +34,7 @@ const testFullStorageFlow = async (req, res) => {
     };
     
     // Upload the test file
-    console.log(`Uploading test file: ${testFile.originalname}`);
+    logger.info(`Uploading test file: ${testFile.originalname}`);
     const uploadResult = await secureStorageService.uploadFile(testFile);
     
     if (!uploadResult.success) {
@@ -47,7 +48,7 @@ const testFullStorageFlow = async (req, res) => {
     // If using IPFS/Web3Storage, attempt to retrieve the file
     let retrieveResult = null;
     if (uploadResult.cid) {
-      console.log(`Retrieving file with CID: ${uploadResult.cid}`);
+      logger.info(`Retrieving file with CID: ${uploadResult.cid}`);
       try {
         const fetchedData = await secureStorageService.fetchFromIPFS(uploadResult.cid);
         
@@ -90,7 +91,7 @@ const testFullStorageFlow = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Storage test error:', error);
+    logger.error('Storage test error:', error);
     return res.status(500).json({
       success: false,
       message: 'Storage test failed',

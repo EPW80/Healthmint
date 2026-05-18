@@ -2,6 +2,7 @@
 import axios from "axios";
 import config from "../config/config.js";
 import secureStorageService from "./secureStorageService.js";
+import { logger } from "../config/loggerConfig.js";
 
 // API service for making HTTP requests
 class ApiService {
@@ -94,7 +95,7 @@ class ApiService {
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`, {
+      logger.info(`API Request: ${config.method.toUpperCase()} ${config.url}`, {
         requestId,
         params: config.params ? "..." : undefined,
       });
@@ -111,7 +112,7 @@ class ApiService {
       timestamp: new Date().toISOString(),
     };
 
-    console.error("API Request Error:", errorDetails);
+    logger.error("API Request Error:", errorDetails);
 
     // Add to audit trail for HIPAA compliance if needed
     if (error.config?.isPHI) {
@@ -140,7 +141,7 @@ class ApiService {
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.log(
+      logger.info(
         `API Response: ${response.status} ${response.config.method.toUpperCase()} ${response.config.url}`,
         { requestId }
       );
@@ -163,7 +164,7 @@ class ApiService {
   handleResponseError = async (error) => {
     // Handle canceled requests
     if (axios.isCancel(error)) {
-      console.log("Request canceled:", error.message);
+      logger.info("Request canceled:", error.message);
       return Promise.reject(error);
     }
 
@@ -195,7 +196,7 @@ class ApiService {
         Math.pow(2, config.retryCount - 1) *
         (0.9 + 0.2 * Math.random());
 
-      console.log(
+      logger.info(
         `Retrying request (${config.retryCount}/${this.retryAttempts}): ${config.url} after ${Math.round(delay)}ms`
       );
 
@@ -205,7 +206,7 @@ class ApiService {
 
     // Format and log error with enhanced details
     const errorDetails = this.formatErrorDetails(error);
-    console.error("API Response Error:", errorDetails);
+    logger.error("API Response Error:", errorDetails);
 
     // Log failed PHI access for HIPAA compliance
     if (error.config?.isPHI) {
@@ -310,7 +311,7 @@ class ApiService {
 
   logHipaaEvent(eventType, details) {
     // In a real application, this would log to a secure audit trail system
-    console.log(`HIPAA Event: ${eventType}`, {
+    logger.info(`HIPAA Event: ${eventType}`, {
       ...details,
       timestamp: new Date().toISOString(),
     });
@@ -459,7 +460,7 @@ class ApiService {
 
   async handleFileUpload(file, options = {}) {
     // Log for debugging purposes
-    console.log(
+    logger.info(
       `[API] ${process.env.NODE_ENV !== "production" ? "Mock " : ""}file upload: ${file.originalname} (${file.size} bytes)`
     );
 
@@ -499,7 +500,7 @@ class ApiService {
       timestamp: new Date().toISOString(),
     };
 
-    console.error("Client-side API error:", clientErrorDetails);
+    logger.error("Client-side API error:", clientErrorDetails);
 
     if (options.isPHI) {
       this.logHipaaEvent("client_error", clientErrorDetails);

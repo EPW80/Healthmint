@@ -3,6 +3,7 @@ import secureStorageService from "./secureStorageService.js";
 import mongoose from "mongoose";
 import hipaaCompliance from "../services/hipaaComplianceService.js";
 import crypto from "crypto";
+import { logger } from "../config/loggerConfig.js";
 
 /**
  * Hybrid Storage Service
@@ -11,7 +12,7 @@ import crypto from "crypto";
 class StorageIntegrationService {
   async uploadFile(file, userId, metadata = {}) {
     try {
-      console.log(
+      logger.info(
         `Processing upload for user ${userId}: ${file.originalname} (${file.size} bytes)`
       );
 
@@ -102,7 +103,7 @@ class StorageIntegrationService {
         },
       };
     } catch (error) {
-      console.error("Storage integration error:", error);
+      logger.error("Storage integration error:", error);
 
       // Log upload failure
       await hipaaCompliance.createAuditLog("FILE_UPLOAD_FAILED", {
@@ -202,7 +203,7 @@ class StorageIntegrationService {
         content,
       };
     } catch (error) {
-      console.error("Error retrieving file:", error);
+      logger.error("Error retrieving file:", error);
 
       // Log access failure for HIPAA compliance
       await hipaaCompliance.createAuditLog("FILE_ACCESS_FAILED", {
@@ -279,7 +280,7 @@ class StorageIntegrationService {
         },
       };
     } catch (error) {
-      console.error("Error listing files:", error);
+      logger.error("Error listing files:", error);
       throw error;
     }
   }
@@ -317,7 +318,7 @@ class StorageIntegrationService {
 
       return updated;
     } catch (error) {
-      console.error("Error updating blockchain status:", error);
+      logger.error("Error updating blockchain status:", error);
       throw error;
     }
   }
@@ -346,7 +347,7 @@ class StorageIntegrationService {
         fileId,
       };
     } catch (error) {
-      console.error("Error deleting file:", error);
+      logger.error("Error deleting file:", error);
       throw error;
     }
   }
@@ -404,7 +405,7 @@ class StorageIntegrationService {
 
       return updated;
     } catch (error) {
-      console.error("Error updating file:", error);
+      logger.error("Error updating file:", error);
       throw error;
     }
   }
@@ -443,7 +444,7 @@ class StorageIntegrationService {
 
       return updated;
     } catch (error) {
-      console.error("Error sharing file:", error);
+      logger.error("Error sharing file:", error);
       throw error;
     }
   }

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import hipaaConfig from "../config/hipaaConfig.js";
+import { logger } from "../config/loggerConfig.js";
 
 const fileDocumentSchema = new mongoose.Schema(
   {
@@ -302,7 +303,7 @@ fileDocumentSchema.pre("findOne", async function () {
       },
     });
   } catch (err) {
-    console.error("Error logging file access:", err);
+    logger.error("Error logging file access:", err);
   }
 });
 

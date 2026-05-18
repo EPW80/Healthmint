@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { logger } from "../config/loggerConfig.js";
 
 class LocalStorageService {
   constructor() {
@@ -12,10 +13,10 @@ class LocalStorageService {
     try {
       await fs.mkdir(this.uploadDir, { recursive: true });
       this.initialized = true;
-      console.log("✅ Local storage service initialized at", this.uploadDir);
+      logger.info("Local storage service initialized at", this.uploadDir);
       return this;
     } catch (error) {
-      console.error("❌ Failed to initialize local storage:", error);
+      logger.error("Failed to initialize local storage:", error);
       throw error;
     }
   }

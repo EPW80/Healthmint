@@ -7,6 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import mongoose from "mongoose";
+import { logger } from "./config/loggerConfig.js";
 
 // Create equivalents of __dirname and __filename for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -24,17 +25,10 @@ let envLoaded = false;
 
 for (const envPath of envPaths) {
   if (fs.existsSync(envPath)) {
-    console.log(`Found .env file at: ${envPath}`);
     dotenv.config({ path: envPath });
     envLoaded = true;
     break;
   }
-}
-
-if (!envLoaded) {
-  console.warn(
-    "⚠️ No .env file found! Using environment variables if available."
-  );
 }
 
 // Import standardized error handling
@@ -49,10 +43,10 @@ const missingVars = REQUIRED_ENV_VARS.filter(
   (varName) => !process.env[varName]
 );
 if (missingVars.length > 0) {
-  console.error(
+  logger.error(
     `❌ CRITICAL ERROR: Missing required environment variables: ${missingVars.join(", ")}`
   );
-  console.error("Server cannot start securely without these variables.");
+  logger.error("Server cannot start securely without these variables.");
   process.exit(1);
 }
 
@@ -71,53 +65,46 @@ const logDir = path.join(__dirname, "logs");
 if (!fs.existsSync(logDir)) {
   try {
     fs.mkdirSync(logDir, { recursive: true });
-    console.log("✅ Created logs directory");
   } catch (err) {
-    console.warn("⚠️ Could not create logs directory:", err.message);
+    logger.warn("⚠️ Could not create logs directory:", err.message);
   }
 }
 
 // Debugging Environment Variables
-console.log(
-  "✅ Loaded ENCRYPTION_KEY:",
-  process.env.ENCRYPTION_KEY ? "Present" : "❌ Not Found"
-);
-console.log(
-  "✅ Loaded JWT_SECRET:",
-  process.env.JWT_SECRET ? "Present" : "❌ Not Found"
-);
-console.log("✅ Running in:", NODE_ENV);
-console.log("✅ Allowed Origins:", ALLOWED_ORIGINS);
+logger.info("Loaded ENCRYPTION_KEY:", process.env.ENCRYPTION_KEY ? "Present" : "Not Found");
+logger.info("Loaded JWT_SECRET:", process.env.JWT_SECRET ? "Present" : "Not Found");
+logger.info("Running in:", NODE_ENV);
+logger.info("Allowed Origins:", ALLOWED_ORIGINS);
 
 // Connect services after they are both initialized
-console.log("✅ Services initialized successfully");
+logger.info("Services initialized successfully");
 
 // MongoDB Connection
-console.log("Connecting to MongoDB...");
+logger.info("Connecting to MongoDB...");
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("✅ Connected to MongoDB successfully");
-    console.log(`Database: ${mongoose.connection.name}`);
-    console.log(`Host: ${mongoose.connection.host}`);
+    logger.info("Connected to MongoDB successfully");
+    logger.info(`Database: ${mongoose.connection.name}`);
+    logger.info(`Host: ${mongoose.connection.host}`);
   })
   .catch((err) => {
-    console.error("❌ MongoDB connection error:", err.message);
+    logger.error("MongoDB connection error:", err.message);
     // Consider whether you want to exit or continue with limited functionality
     // process.exit(1);  // Uncomment this if you want to fail hard when MongoDB is unavailable
   });
 
 // Add connection event listeners
 mongoose.connection.on("error", (err) => {
-  console.error("MongoDB connection error:", err.message);
+  logger.error("MongoDB connection error:", err.message);
 });
 
 mongoose.connection.on("disconnected", () => {
-  console.warn("MongoDB disconnected");
+  logger.warn("MongoDB disconnected");
 });
 
 mongoose.connection.on("reconnected", () => {
-  console.log("MongoDB reconnected");
+  logger.info("MongoDB reconnected");
 });
 
 // Initialize Express app
@@ -143,7 +130,7 @@ const corsOptions = {
     if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || NODE_ENV === "development") {
       callback(null, true);
     } else {
-      console.warn(`⚠️ Origin denied access: ${origin}`);
+      logger.warn(`⚠️ Origin denied access: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -222,9 +209,9 @@ try {
   // Try to import datasets routes - add with graceful fallback
   try {
     datasetsRoutes = (await import("./routes/datasets.js")).default;
-    console.log("✅ Datasets routes loaded successfully");
+    logger.info("✅ Datasets routes loaded successfully");
   } catch (err) {
-    console.warn("⚠️ Datasets routes not found:", err.message);
+    logger.warn("⚠️ Datasets routes not found:", err.message);
     // Create a minimal response to prevent 404 errors
     datasetsRoutes = express.Router();
     datasetsRoutes.get("/:id/download", (req, res) => {
@@ -236,7 +223,7 @@ try {
     });
   }
 } catch (err) {
-  console.error("❌ Failed to import routes:", err.message);
+  logger.error("❌ Failed to import routes:", err.message);
   process.exit(1); // Stops the server if routes fail to load
 }
 
@@ -255,13 +242,13 @@ try {
   await secureStorageService.initialize();
 
   const isConnected = await secureStorageService.validateIPFSConnection();
-  console.log(
+  logger.info(
     isConnected
       ? "✅ Web3Storage connection validated"
       : "⚠️ Web3Storage connection failed"
   );
 } catch (error) {
-  console.error("❌ Error initializing storage service:", error.message);
+  logger.error("❌ Error initializing storage service:", error.message);
 }
 
 // Root Route
@@ -290,44 +277,34 @@ const apiRouter = express.Router();
 
 // Apply HIPAA compliance middleware centrally to all API routes
 // This eliminates the need to apply these in individual route files
-console.log("Applying HIPAA compliance middleware to all API routes");
 apiRouter.use(hipaaCompliance.validatePHI);
 apiRouter.use(hipaaCompliance.auditLog);
 
 // Mount Routes to the API Router
-console.log("Mounting auth routes at /api/auth");
 apiRouter.use("/auth", authRoutes);
 
 // Mount data-key custody routes (off-chain replacement for the on-chain
 // encryption key removed from HealthDataMarketplaceContract). Must be
 // registered BEFORE /data so the more-specific prefix matches first.
 import dataKeysRoutes from "./routes/dataKeys.js";
-console.log("Mounting data-keys routes at /api/data/keys");
 apiRouter.use("/data/keys", dataKeysRoutes);
 
-console.log("Mounting data routes at /api/data");
 apiRouter.use("/data", dataRoutes);
 
-console.log("Mounting profile routes at /api/profile");
 apiRouter.use("/profile", profileRoutes);
 
-console.log("Mounting users routes at /api/users");
 apiRouter.use("/users", usersRoutes);
 
-console.log("Mounting datasets routes at /api/datasets");
 apiRouter.use("/datasets", datasetsRoutes);
 
-console.log("Mounting blockchain routes at /api/blockchain");
 apiRouter.use("/blockchain", blockchainRoutes);
 
-console.log("Mounting audit routes at /api/audit");
 apiRouter.use("/audit", auditRoutes);
 
 // Import storage routes
 import storageRoutes from "./routes/storage.js";
 
 // Replace existing storage test routes with this comprehensive version
-console.log("Mounting storage routes at /api/storage");
 apiRouter.use("/storage", storageRoutes);
 
 // Add this with your other route imports
@@ -335,7 +312,6 @@ import testRoutes from "./routes/test.js";
 
 // Add this with your other route registrations (before the catch-all routes)
 app.use("/api/test", testRoutes);
-console.log("Mounting test routes at /api/test");
 
 // Import the researcher routes
 import researcherRoutes from "./routes/researcher.js";
@@ -360,22 +336,22 @@ app.use(errorHandler);
 // Graceful Shutdown Handling
 let server;
 const gracefulShutdown = () => {
-  console.log("\n🔴 Graceful shutdown initiated...");
+  logger.info("Graceful shutdown initiated...");
 
   // Close server first, stop accepting new connections
   if (server) {
     server.close(() => {
-      console.log("✅ HTTP server closed");
+      logger.info("HTTP server closed");
 
       // Add any other cleanup tasks here (e.g., database connections)
 
-      console.log("✅ Shutdown complete");
+      logger.info("Shutdown complete");
       process.exit(0);
     });
 
     // If shutdown takes too long, force exit
     setTimeout(() => {
-      console.error("❌ Forced shutdown after timeout");
+      logger.error("Forced shutdown after timeout");
       process.exit(1);
     }, 30000); // 30 seconds timeout
   } else {
@@ -390,12 +366,12 @@ process.on("SIGUSR2", gracefulShutdown); // For Nodemon restarts
 
 // Handle uncaught exceptions and unhandled rejections
 process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
+  logger.error("Uncaught Exception:", error);
   gracefulShutdown();
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Promise Rejection:", reason);
+  logger.error("Unhandled Promise Rejection:", reason);
   gracefulShutdown();
 });
 
@@ -403,12 +379,12 @@ process.on("unhandledRejection", (reason, promise) => {
 try {
   global.SERVER_INITIALIZING = true;
   server = app.listen(PORT, () => {
-    console.log(`🚀 Server running and accessible at http://0.0.0.0:${PORT}`);
+    logger.info(`Server running and accessible at http://0.0.0.0:${PORT}`);
     // Server is now initialized
     global.SERVER_INITIALIZING = false;
   });
 } catch (err) {
-  console.error("❌ Failed to start server:", err);
+  logger.error("Failed to start server:", err);
   process.exit(1);
 }
 

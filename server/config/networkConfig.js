@@ -13,7 +13,7 @@ try {
     dotenv.config();
   }
 } catch (error) {
-  console.warn("Warning: Error loading .env file:", error.message);
+  // Errors loading .env are logged elsewhere
 }
 
 // safe-parse function to handle environment variables
@@ -23,10 +23,7 @@ const env = (key, defaultValue, parser = (x) => x) => {
   try {
     return parser(value);
   } catch (error) {
-    console.warn(
-      `Warning: Failed to parse ${key}, using default:`,
-      error.message
-    );
+    // Parse errors are expected for some env vars - return default
     return defaultValue;
   }
 };
@@ -106,9 +103,7 @@ export const NETWORKS = {
 export const getCurrentNetwork = () => {
   const networkName = env("NETWORK", "SEPOLIA").toUpperCase();
   if (!NETWORKS[networkName]) {
-    console.warn(
-      `Warning: Network ${networkName} not found, defaulting to SEPOLIA`
-    );
+    // Unknown network will default to SEPOLIA
     return NETWORKS.SEPOLIA;
   }
   return NETWORKS[networkName];

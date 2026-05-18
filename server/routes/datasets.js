@@ -1,5 +1,6 @@
 // server/routes/datasets.js - MOCK IMPLEMENTATION
 import express from "express";
+import { logger } from "../config/loggerConfig.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = express.Router();
@@ -96,7 +97,7 @@ const DEFAULT_DATASET = {
 
 // Logger for audit trail
 const logAudit = (action, details = {}) => {
-  console.log(`[MOCK AUDIT] ${action}:`, {
+  logger.info(`[MOCK AUDIT] ${action}:`, {
     timestamp: new Date().toISOString(),
     ...details,
   });
@@ -296,7 +297,7 @@ router.get(
       res.send(content);
     } catch (error) {
       // Log error
-      console.error("Error generating mock dataset content:", error);
+      logger.error("Error generating mock dataset content:", error);
       logAudit("DOWNLOAD_DATASET_FAILED", {
         datasetId: id,
         error: error.message,

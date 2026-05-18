@@ -1,4 +1,5 @@
 import express from "express";
+import { logger } from "../config/loggerConfig.js";
 
 const router = express.Router();
 router.post("/log", async (req, res) => {
@@ -22,7 +23,7 @@ router.post("/log", async (req, res) => {
     };
 
     // Log to console
-    console.log(`[AUDIT] ${action}:`, JSON.stringify(logEntry));
+    logger.info(`[AUDIT] ${action}:`, JSON.stringify(logEntry));
 
     // If you have a database, you would write to it here
 
@@ -32,7 +33,7 @@ router.post("/log", async (req, res) => {
       id: Date.now().toString(),
     });
   } catch (error) {
-    console.error("Error creating audit log:", error);
+    logger.error("Error creating audit log:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to create audit log",

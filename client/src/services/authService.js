@@ -1,6 +1,7 @@
 // src/services/authService.js
 import hipaaComplianceService from "./hipaaComplianceService.js";
 import { ENV } from "../config/environmentConfig.js";
+import logger from "../utils/logger.js";
 
 class AuthService {
   constructor() {
@@ -47,7 +48,7 @@ class AuthService {
 
   async verifyAuth(token) {
     if (this.mockMode) {
-      console.log('Using mock auth service in development mode');
+      logger.info('Using mock auth service in development mode');
       // Return mock authentication data after a short delay
       await new Promise(resolve => setTimeout(resolve, 300));
       return { 
@@ -73,7 +74,7 @@ class AuthService {
       // Check if response type is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('API returned non-JSON response:', await response.text());
+        logger.error('API returned non-JSON response:', await response.text());
         throw new Error('API returned non-JSON response');
       }
       
@@ -84,11 +85,11 @@ class AuthService {
       
       return await response.json();
     } catch (error) {
-      console.error('Auth verification error:', error);
+      logger.error('Auth verification error:', error);
       
       // Fallback to mock mode if in development
       if (process.env.NODE_ENV !== 'production') {
-        console.warn('Falling back to mock auth data');
+        logger.warn('Falling back to mock auth data');
         return { 
           authenticated: true, 
           user: { 
@@ -106,7 +107,7 @@ class AuthService {
   async ensureValidToken() {
     try {
       if (!this.token) {
-        console.warn("[AuthService] No token found, attempting to recover");
+        logger.warn("[AuthService] No token found, attempting to recover");
         // Attempt to recover using stored wallet address
         const walletAddress = localStorage.getItem(this.walletAddressKey);
         if (walletAddress) {
@@ -124,7 +125,7 @@ class AuthService {
       const now = new Date();
 
       if (expiryDate && expiryDate <= now) {
-        console.log("[AuthService] Token expired, refreshing...");
+        logger.info("[AuthService] Token expired, refreshing...");
         await this.refreshAccessToken();
       }
 
@@ -137,7 +138,7 @@ class AuthService {
 
       return this.token;
     } catch (error) {
-      console.error("[AuthService] Token validation error:", error);
+      logger.error("[AuthService] Token validation error:", error);
       await hipaaComplianceService.createAuditLog("TOKEN_VALIDATION_FAILURE", {
         action: "VALIDATE_TOKEN",
         walletAddress: this.walletAddress,
@@ -166,9 +167,9 @@ class AuthService {
         isNewUser: this._isNewUser,
       });
 
-      console.log("[AuthService] Token refreshed successfully");
+      logger.info("[AuthService] Token refreshed successfully");
     } catch (error) {
-      console.error("[AuthService] Token refresh error:", error);
+      logger.error("[AuthService] Token refresh error:", error);
       throw new Error("Failed to refresh token: " + error.message);
     }
   }
@@ -270,7 +271,7 @@ class AuthService {
         userProfile: authResult.userProfile,
       };
     } catch (error) {
-      console.error("[AuthService] Login error:", error);
+      logger.error("[AuthService] Login error:", error);
       await hipaaComplianceService.createAuditLog("AUTH_FAILURE", {
         action: "LOGIN",
         walletAddress: credentials.address || this.walletAddress,
@@ -295,7 +296,7 @@ class AuthService {
         isNewUser: false,
       };
     } catch (error) {
-      console.error("[AuthService] API login error:", error);
+      logger.error("[AuthService] API login error:", error);
       throw new Error("Login failed. Please try again.");
     }
   }
@@ -320,7 +321,7 @@ class AuthService {
       localStorage.setItem(this.isNewUserKey, "true");
       return null;
     } catch (error) {
-      console.error("[AuthService] Error getting user by wallet:", error);
+      logger.error("[AuthService] Error getting user by wallet:", error);
       return null;
     }
   }
@@ -354,7 +355,7 @@ class AuthService {
 
       return true;
     } catch (error) {
-      console.error("[AuthService] Logout error:", error);
+      logger.error("[AuthService] Logout error:", error);
       return false;
     }
   }
@@ -388,7 +389,7 @@ class AuthService {
 
       return true;
     } catch (error) {
-      console.error("[AuthService] Registration error:", error);
+      logger.error("[AuthService] Registration error:", error);
       await hipaaComplianceService.createAuditLog("REGISTRATION_FAILURE", {
         action: "REGISTER",
         walletAddress: userData?.address || this.walletAddress,
@@ -440,7 +441,7 @@ class AuthService {
 
       return userData;
     } catch (error) {
-      console.error("[AuthService] Profile update error:", error);
+      logger.error("[AuthService] Profile update error:", error);
       throw error;
     }
   }
@@ -451,7 +452,7 @@ class AuthService {
 
   // Check if user is new
   clearVerificationCache() {
-    console.log("[AuthService] Verification cache cleared");
+    logger.info("[AuthService] Verification cache cleared");
   }
 }
 

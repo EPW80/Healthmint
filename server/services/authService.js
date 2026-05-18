@@ -1,6 +1,7 @@
 // /home/epw/Healthmint-copyone/Healthmint-two/server/services/authService.js
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { logger } from "../config/loggerConfig.js";
 
 // This class handles authentication and token management
 class AuthService {
@@ -87,7 +88,7 @@ class AuthService {
       const decoded = jwt.verify(token, this.JWT_SECRET);
       return decoded;
     } catch (error) {
-      console.error("Token verification error:", error.message);
+      logger.error("Token verification error:", error.message);
       return null;
     }
   }

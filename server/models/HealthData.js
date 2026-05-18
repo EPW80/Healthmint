@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import crypto from "crypto";
+import { logger } from "../config/loggerConfig.js";
 
 // Define the HealthData schema
 const healthDataSchema = new mongoose.Schema(
@@ -349,7 +350,7 @@ healthDataSchema.pre("save", async function (next) {
 
     next();
   } catch (error) {
-    console.error("Error in HealthData pre-save middleware:", error);
+    logger.error("Error in HealthData pre-save middleware:", error);
     next(error);
   }
 });
@@ -404,7 +405,7 @@ healthDataSchema.methods.decryptField = async function (fieldName) {
 
     return decrypted;
   } catch (error) {
-    console.error(`Decryption error for ${fieldName}:`, error);
+    logger.error(`Decryption error for ${fieldName}:`, error);
     throw new Error(`Failed to decrypt ${fieldName}: ${error.message}`);
   }
 };
@@ -442,7 +443,7 @@ healthDataSchema.methods.hasAccess = async function (
     accessType: requiredAccess,
     granted: hasAccess,
     timestamp: new Date(),
-  }).catch((err) => console.error("Failed to log access attempt:", err));
+  }).catch((err) => logger.error("Failed to log access attempt:", err));
 
   return hasAccess;
 };
@@ -563,12 +564,12 @@ healthDataSchema.methods.addAuditLog = async function (
           { $push: { auditLog: auditEntry } }
         );
       } catch (err) {
-        console.error("Failed to update audit log:", err);
+        logger.error("Failed to update audit log:", err);
         // Continue with in-memory update even if DB update fails
       }
     }
   } catch (error) {
-    console.error("Error adding audit log:", error);
+    logger.error("Error adding audit log:", error);
     // Don't throw - audit logging should not break main functionality
   }
 };
@@ -601,7 +602,7 @@ healthDataSchema.methods.trackDownload = async function (
       );
     }
   } catch (error) {
-    console.error("Error tracking download:", error);
+    logger.error("Error tracking download:", error);
     // Still log the attempt even if updating stats failed
     await this.addAuditLog("download_failure", address, {
       ...details,
@@ -635,7 +636,7 @@ healthDataSchema.methods.generateIntegrityHash = async function () {
       return crypto.createHash("sha256").update(content).digest("hex");
     }
   } catch (error) {
-    console.error("Error generating integrity hash:", error);
+    logger.error("Error generating integrity hash:", error);
     // Return a fallback hash to prevent errors breaking the save process
     return crypto
       .createHash("sha256")
@@ -671,7 +672,7 @@ healthDataSchema.methods.verifyIntegrity = async function () {
 
     return isValid;
   } catch (error) {
-    console.error("Integrity verification error:", error);
+    logger.error("Integrity verification error:", error);
     return false;
   }
 };

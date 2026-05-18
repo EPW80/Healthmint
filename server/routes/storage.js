@@ -1,4 +1,5 @@
 import express from 'express';
+import { logger } from "../config/loggerConfig.js";
 import multer from 'multer';
 import { verifyToken } from '../middleware/authMiddleware.js';
 import storageIntegrationService from '../services/storageIntegrationService.js';
@@ -40,7 +41,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       try {
         metadata = JSON.parse(req.body.metadata);
       } catch (e) {
-        console.warn("Invalid metadata JSON:", e);
+        logger.warn("Invalid metadata JSON:", e);
       }
     }
 
@@ -62,7 +63,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("Upload error:", error);
+    logger.error("Upload error:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Upload failed",
@@ -118,7 +119,7 @@ router.get("/files", async (req, res) => {
 
     res.json(files);
   } catch (error) {
-    console.error("Error listing files:", error);
+    logger.error("Error listing files:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to retrieve files",

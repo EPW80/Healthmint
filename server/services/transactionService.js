@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { logger } from "../config/loggerConfig.js";
 
 // Load environment variables
 dotenv.config();
@@ -19,8 +20,8 @@ const contractJsonPath = path.resolve(
 const contractJson = JSON.parse(fs.readFileSync(contractJsonPath, "utf8"));
 
 // Debug logs for troubleshooting
-console.log("✅ Loaded ENV Variables:", JSON.stringify(process.env, null, 2));
-console.log("✅ NETWORK_CONFIG:", JSON.stringify(NETWORK_CONFIG, null, 2));
+logger.debug("Loaded ENV Variables:", JSON.stringify(process.env, null, 2));
+logger.debug("NETWORK_CONFIG:", JSON.stringify(NETWORK_CONFIG, null, 2));
 
 const contractABI = contractJson.abi;
 
@@ -46,7 +47,7 @@ class TransactionService {
     try {
       const rpcUrl = process.env.SEPOLIA_RPC_URL;
       this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-      console.log("✅ Provider successfully initialized:", rpcUrl);
+      logger.info("Provider successfully initialized:", rpcUrl);
 
       // Only try to initialize contract if address is available
       const contractAddress = process.env.CONTRACT_HEALTH_DATA_MARKETPLACE;
@@ -55,8 +56,8 @@ class TransactionService {
         !contractAddress ||
         contractAddress === "0x0000000000000000000000000000000000000000"
       ) {
-        console.log(
-          "ℹ️ No valid contract address provided, skipping contract initialization"
+        logger.info(
+          "No valid contract address provided, skipping contract initialization"
         );
         // Set a flag that contract is not initialized
         this.contractInitialized = false;
@@ -70,10 +71,10 @@ class TransactionService {
       );
 
       this.contractInitialized = true;
-      console.log("✅ Contract initialized at address:", contractAddress);
+      logger.info("Contract initialized at address:", contractAddress);
       return true;
     } catch (error) {
-      console.error("❌ Provider initialization error:", error.message);
+      logger.error("Provider initialization error:", error.message);
       throw new TransactionServiceError(
         "Failed to initialize provider",
         "INITIALIZATION_ERROR",
@@ -101,11 +102,11 @@ class TransactionService {
 
   setupEventListeners() {
     this.provider.on("block", (blockNumber) => {
-      console.log("New block:", blockNumber);
+      logger.info("New block:", blockNumber);
     });
 
     this.contract.on("DataPurchased", (id, buyer, seller, price, event) => {
-      console.log("Data purchased:", {
+      logger.info("Data purchased:", {
         id: id.toString(),
         buyer,
         seller,
@@ -118,7 +119,7 @@ class TransactionService {
   // Method to purchase data
   async purchaseData(buyerAddress, dataId, purpose) {
     if (!this.contractInitialized) {
-      console.warn("Contract not initialized. Method unavailable.");
+      logger.warn("Contract not initialized. Method unavailable.");
       throw new TransactionServiceError(
         "Contract not initialized",
         "CONTRACT_NOT_INITIALIZED"
@@ -156,7 +157,7 @@ class TransactionService {
         status: receipt.status === 1 ? "success" : "failed",
       };
     } catch (error) {
-      console.error("Data purchase error:", error);
+      logger.error("Data purchase error:", error);
       throw new TransactionServiceError(
         "Failed to purchase data",
         "PURCHASE_FAILED",

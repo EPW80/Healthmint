@@ -5,13 +5,14 @@ import errorHandlingService from "./errorHandlingService.js";
 import { STORAGE_CONFIG } from "../config/storageConfig.js";
 import localStorageService from "./localStorageService.js";
 import { createAuthenticatedClient } from "./web3StorageHelper.js";
+import { logger } from "../config/loggerConfig.js";
 
 // Import encryptionService conditionally to avoid breaking the app if it doesn't exist
 let encryptionService = null;
 try {
   encryptionService = require("./encryptionService.js").default;
 } catch (e) {
-  console.warn(
+  logger.warn(
     "Encryption service not available. Using fallback security measures."
   );
 }
@@ -77,11 +78,11 @@ class SecureStorageService {
     // AUTO-INITIALIZE: Add this code to auto-initialize when service is created
     (async () => {
       try {
-        console.log("🚀 Auto-initializing storage service...");
+        logger.info("Auto-initializing storage service...");
         await this.initialize();
-        console.log("✅ Storage service auto-initialization complete");
+        logger.info("Storage service auto-initialization complete");
       } catch (error) {
-        console.error("❌ Failed to auto-initialize storage service:", error);
+        logger.error("Failed to auto-initialize storage service:", error);
       }
     })();
   }
@@ -98,15 +99,15 @@ class SecureStorageService {
         },
       })
       .catch((err) =>
-        console.error("Failed to log service initialization:", err)
+        logger.error("Failed to log service initialization:", err)
       );
   }
 
   async initialize() {
     try {
-      console.log("Storage initialization:");
-      console.log("- IPFS_PROVIDER:", process.env.IPFS_PROVIDER);
-      console.log(
+      logger.info("Storage initialization:");
+      logger.info("- IPFS_PROVIDER:", process.env.IPFS_PROVIDER);
+      logger.info(
         "- WEB3_STORAGE_TOKEN:",
         process.env.WEB3_STORAGE_TOKEN ? "Present" : "Missing"
       );
@@ -119,24 +120,24 @@ class SecureStorageService {
           // Try Web3Storage
           this.client = await createAuthenticatedClient();
           this.initialized = true;
-          console.log("✅ Using Web3Storage for file storage");
+          logger.info("Using Web3Storage for file storage");
           return this;
         } catch (error) {
-          console.error("Web3Storage initialization failed:", error.message);
-          console.warn("Falling back to local storage mode");
+          logger.error("Web3Storage initialization failed:", error.message);
+          logger.warn("Falling back to local storage mode");
           this.storageService = localStorageService;
           this.initialized = true;
           return this;
         }
       } else {
         // Use local storage explicitly
-        console.log("✅ Using local storage for file storage");
+        logger.info("Using local storage for file storage");
         this.storageService = localStorageService;
         this.initialized = true;
         return this;
       }
     } catch (error) {
-      console.error("❌ Failed to initialize storage service:", error);
+      logger.error("Failed to initialize storage service:", error);
       throw error;
     }
   }
@@ -231,7 +232,7 @@ class SecureStorageService {
         throw new Error("Web3Storage client not initialized");
       }
 
-      console.log(`Preparing to upload file: ${file.originalname} to IPFS...`);
+      logger.info(`Preparing to upload file: ${file.originalname} to IPFS...`);
 
       // Convert to File object if needed (using modern approach)
       const fileObject = new File([file.buffer], file.originalname, {
@@ -240,42 +241,42 @@ class SecureStorageService {
 
       // Calculate checksum for integrity verification
       const checksum = await this.calculateFileHash(file.buffer);
-      console.log(`File checksum (SHA-256): ${checksum}`);
+      logger.info(`File checksum (SHA-256): ${checksum}`);
 
       // First try modern Web3Storage API methods
       let cid;
-      console.log(`Using modern Web3Storage API...`);
+      logger.info(`Using modern Web3Storage API...`);
 
       try {
         // Use the put method directly with array of File objects (modern approach)
-        console.log("Attempting upload with client.put()");
+        logger.info("Attempting upload with client.put()");
         cid = await this.client.put([fileObject], {
           name: file.originalname,
           maxRetries: 3,
           wrapWithDirectory: false,
         });
       } catch (putError) {
-        console.log(
+        logger.info(
           "put() method failed, trying alternative methods:",
           putError.message
         );
 
         // Try different upload methods available in various client versions
         if (typeof this.client.uploadFile === "function") {
-          console.log("Using client.uploadFile method");
+          logger.info("Using client.uploadFile method");
           cid = await this.client.uploadFile(fileObject);
         } else if (typeof this.client.upload === "function") {
-          console.log("Using client.upload method");
+          logger.info("Using client.upload method");
           cid = await this.client.upload(fileObject);
         } else if (
           this.client.store &&
           typeof this.client.store.add === "function"
         ) {
-          console.log("Using client.store.add method");
+          logger.info("Using client.store.add method");
           const result = await this.client.store.add(fileObject);
           cid = result.cid || result.toString();
         } else if (typeof this.client.uploadDirectory === "function") {
-          console.log("Using client.uploadDirectory method with single file");
+          logger.info("Using client.uploadDirectory method with single file");
           cid = await this.client.uploadDirectory([fileObject]);
         } else {
           throw new Error(
@@ -284,7 +285,7 @@ class SecureStorageService {
         }
       }
 
-      console.log(`✅ File uploaded successfully with CID: ${cid}`);
+      logger.info(`✅ File uploaded successfully with CID: ${cid}`);
 
       // Generate proper gateway URLs (using modern gateway)
       const w3sUrl = `https://w3s.link/ipfs/${cid}`;
@@ -301,14 +302,14 @@ class SecureStorageService {
         size: file.size || file.buffer?.length,
       };
     } catch (error) {
-      console.error("Failed to upload to IPFS:", error);
+      logger.error("Failed to upload to IPFS:", error);
 
       // If the upload fails due to method not found or API sunset, fall back to local storage
       if (
         error.message.includes("not a function") ||
         error.message.includes("API feature has been sunset")
       ) {
-        console.log(
+        logger.info(
           "Web3Storage API has changed, falling back to local storage"
         );
         if (this.storageService) {
@@ -336,7 +337,7 @@ class SecureStorageService {
         return hash.digest("hex");
       }
     } catch (error) {
-      console.warn("Failed to calculate file hash:", error.message);
+      logger.warn("Failed to calculate file hash:", error.message);
       return "hash-unavailable";
     }
   }
@@ -357,7 +358,7 @@ class SecureStorageService {
         try {
           fileHash = await encryptionService.hashFile(file);
         } catch (e) {
-          console.warn("Failed to generate file hash:", e);
+          logger.warn("Failed to generate file hash:", e);
         }
       }
 
@@ -395,7 +396,7 @@ class SecureStorageService {
           processedFile = await encryptionService.encryptFile(file);
           auditMetadata.encrypted = true;
         } catch (e) {
-          console.warn(
+          logger.warn(
             "File encryption failed, proceeding with unencrypted file:",
             e
           );
@@ -442,7 +443,7 @@ class SecureStorageService {
           timestamp: new Date().toISOString(),
           userId: options.userIdentifier,
         })
-        .catch((err) => console.error("Failed to log upload error:", err));
+        .catch((err) => logger.error("Failed to log upload error:", err));
 
       return errorHandlingService.handleError(error, {
         code: "UPLOAD_ERROR",
@@ -454,7 +455,7 @@ class SecureStorageService {
   }
 
   async uploadFile(file, options = {}) {
-    console.log(
+    logger.info(
       `Uploading file: ${file.originalname}, size: ${file.size} bytes`
     );
 
@@ -463,14 +464,14 @@ class SecureStorageService {
     }
 
     if (this.storageService) {
-      console.log("Using local storage service for upload");
+      logger.info("Using local storage service for upload");
       return await this.storageService.storeFile(file);
     } else if (this.client) {
-      console.log("Using Web3Storage for upload");
+      logger.info("Using Web3Storage for upload");
       return await this.uploadToIPFS(file);
     } else {
       // Should never reach here if initialization is done properly
-      console.warn("Storage service not initialized, using mock response");
+      logger.warn("Storage service not initialized, using mock response");
       return {
         success: true,
         cid: `mock-${Date.now().toString(16).slice(-10)}`,
@@ -515,7 +516,7 @@ class SecureStorageService {
         metadata: response.metadata,
       };
     } catch (error) {
-      console.error("API fallback upload error:", error);
+      logger.error("API fallback upload error:", error);
       throw new SecureStorageError(
         "Failed to upload via API",
         "API_UPLOAD_FAILED",
@@ -584,7 +585,7 @@ class SecureStorageService {
           timestamp: new Date().toISOString(),
           userId: options.userIdentifier,
         })
-        .catch((err) => console.error("Failed to log deletion error:", err));
+        .catch((err) => logger.error("Failed to log deletion error:", err));
 
       return errorHandlingService.handleError(error, {
         code: "DELETE_ERROR",
@@ -612,7 +613,7 @@ class SecureStorageService {
           timestamp: new Date().toISOString(),
           userId: options.userIdentifier,
         })
-        .catch((err) => console.error("Failed to log download error:", err));
+        .catch((err) => logger.error("Failed to log download error:", err));
 
       return errorHandlingService.handleError(error, {
         code: "DOWNLOAD_ERROR",
@@ -680,7 +681,7 @@ class SecureStorageService {
 
       return response;
     } catch (error) {
-      console.error("API download error:", error);
+      logger.error("API download error:", error);
       throw new SecureStorageError(
         "Failed to download via API",
         "API_DOWNLOAD_FAILED",
@@ -704,7 +705,7 @@ class SecureStorageService {
       const gateway = process.env.IPFS_GATEWAY || "https://w3s.link/ipfs/";
       const url = `${gateway}${hash}`;
 
-      console.log(`Fetching from IPFS gateway: ${url}`);
+      logger.info(`Fetching from IPFS gateway: ${url}`);
 
       let response;
       try {
@@ -713,7 +714,7 @@ class SecureStorageService {
           throw new Error(`Failed response: ${response.status}`);
         }
       } catch (primaryError) {
-        console.log(`Primary gateway failed, trying fallback gateway`);
+        logger.info(`Primary gateway failed, trying fallback gateway`);
         const fallbackUrl = `https://dweb.link/ipfs/${hash}`;
         response = await fetch(fallbackUrl);
         if (!response.ok) {
@@ -738,7 +739,7 @@ class SecureStorageService {
 
       return data;
     } catch (error) {
-      console.error("Error fetching from IPFS:", error);
+      logger.error("Error fetching from IPFS:", error);
       throw new SecureStorageError(
         "Failed to retrieve data from storage",
         "IPFS_RETRIEVAL_FAILED",
@@ -750,11 +751,11 @@ class SecureStorageService {
   async validateIPFSConnection() {
     try {
       if (!this.initialized || !this.client) {
-        console.error("❌ Storage client not initialized");
+        logger.error("❌ Storage client not initialized");
         return false;
       }
 
-      console.log("Testing Web3Storage connection...");
+      logger.info("Testing Web3Storage connection...");
 
       try {
         // Create a small test file for connection validation
@@ -773,18 +774,18 @@ class SecureStorageService {
           type: "application/json",
         });
 
-        console.log("Uploading test file to validate connection");
+        logger.info("Uploading test file to validate connection");
 
         // Try multiple ways to upload based on available methods in the client
         try {
           // Modern put method with appropriate options
-          console.log("Attempting with client.put()");
+          logger.info("Attempting with client.put()");
           await this.client.put([testFile], {
             maxRetries: 2,
             wrapWithDirectory: false,
           });
         } catch (putError) {
-          console.log(
+          logger.info(
             "put() failed, trying alternative methods:",
             putError.message
           );
@@ -810,13 +811,13 @@ class SecureStorageService {
           }
         }
 
-        console.log("✅ Web3Storage connection validated successfully");
+        logger.info("✅ Web3Storage connection validated successfully");
         return true;
       } catch (error) {
-        console.error("❌ IPFS validation failed:", error);
+        logger.error("❌ IPFS validation failed:", error);
 
         // Try to reinitialize if connection failed
-        console.log("Attempting to reinitialize connection...");
+        logger.info("Attempting to reinitialize connection...");
 
         // Wait 2 seconds before attempting reinitialization
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -825,7 +826,7 @@ class SecureStorageService {
         return this.client && this.initialized;
       }
     } catch (error) {
-      console.error("❌ IPFS connection validation critical failure:", error);
+      logger.error("❌ IPFS connection validation critical failure:", error);
       return false;
     }
   }
@@ -849,7 +850,7 @@ class SecureStorageService {
 
       return response.ipfsHash;
     } catch (error) {
-      console.error("Reference resolution error:", error);
+      logger.error("Reference resolution error:", error);
       throw new SecureStorageError(
         "Failed to resolve reference",
         "RESOLUTION_FAILED",
@@ -895,7 +896,7 @@ class SecureStorageService {
           .join("");
         return hashHex;
       } catch (error) {
-        console.warn(
+        logger.warn(
           "Failed to use crypto.subtle, using fallback method:",
           error
         );
@@ -909,7 +910,7 @@ class SecureStorageService {
         hash.update(cid.toString() + Date.now());
         return hash.digest("hex");
       } catch (error) {
-        console.warn(
+        logger.warn(
           "Failed to generate reference with crypto, using fallback:",
           error
         );
@@ -1021,7 +1022,7 @@ class SecureStorageService {
 
       return response.data;
     } catch (error) {
-      console.error("Dataset retrieval error:", error);
+      logger.error("Dataset retrieval error:", error);
       throw new SecureStorageError(
         "Failed to retrieve dataset",
         "DATASET_RETRIEVAL_FAILED",
@@ -1048,7 +1049,7 @@ class SecureStorageService {
         },
       };
     } catch (error) {
-      console.error("Dataset listing error:", error);
+      logger.error("Dataset listing error:", error);
       throw new SecureStorageError(
         "Failed to list datasets",
         "DATASET_LIST_FAILED",

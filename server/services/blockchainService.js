@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createError } from "../errors/index.js";
+import { logger } from "../config/loggerConfig.js";
 
 // TTL for /wallet/challenge nonces. 5 minutes is generous for a user to
 // click "Sign" in MetaMask but short enough to bound replay risk.
@@ -17,7 +18,7 @@ const loadContractAbi = (filePath) => {
   try {
     return JSON.parse(fs.readFileSync(filePath, "utf8")).abi;
   } catch (error) {
-    console.error(`Failed to load ABI from ${filePath}:`, error);
+    logger.error(`Failed to load ABI from ${filePath}:`, error);
     return null;
   }
 };
@@ -57,25 +58,25 @@ class BlockchainService {
         CONTRACT_ADDRESSES: {},
       };
       
-      console.log("✅ NETWORK_CONFIG:", this.networkConfig);
-      
+      logger.info("NETWORK_CONFIG configured");
+
       // Initialize provider
       const network = process.env.BLOCKCHAIN_NETWORK || "SEPOLIA";
       const rpcUrl = this.networkConfig[network]?.RPC_URL;
-      
+
       if (!rpcUrl) {
         throw new Error(`Invalid network configuration for ${network}`);
       }
-      
+
       this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-      console.log("✅ Provider successfully initialized:", rpcUrl);
-      
+      logger.info("Provider successfully initialized:", rpcUrl);
+
       // IMPORTANT: Never log the private key!
       const privateKey = process.env.PRIVATE_KEY;
       if (privateKey) {
         this.wallet = new ethers.Wallet(privateKey, this.provider);
       } else {
-        console.warn("⚠️ No private key provided, transaction signing unavailable");
+        logger.warn("No private key provided, transaction signing unavailable");
       }
       
       // Load contract addresses
@@ -120,13 +121,13 @@ class BlockchainService {
       }
       
       if (Object.keys(this.contracts).length === 0) {
-        console.log("ℹ️ No valid contract address provided, skipping contract initialization");
+        logger.info("No valid contract address provided, skipping contract initialization");
       }
-      
+
       this.initialized = true;
-      console.log("2025-04-28 01:07:47 info: BlockchainService initialized ");
+      logger.info("BlockchainService initialized");
     } catch (error) {
-      console.error("❌ Failed to initialize blockchain service:", error);
+      logger.error("Failed to initialize blockchain service:", error);
       throw error;
     }
   }
@@ -159,7 +160,7 @@ class BlockchainService {
         events: receipt.events
       };
     } catch (error) {
-      console.error("Error granting consent:", error);
+      logger.error("Error granting consent:", error);
       throw createError.badRequest(`Failed to grant consent: ${error.message}`);
     }
   }
@@ -185,7 +186,7 @@ class BlockchainService {
         blockNumber: receipt.blockNumber
       };
     } catch (error) {
-      console.error("Error revoking consent:", error);
+      logger.error("Error revoking consent:", error);
       throw createError.badRequest(`Failed to revoke consent: ${error.message}`);
     }
   }
@@ -215,7 +216,7 @@ class BlockchainService {
         blockNumber: receipt.blockNumber
       };
     } catch (error) {
-      console.error("Error registering data:", error);
+      logger.error("Error registering data:", error);
       throw createError.badRequest(`Failed to register data: ${error.message}`);
     }
   }

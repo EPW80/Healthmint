@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
+import { logger } from "../config/loggerConfig.js";
 
 const testDatabaseConnection = async (req, res) => {
   try {
-    console.log('MongoDB test endpoint called');
+    logger.info('MongoDB test endpoint called');
     
     // Check connection status
     const connectionState = mongoose.connection.readyState;
@@ -14,7 +15,7 @@ const testDatabaseConnection = async (req, res) => {
       99: 'uninitialized'
     }[connectionState] || 'unknown';
     
-    console.log(`Connection state: ${connectionStatus} (${connectionState})`);
+    logger.info(`Connection state: ${connectionStatus} (${connectionState})`);
 
     if (connectionState !== 1) {
       return res.status(500).json({
@@ -40,7 +41,7 @@ const testDatabaseConnection = async (req, res) => {
       collections: collectionNames
     });
   } catch (error) {
-    console.error('MongoDB test error:', error);
+    logger.error('MongoDB test error:', error);
     return res.status(500).json({
       success: false,
       message: 'MongoDB test failed',

@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
+import { logger } from "./config/loggerConfig.js";
 
 // Setup directory structure for ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +21,6 @@ let envLoaded = false;
 for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
-    console.log(`✅ Loaded environment variables from ${envPath}`);
     envLoaded = true;
     break;
   }
@@ -28,7 +28,6 @@ for (const envPath of possibleEnvPaths) {
 
 // Fall back to system environment variables if no .env file found
 if (!envLoaded) {
-  console.warn("⚠️ No .env file found, using system environment variables");
   dotenv.config();
 }
 
@@ -39,9 +38,8 @@ dirs.forEach((dir) => {
   if (!fs.existsSync(dirPath)) {
     try {
       fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`✅ Created directory: ${dir}`);
     } catch (err) {
-      console.warn(`⚠️ Could not create directory ${dir}: ${err.message}`);
+      logger.warn(`Could not create directory ${dir}: ${err.message}`);
     }
   }
 });
@@ -60,7 +58,7 @@ requiredEnvVars.forEach(({ name, fallback }) => {
   if (!process.env[name]) {
     if (fallback !== null) {
       process.env[name] = fallback;
-      console.warn(`⚠️ Using fallback value for ${name}: ${fallback}`);
+      logger.warn(`Using fallback value for ${name}: ${fallback}`);
     } else {
       missingVars.push(name);
     }
@@ -69,11 +67,11 @@ requiredEnvVars.forEach(({ name, fallback }) => {
 
 // Exit if critical variables are missing
 if (missingVars.length > 0) {
-  console.error(
-    `❌ Missing required environment variables: ${missingVars.join(", ")}`
+  logger.error(
+    `Missing required environment variables: ${missingVars.join(", ")}`
   );
-  console.error(
-    "❌ Please set these variables in your .env file or run the setup script: node scripts/setupEnv.js"
+  logger.error(
+    "Please set these variables in your .env file or run the setup script: node scripts/setupEnv.js"
   );
   process.exit(1);
 }
@@ -90,21 +88,21 @@ const startServer = async () => {
 
     // We don't need to explicitly call a method on the server object
     // since server.js already sets up the HTTP server listening
-    console.log("✅ Server initialization complete");
+    logger.info("Server initialization complete");
   } catch (error) {
-    console.error("❌ Fatal error starting server:", error);
+    logger.error("Fatal error starting server:", error);
     process.exit(1);
   }
 };
 
 // Handle uncaught exceptions and unhandled rejections
 process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
+  logger.error("Uncaught Exception:", error);
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
   process.exit(1);
 });
 
@@ -121,7 +119,7 @@ process.on("unhandledRejection", (reason, promise) => {
     const timeSinceLastRedirect = currentTime - parseInt(lastRedirectTime, 10);
     // If we've redirected in the last 2 seconds, force connection
     if (timeSinceLastRedirect < 2000) {
-      console.warn("🔧 Emergency fix: Forcing wallet connection state");
+      logger.warn("🔧 Emergency fix: Forcing wallet connection state");
       localStorage.setItem("healthmint_wallet_connection", "true");
       localStorage.setItem(
         "healthmint_wallet_address",
@@ -152,14 +150,16 @@ process.on("unhandledRejection", (reason, promise) => {
   // Record this page load as a potential redirect
   sessionStorage.setItem("last_redirect_time", currentTime.toString());
 
-  // Log current localStorage state for debugging
-  console.log("Current localStorage state:", {
-    wallet_connection: localStorage.getItem("healthmint_wallet_connection"),
-    wallet_address: localStorage.getItem("healthmint_wallet_address"),
-    user_role: localStorage.getItem("healthmint_user_role"),
-    is_new_user: localStorage.getItem("healthmint_is_new_user"),
-    has_profile: !!localStorage.getItem("healthmint_user_profile"),
-  });
+  // Log current localStorage state for debugging (if localStorage is available)
+  if (typeof localStorage !== 'undefined') {
+    logger.debug("Current localStorage state:", {
+      wallet_connection: localStorage.getItem("healthmint_wallet_connection"),
+      wallet_address: localStorage.getItem("healthmint_wallet_address"),
+      user_role: localStorage.getItem("healthmint_user_role"),
+      is_new_user: localStorage.getItem("healthmint_is_new_user"),
+      has_profile: !!localStorage.getItem("healthmint_user_profile"),
+    });
+  }
 })();
 
 // Start the server

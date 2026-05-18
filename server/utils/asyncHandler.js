@@ -1,8 +1,10 @@
 // utils/asyncHandler.js
+import { logger } from "../config/loggerConfig.js";
+
 export const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((error) => {
     // Log error details
-    console.error("Route handler error:", {
+    logger.error("Route handler error:", {
       path: req.path,
       method: req.method,
       error: error.message,

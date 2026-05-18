@@ -9,20 +9,20 @@ class ServerHipaaComplianceService {
   constructor() {
     // Replace error handling service with logger
     this.logger = logger;
-    console.log("✅ HipaaComplianceService initialized");
+    logger.info("✅ HipaaComplianceService initialized");
   }
 
   // Replace error handling service setter with logger setter
   setLogger(loggerService) {
     this.logger = loggerService || logger;
-    console.log("✅ Logger set in HipaaComplianceService");
+    logger.info("✅ Logger set in HipaaComplianceService");
   }
 
   async createAuditLog(action, details, severity = "info", user = "anonymous") {
     try {
       // Check if server is still initializing
       if (global.SERVER_INITIALIZING) {
-        console.log(`Skipping audit log during initialization: ${action}`);
+        logger.info(`Skipping audit log during initialization: ${action}`);
         return true;
       }
       const logEntry = {

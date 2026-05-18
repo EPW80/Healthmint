@@ -3,6 +3,7 @@ import { execSync } from "child_process";
 import fs from "fs";
 import { ethers } from "ethers";
 import dotenv from "dotenv";
+import { logger } from "../config/loggerConfig.js";
 
 // Initialize environment variables
 dotenv.config();
@@ -13,13 +14,13 @@ async function main() {
     // Validate required environment variables
     validateEnvironment();
 
-    console.log("Starting deployment process...");
-    console.log("Network: Sepolia");
+    logger.info("Starting deployment process...");
+    logger.info("Network: Sepolia");
     logInfuraKey();
 
     // Set up wallet and provider
     const wallet = setupWallet();
-    console.log("Deploying from address:", wallet.address);
+    logger.info("Deploying from address:", wallet.address);
 
     // Clean and prepare build directory
     prepareBuildDirectory();
@@ -58,7 +59,7 @@ function validateEnvironment() {
 // Log Infura API key (masked)
 function logInfuraKey() {
   const apiKey = process.env.INFURA_API_KEY;
-  console.log("Infura API Key:", `${apiKey.slice(0, 6)}...`);
+  logger.info("Infura API Key:", `${apiKey.slice(0, 6)}...`);
 }
 
 // Set up wallet and provider
@@ -77,7 +78,7 @@ function normalizePrivateKey(key) {
 
 // Prepare build directory
 function prepareBuildDirectory() {
-  console.log("\nCleaning previous build...");
+  logger.info("Cleaning previous build...");
   const buildDir = "./client/src/contracts";
 
   if (fs.existsSync(buildDir)) {
@@ -91,13 +92,13 @@ function prepareBuildDirectory() {
 
 // Compile contracts
 function compileContracts() {
-  console.log("\nCompiling contracts...");
+  logger.info("Compiling contracts...");
   execSync("npx truffle compile", { stdio: "inherit" });
 }
 
 // Deploy contracts to Sepolia
 function deployToSepolia() {
-  console.log("\nDeploying to Sepolia...");
+  logger.info("Deploying to Sepolia...");
   execSync("npx truffle migrate --network sepolia --reset", {
     stdio: "inherit",
   });
@@ -191,44 +192,42 @@ async function logDeploymentSuccess(
   artifact,
   wallet
 ) {
-  console.log("\nDeployment successful! 🎉");
-  console.log("Contract address:", deployedAddress);
-  console.log("Network ID:", networkId);
-  console.log("Block number:", artifact.networks[networkId].blockNumber);
-  console.log("Deployed by:", wallet.address);
-  console.log("\nFiles updated:");
-  console.log("- deployment-info.json");
-  console.log("- .env (CONTRACT_ADDRESS updated)");
+  logger.info("Deployment successful!");
+  logger.info("Contract address:", deployedAddress);
+  logger.info("Network ID:", networkId);
+  logger.info("Block number:", artifact.networks[networkId].blockNumber);
+  logger.info("Deployed by:", wallet.address);
+  logger.info("Files updated: deployment-info.json, .env (CONTRACT_ADDRESS updated)");
 
   // Verify balance after deployment
   const provider = wallet.provider;
   const balance = await provider.getBalance(wallet.address);
-  console.log("\nRemaining balance:", ethers.utils.formatEther(balance), "ETH");
+  logger.info("Remaining balance:", ethers.utils.formatEther(balance), "ETH");
 }
 
 // Verify contract on Etherscan if API key is available
 function verifyContract() {
   if (process.env.ETHERSCAN_API_KEY) {
-    console.log("\nVerifying contract on Etherscan...");
+    logger.info("Verifying contract on Etherscan...");
     try {
       execSync(
         `npx truffle run verify HealthDataMarketplace --network sepolia`,
         { stdio: "inherit" }
       );
-      console.log("Contract verified successfully! ✅");
+      logger.info("Contract verified successfully!");
     } catch (verifyError) {
-      console.warn("Contract verification failed:", verifyError.message);
-      console.log("You can try verifying manually on Etherscan");
+      logger.warn("Contract verification failed:", verifyError.message);
+      logger.info("You can try verifying manually on Etherscan");
     }
   }
 }
 
 // Handle deployment errors
 function handleDeploymentError(error) {
-  console.error("\n❌ Deployment failed:");
-  console.error(error.message);
-  if (error.stdout) console.error("Output:", error.stdout.toString());
-  if (error.stderr) console.error("Error:", error.stderr.toString());
+  logger.error("Deployment failed:");
+  logger.error(error.message);
+  if (error.stdout) logger.error("Output:", error.stdout.toString());
+  if (error.stderr) logger.error("Error:", error.stderr.toString());
   process.exit(1);
 }
 
@@ -236,6 +235,6 @@ function handleDeploymentError(error) {
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error(error);
+    logger.error(error);
     process.exit(1);
   });

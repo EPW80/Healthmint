@@ -1,5 +1,6 @@
 // middleware/hipaaCompliance.js
 import { createError } from "../errors/index.js";
+import { logger } from "../config/loggerConfig.js";
 import crypto from "crypto";
 import validation from "../validation/index.js";
 import auditLogService from "../services/auditLogService.js";
@@ -18,13 +19,13 @@ const createAuditLog = async (action, details = {}) => {
     await auditLogService.write(action, auditEntry);
 
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[HIPAA AUDIT] ${action}:`, auditEntry);
+      logger.info(`[HIPAA AUDIT] ${action}:`, auditEntry);
     }
 
     return true;
   } catch (error) {
     // Audit failures must not crash request handling.
-    console.error("Audit logging error:", error);
+    logger.error("Audit logging error:", error);
     return false;
   }
 };
@@ -62,7 +63,7 @@ const hipaaCompliance = {
       }
 
       if (Object.keys(detectedPHI).length > 0) {
-        console.warn("⚠️ PHI patterns detected:", Object.keys(detectedPHI));
+        logger.warn("⚠️ PHI patterns detected:", Object.keys(detectedPHI));
 
         // Add PHI detection to request for audit logging
         req.phiDetected = Object.keys(detectedPHI);
@@ -70,7 +71,7 @@ const hipaaCompliance = {
 
       next();
     } catch (error) {
-      console.error("PHI validation error:", error);
+      logger.error("PHI validation error:", error);
       next(
         createError.validation("PHI validation failed", {
           error: "Unable to validate PHI data",
@@ -115,7 +116,7 @@ const hipaaCompliance = {
       auditEntry.responseTime = responseTime;
 
       if (process.env.NODE_ENV !== "production") {
-        console.log(
+        logger.info(
           `[HIPAA AUDIT] ${req.method} ${req.originalUrl} - Status: ${res.statusCode} - User: ${auditEntry.userId} - Time: ${responseTime}ms`
         );
       }

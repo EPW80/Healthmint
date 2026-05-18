@@ -1,4 +1,5 @@
 import express from 'express';
+import { logger } from "../config/loggerConfig.js";
 import FileDocument from '../models/FileDocument.js';
 
 const router = express.Router();
@@ -51,7 +52,7 @@ router.get('/datasets/discover', async (req, res) => {
       datasets
     });
   } catch (error) {
-    console.error('Error discovering datasets:', error);
+    logger.error('Error discovering datasets:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve datasets',

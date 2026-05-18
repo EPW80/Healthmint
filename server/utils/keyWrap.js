@@ -13,6 +13,7 @@
 //     threshold decryption.
 
 import crypto from "crypto";
+import { logger } from "../config/loggerConfig.js";
 
 const ALGO = "aes-256-gcm";
 const KEY_LEN = 32; // 256-bit
@@ -26,7 +27,7 @@ function loadKek() {
   if (!raw) {
     throw new Error(
       "HEALTHMINT_KEK is not set. Refusing to operate without a KEK. " +
-        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+        "Generate one with: node -e \"logger.info(require('crypto').randomBytes(32).toString('hex'))\""
     );
   }
   const buf = Buffer.from(raw, "hex");

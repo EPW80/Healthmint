@@ -1,4 +1,6 @@
 // Basic error handling service
+import { logger } from "../config/loggerConfig.js";
+
 class ErrorHandlingService {
   // Constructor
   handleError(error, options = {}) {
@@ -11,7 +13,7 @@ class ErrorHandlingService {
     } = options;
 
     // Log the error
-    console.error(`[${code}] Error in ${context}:`, error);
+    logger.error(`[${code}] Error in ${context}:`, error);
 
     // Create a standardized error object
     const standardError = {

@@ -1,4 +1,5 @@
 import express from 'express';
+import { logger } from "../config/loggerConfig.js";
 import multer from 'multer';
 import secureStorageService from '../services/secureStorageService.js';
 import testEndpointMiddleware from '../middleware/testEndpointMiddleware.js';
@@ -24,7 +25,7 @@ router.post('/file-upload',
         });
       }
 
-      console.log('Test upload received file:', req.file.originalname);
+      logger.info('Test upload received file:', req.file.originalname);
       
       // Use the secure storage service to upload
       const result = await secureStorageService.uploadFile(req.file);
@@ -40,7 +41,7 @@ router.post('/file-upload',
         storageResult: result
       });
     } catch (error) {
-      console.error('Test upload error:', error);
+      logger.error('Test upload error:', error);
       return res.status(500).json({
         success: false,
         message: 'File upload failed',
@@ -63,7 +64,7 @@ router.post('/file-upload-with-metadata',
         });
       }
 
-      console.log('Test upload received file:', req.file.originalname);
+      logger.info('Test upload received file:', req.file.originalname);
       
       // Use the secure storage service to upload
       const result = await secureStorageService.uploadFile(req.file);
@@ -121,7 +122,7 @@ router.post('/file-upload-with-metadata',
         fileDocument: savedDoc
       });
     } catch (error) {
-      console.error('Test upload error:', error);
+      logger.error('Test upload error:', error);
       return res.status(500).json({
         success: false,
         message: 'File upload failed',
@@ -142,7 +143,7 @@ router.get('/files', testEndpointMiddleware, async (req, res) => {
       files
     });
   } catch (error) {
-    console.error('Error retrieving files:', error);
+    logger.error('Error retrieving files:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve files',

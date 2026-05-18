@@ -1,4 +1,5 @@
 // client/src/utils/authUtils.js
+import logger from "./logger.js";
 // Check if a user is new based on their Ethereum address
 export const isNewUser = (address) => {
   // Default to true if we can't determine
@@ -23,7 +24,7 @@ export const isNewUser = (address) => {
           }
         }
       } catch (e) {
-        console.error(
+        logger.error(
           "Error checking profile while verifying new user flag:",
           e
         );
@@ -44,11 +45,11 @@ export const isNewUser = (address) => {
       // If we have a profile with a name and role, not a new user
       return false;
     } catch (parseError) {
-      console.error("Error parsing user profile:", parseError);
+      logger.error("Error parsing user profile:", parseError);
       return true; // Assume new user if we can't parse the profile
     }
   } catch (error) {
-    console.error("Error checking new user status:", error);
+    logger.error("Error checking new user status:", error);
     return true; // Assume new user on error for safety
   }
 };
@@ -87,7 +88,7 @@ export const redirectToAppropriateRoute = (authState) => {
 
   // Perform the redirect
   if (redirectPath && currentPath !== redirectPath) {
-    console.log(`Redirecting from ${currentPath} to ${redirectPath}`);
+    logger.info(`Redirecting from ${currentPath} to ${redirectPath}`);
     window.location.replace(redirectPath);
   }
 };
@@ -111,7 +112,7 @@ export const needsRegistration = (user, address) => {
         }
       }
     } catch (e) {
-      console.error("Error checking profile in needsRegistration:", e);
+      logger.error("Error checking profile in needsRegistration:", e);
     }
     return true;
   }
@@ -135,7 +136,7 @@ export const initializeNewConnection = (address) => {
         existingProfile = JSON.parse(userProfileStr);
       }
     } catch (e) {
-      console.error("Error parsing user profile during initialization:", e);
+      logger.error("Error parsing user profile during initialization:", e);
     }
 
     // Determine if this is a new user
@@ -161,10 +162,10 @@ export const initializeNewConnection = (address) => {
       }
     }
 
-    console.log(`Connection initialized. New user: ${newUser}`);
+    logger.info(`Connection initialized. New user: ${newUser}`);
     return { isNewUser: newUser, profile: existingProfile || { address } };
   } catch (e) {
-    console.error("Error initializing connection:", e);
+    logger.error("Error initializing connection:", e);
 
     // Fallback: initialize minimal profile
     localStorage.setItem(
@@ -180,12 +181,12 @@ export const forceRegistrationComplete = (
   walletAddress,
   userData = {}
 ) => {
-  console.log("⚡ FORCING REGISTRATION COMPLETE ⚡");
-  console.log("Role:", role);
-  console.log("Address:", walletAddress);
+  logger.info("⚡ FORCING REGISTRATION COMPLETE ⚡");
+  logger.info("Role:", role);
+  logger.info("Address:", walletAddress);
 
   if (!role || !walletAddress) {
-    console.error("Missing required parameters for forceRegistrationComplete");
+    logger.error("Missing required parameters for forceRegistrationComplete");
     return null;
   }
 
@@ -205,7 +206,7 @@ export const forceRegistrationComplete = (
         existingProfile = JSON.parse(existingProfileStr);
       }
     } catch (error) {
-      console.error("Error parsing profile:", error);
+      logger.error("Error parsing profile:", error);
       existingProfile = {};
     }
 
@@ -242,7 +243,7 @@ export const forceRegistrationComplete = (
     // 6. Return the complete profile for use in state updates
     return updatedProfile;
   } catch (error) {
-    console.error("Error in forceRegistrationComplete:", error);
+    logger.error("Error in forceRegistrationComplete:", error);
 
     // Still try to set the minimum required values
     localStorage.setItem("healthmint_is_new_user", "false");
@@ -299,7 +300,7 @@ export const isRegistrationComplete = () => {
         }
       }
     } catch (e) {
-      console.error("Error checking profile in isRegistrationComplete:", e);
+      logger.error("Error checking profile in isRegistrationComplete:", e);
     }
     return false;
   }
@@ -320,7 +321,7 @@ export const isRegistrationComplete = () => {
     const profile = JSON.parse(profileStr);
     return !!profile.name && !!profile.role;
   } catch (error) {
-    console.error("Error checking registration status:", error);
+    logger.error("Error checking registration status:", error);
     return false;
   }
 };
@@ -354,7 +355,7 @@ export const logAuthAction = (action, details = {}) => {
     // In a real app, this would send to a secure audit logging service
     // For now, we'll just console log in non-production environments
     if (process.env.NODE_ENV !== "production") {
-      console.log(`Auth Action Logged: ${action}`, {
+      logger.info(`Auth Action Logged: ${action}`, {
         timestamp: new Date().toISOString(),
         ...details,
       });
@@ -377,7 +378,7 @@ export const logAuthAction = (action, details = {}) => {
 
     localStorage.setItem("healthmint_audit_trail", JSON.stringify(auditTrail));
   } catch (error) {
-    console.error("Error logging auth action:", error);
+    logger.error("Error logging auth action:", error);
   }
 };
 
@@ -404,7 +405,7 @@ export const clearAuthData = () => {
 
     return true;
   } catch (error) {
-    console.error("Error clearing auth data:", error);
+    logger.error("Error clearing auth data:", error);
     return false;
   }
 };

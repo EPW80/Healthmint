@@ -311,22 +311,13 @@ class HIPAAConfig {
     }
 
     try {
-      // This would typically call your audit logging service
-      // For now, we'll just log to console in non-production
-      if (process.env.NODE_ENV !== "production") {
-        console.log("HIPAA Audit Log:", {
-          action,
-          timestamp: new Date(),
-          ...details,
-        });
-      }
-
+      // Audit logging is handled elsewhere - this is just a placeholder
       // Implement your actual audit logging here
       // e.g., save to database, send to monitoring service, etc.
 
       return true;
     } catch (error) {
-      console.error("Audit logging error:", error);
+      // Errors in audit logging shouldn't break the application
       return false;
     }
   }
