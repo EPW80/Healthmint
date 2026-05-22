@@ -37,17 +37,17 @@ found six real vulnerabilities, and fixed each in a focused commit.
 - HIPAA-*aware* design (see [SECURITY.md](./SECURITY.md))
 - Off-chain encryption-key custody (keys never touch the chain)
 - Signed-nonce wallet authentication (EIP-191)
-- Blockchain-verified transactions
+- Purchase records anchored on-chain via `purchaseData()` events
 - Explicit consent management
 - Persistent, indexed audit log
 
 ## Technology Stack
 
 - **Frontend**: React.js, Redux, Tailwind CSS, Web3.js/Ethers.js, MetaMask
-- **Backend**: Node.js, Express, MongoDB Atlas, Web3Storage (IPFS), JWT, Winston
+- **Backend**: Node.js, Express, MongoDB Atlas, Pinata (IPFS), JWT, Winston
 - **Blockchain**: Ethereum (Sepolia), Solidity, Truffle, OpenZeppelin
-- **Storage**: Web3Storage (IPFS) + MongoDB Atlas metadata
-- **Auth**: UCAN tokens, JWT
+- **Storage**: Pinata (IPFS pinning) + MongoDB Atlas metadata
+- **Auth**: Signed-nonce (EIP-191), JWT
 
 ## Project Structure
 
@@ -57,21 +57,21 @@ healthmint/ ├── client/ ├── contracts/ ├── migrations/ ├─�
 
 ## Server Highlights
 
-- Hybrid storage (MongoDB + IPFS)
-- End-to-end encrypted file uploads
+- Hybrid storage (MongoDB + IPFS via Pinata)
+- Encrypted-at-rest file uploads (server-mediated key release)
 - Consent and audit management
-- Secure authentication with JWT and UCAN
+- Signed-nonce wallet authentication with JWT
 - Rate limiting, CORS protection, validation
 
 ## API Overview
 
-| Category       | Endpoints (examples)                                    |
-|----------------|---------------------------------------------------------|
-| Authentication | `/api/auth/wallet/connect`, `/register`                 |
-| Health Data    | `/api/data/upload`, `/browse`, `/purchase`              |
-| Storage        | `/api/storage/upload`, `/get/:id`                       |
-| Users          | `/api/users/profile`, `/settings`, `/access-log`        |
-| Tests          | `/api/test/mongodb`, `/test/web3storage`                |
+| Category       | Endpoints (examples)                                              |
+|----------------|-------------------------------------------------------------------|
+| Authentication | `/api/auth/wallet/challenge`, `/wallet/authenticate`, `/register` |
+| Health Data    | `/api/data/upload`, `/browse`, `/purchase`                        |
+| Storage        | `/api/storage/upload`, `/get/:id`                                 |
+| Users          | `/api/users/profile`, `/settings`, `/access-log`                  |
+| Tests          | `/api/test/mongodb`                                               |
 
 ## Getting Started
 
@@ -125,7 +125,7 @@ Researchers: Browse and filter datasets · Purchase datasets
 
 ### Contributing
 
-We welcome any contributions to the application.
+Issues and PRs are welcome — see [SECURITY.md](./SECURITY.md) for the project's scope.
 
 ```bash
 git checkout -b feature/my-feature
@@ -149,8 +149,8 @@ IPFS provider migration to Pinata (W5). Remaining:
 - **Modernize pinned deps** (`ethers` v5→v6, `web3.js`, `crypto-js`) — out of
   scope for a surgical pass, intentionally deferred.
 
-### Licence
+### License
 
-- MIT license
+- MIT
 
 ![Healthmint demo](./client/public/images/0411.gif)

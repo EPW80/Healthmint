@@ -16,7 +16,6 @@
     "crypto-js": "^4.2.0",
     "ethers": "^5.8.0",
     "helmet": "^8.0.0",
-    "ipfs-http-client": "^50.1.2",
     "lucide-react": "^0.474.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",

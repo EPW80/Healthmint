@@ -54,7 +54,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       metadata.tags = req.body.tags.split(",").map((tag) => tag.trim());
     }
 
-    // Upload to Web3Storage and save metadata to MongoDB
+    // Upload to IPFS via Pinata and save metadata to MongoDB
     const result = await storageIntegrationService.uploadFile(
       req.file,
       req.user.id,

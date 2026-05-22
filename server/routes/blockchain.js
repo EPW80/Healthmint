@@ -361,50 +361,6 @@ router.get(
 );
 
 /**
- * Test file upload to IPFS
- * Uploads a file to IPFS via Web3Storage for testing purposes
- */
-router.post(
-  "/test-upload",
-  upload.single("file"),
-  asyncHandler(async (req, res) => {
-    if (!req.file) {
-      throw createError.validation("No file provided");
-    }
-
-    logger.info(
-      `Received file: ${req.file.originalname}, size: ${req.file.size} bytes`
-    );
-
-    // Create a File object for Web3Storage
-    const fileData = new File([req.file.buffer], req.file.originalname, {
-      type: req.file.mimetype,
-    });
-
-    // Upload to IPFS via Web3Storage
-    const cid = await secureStorageService.storeFiles([fileData]);
-
-    // Log the upload (HIPAA compliance)
-    await hipaaCompliance.createAuditLog("FILE_UPLOADED_TO_IPFS", {
-      userId: req.user.id,
-      userAddress: req.user.address,
-      fileType: req.file.mimetype,
-      fileSize: req.file.size,
-      cid: cid,
-      ip: req.ip,
-    });
-
-    res.json({
-      success: true,
-      message: "File uploaded successfully",
-      fileName: req.file.originalname,
-      cid: cid,
-      retrievalUrl: `https://${cid}.ipfs.dweb.link/${encodeURIComponent(req.file.originalname)}`,
-    });
-  })
-);
-
-/**
  * Register data on blockchain
  * Securely registers health data hash and metadata on the blockchain
  */

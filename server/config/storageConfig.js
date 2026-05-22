@@ -49,9 +49,9 @@ export const STORAGE_CONFIG = {
   PHI_SCANNING_ENABLED: true,
 
   // IPFS configuration
-  IPFS_PROVIDER: process.env.IPFS_PROVIDER || "web3storage",
-  IPFS_GATEWAY: process.env.IPFS_GATEWAY || "https://dweb.link/ipfs/",
-  IPFS_FALLBACK_GATEWAY: "https://gateway.pinata.cloud/ipfs/",
+  IPFS_PROVIDER: process.env.IPFS_PROVIDER || "pinata",
+  IPFS_GATEWAY: process.env.IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/",
+  IPFS_FALLBACK_GATEWAY: "https://ipfs.io/ipfs/",
 
   // Performance settings
   CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks for large file uploads
@@ -59,7 +59,7 @@ export const STORAGE_CONFIG = {
 
   // Backup settings
   ENABLE_REDUNDANCY: true,
-  BACKUP_PROVIDERS: ["web3storage", "infura"],
+  BACKUP_PROVIDERS: ["local"],
 };
 
 // Export default configuration

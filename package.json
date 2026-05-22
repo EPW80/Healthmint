@@ -23,8 +23,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.6",
-    "dotenv": "^16.5.0",
-    "web3.storage": "^4.5.5"
+    "dotenv": "^16.5.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

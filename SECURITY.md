@@ -2,7 +2,7 @@
 
 Healthmint is a portfolio project: a decentralized health-data marketplace on
 Ethereum (Sepolia) with a React/Redux client and a Node/Express + MongoDB +
-IPFS backend. This document is deliberately candid. It records a security
+IPFS backend. This document is candid. It records a security
 self-audit I performed on my own code, the bugs I found and fixed, and — just
 as importantly — what this project still does **not** do.
 
@@ -48,7 +48,8 @@ a real diff you can read.
    consumed regardless of signature validity to block online brute-forcing, and
    failed attempts write a `FAILED_AUTHENTICATION` audit entry.
 3. **Fail fast on missing secret.** No fallback; token generation throws and
-   the server is expected to refuse to boot without `JWT_SECRET`.
+   the server refuses to boot without `JWT_SECRET` or `ENCRYPTION_KEY` (hard
+   `process.exit(1)` in `server.js`).
 4. **Env-loaded RPC.** `SEPOLIA_RPC_URL` is read from `.env` (placeholder in
    `.env.example`); deploy exits with a clear error if it is unset. The
    previously-committed Infura key has been rotated out of band.
@@ -59,7 +60,8 @@ a real diff you can read.
 6. **Persistent audit trail.** An immutable `AuditLog` Mongoose model
    (compound-indexed on `(userId, timestamp)`, `(address, timestamp)`,
    `(action, timestamp)`) plus a fire-and-forget `auditLogService.write()` that
-   swallows its own errors so an audit failure can never crash a request.
+   swallows its own errors so an audit failure can never crash a request. This
+   is a deliberate portfolio trade-off; see Known Limitations.
 
 ## Known limitations (read this before judging the HIPAA framing)
 
@@ -78,7 +80,9 @@ than hidden:
   oversight.
 - **Audit log retention/tamper-evidence is minimal.** Rows are immutable at the
   model level but there is no WORM storage, no retention policy, no log
-  signing, and no off-box shipping.
+  signing, and no off-box shipping. Audit writes are also fire-and-forget: a
+  compliant system would fail closed on audit-log unavailability or queue
+  durably rather than silently swallowing errors.
 - **Pinned dependencies.** `ethers`, `web3.js`, and `crypto-js` are
   intentionally pinned and not upgraded — this was a surgical hardening pass,
   not a dependency-modernization pass. They would be upgraded in a non-surgical

@@ -244,8 +244,8 @@ try {
   const isConnected = await secureStorageService.validateIPFSConnection();
   logger.info(
     isConnected
-      ? "✅ Web3Storage connection validated"
-      : "⚠️ Web3Storage connection failed"
+      ? "✅ IPFS connection validated"
+      : "⚠️ IPFS connection failed"
   );
 } catch (error) {
   logger.error("❌ Error initializing storage service:", error.message);

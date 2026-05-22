@@ -78,27 +78,17 @@ class SecureStorageService {
 
   async initialize() {
     try {
-      // Don't re-initialize if already initialized
-      if (this.initialized && this.client) {
-        console.log("Storage client already initialized.");
+      if (this.initialized) {
         return this;
       }
 
-      console.log("Client-side storage service initialization");
-
-      // In client context, we don't actually initialize a real IPFS client
-      // Instead, we just mark the service as initialized since all operations
-      // will go through the API proxy
+      // Client never pins directly; all uploads proxy through the server's
+      // Pinata-backed storage routes. Initialization is a no-op marker.
       this.initialized = true;
-      this.client = {
-        currentSpace: () => ({ did: () => "client-side-mock" }),
-      };
-
       return this;
     } catch (error) {
       console.error("Failed to initialize storage service:", error);
       this.initialized = false;
-      this.client = null;
       throw error;
     }
   }
@@ -570,16 +560,15 @@ class SecureStorageService {
 
   async fetchFromIPFS(hash, progressCallback) {
     try {
-      // Make sure client is initialized
-      if (!this.client || !this.initialized) {
-        throw new Error("Storage client not initialized");
+      if (!this.initialized) {
+        throw new Error("Storage service not initialized");
       }
 
-      // Use Web3Storage to retrieve the content
       progressCallback?.(40);
 
-      // Get the data from Web3Storage - use the HTTP gateway pattern
-      const gateway = process.env.IPFS_GATEWAY || "https://dweb.link/ipfs/";
+      // Retrieve via the configured IPFS HTTP gateway
+      const gateway =
+        process.env.IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/";
       const url = `${gateway}${hash}`;
 
       const response = await fetch(url);
@@ -603,36 +592,10 @@ class SecureStorageService {
   }
 
   async validateIPFSConnection() {
-    try {
-      if (!this.initialized || !this.client) {
-        console.error("❌ Storage client not initialized");
-        return false;
-      }
-
-      console.log("Testing Web3Storage connection...");
-
-      try {
-        // Just checking if we have access to the space
-        const space = this.client.currentSpace();
-        console.log("✅ Web3Storage connection validated successfully");
-        return !!space;
-      } catch (error) {
-        // Try to reinitialize if connection failed
-        console.error(
-          "❌ IPFS connection validation failed, attempting to reinitialize:",
-          error
-        );
-
-        // Wait 2 seconds before attempting reinitialization
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        await this.initialize();
-        return this.client && this.initialized;
-      }
-    } catch (error) {
-      console.error("❌ IPFS connection validation critical failure:", error);
-      return false;
-    }
+    // The client never connects to a pinning service directly; storage
+    // operations proxy through the server. Treat the service as connected
+    // once initialize() has run.
+    return this.initialized === true;
   }
 
   // HIPAA compliance check for PHI

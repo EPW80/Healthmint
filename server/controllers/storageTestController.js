@@ -10,11 +10,11 @@ const testFullStorageFlow = async (req, res) => {
     if (!connectionValid) {
       return res.status(500).json({
         success: false,
-        message: 'IPFS/Web3Storage connection failed',
+        message: 'IPFS connection failed',
         storageType: secureStorageService.storageType
       });
     }
-    
+
     // Create a test file with unique content
     const timestamp = new Date().toISOString();
     const uniqueId = Math.random().toString(36).substring(2, 15);
@@ -22,7 +22,7 @@ const testFullStorageFlow = async (req, res) => {
       test: true,
       uniqueId,
       timestamp,
-      message: "This is a test file for Web3Storage"
+      message: "Test file for IPFS pinning via Pinata"
     }, null, 2);
     
     const testBuffer = Buffer.from(testContent);
@@ -45,7 +45,7 @@ const testFullStorageFlow = async (req, res) => {
       });
     }
     
-    // If using IPFS/Web3Storage, attempt to retrieve the file
+    // If pinned to IPFS, attempt to retrieve via the configured gateway
     let retrieveResult = null;
     if (uploadResult.cid) {
       logger.info(`Retrieving file with CID: ${uploadResult.cid}`);

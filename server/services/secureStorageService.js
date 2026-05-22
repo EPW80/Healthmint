@@ -4,10 +4,10 @@ import hipaaComplianceService from "./hipaaComplianceService.js";
 import errorHandlingService from "./errorHandlingService.js";
 import { STORAGE_CONFIG } from "../config/storageConfig.js";
 import localStorageService from "./localStorageService.js";
-import { createAuthenticatedClient } from "./web3StorageHelper.js";
 import {
   uploadToPinata,
   getPinataGatewayUrl,
+  testPinataConnection,
 } from "./pinataService.js";
 import { logger } from "../config/loggerConfig.js";
 
@@ -70,9 +70,8 @@ class SecureStorageService {
     // Reference cache for resolved references
     this.referenceCache = new Map();
     this.cacheTimeout = 30 * 60 * 1000; // 30 minutes
-    this.storageType = STORAGE_CONFIG?.IPFS_PROVIDER || "web3storage";
+    this.storageType = STORAGE_CONFIG?.IPFS_PROVIDER || "pinata";
     this.initialized = false;
-    this.client = null;
     this.useApiFallback = false;
     this.storageService = null;
 
@@ -109,47 +108,30 @@ class SecureStorageService {
 
   async initialize() {
     try {
-      logger.info("Storage initialization:");
-      logger.info("- IPFS_PROVIDER:", process.env.IPFS_PROVIDER);
-      logger.info(
-        "- WEB3_STORAGE_TOKEN:",
-        process.env.WEB3_STORAGE_TOKEN ? "Present" : "Missing"
-      );
+      const provider = process.env.IPFS_PROVIDER || "pinata";
+      logger.info(`Storage initialization: IPFS_PROVIDER=${provider}`);
 
       // Always initialize local storage as a fallback
       await localStorageService.initialize();
 
-      if (process.env.IPFS_PROVIDER === "pinata") {
+      if (provider === "pinata") {
         if (!process.env.PINATA_JWT) {
           logger.warn("PINATA_JWT not set — falling back to local storage");
           this.storageService = localStorageService;
+          this.storageType = "local";
         } else {
           logger.info("Using Pinata for IPFS storage");
           this.storageType = "pinata";
-        }
-        this.initialized = true;
-        return this;
-      } else if (process.env.IPFS_PROVIDER === "web3storage") {
-        try {
-          // Try Web3Storage (legacy — see SECURITY.md / W5 migration note)
-          this.client = await createAuthenticatedClient();
-          this.initialized = true;
-          logger.info("Using Web3Storage for file storage");
-          return this;
-        } catch (error) {
-          logger.error("Web3Storage initialization failed:", error.message);
-          logger.warn("Falling back to local storage mode");
-          this.storageService = localStorageService;
-          this.initialized = true;
-          return this;
         }
       } else {
         // Use local storage explicitly
         logger.info("Using local storage for file storage");
         this.storageService = localStorageService;
-        this.initialized = true;
-        return this;
+        this.storageType = "local";
       }
+
+      this.initialized = true;
+      return this;
     } catch (error) {
       logger.error("Failed to initialize storage service:", error);
       throw error;
@@ -242,112 +224,27 @@ class SecureStorageService {
 
   async uploadToIPFS(file) {
     try {
-      // Pinata upload path
-      if (this.storageType === "pinata") {
-        const checksum = await this.calculateFileHash(file.buffer);
-        const { cid, url } = await uploadToPinata(file);
-        return {
-          success: true,
-          cid,
-          fileName: file.originalname,
-          url,
-          alternateUrl: `https://ipfs.io/ipfs/${cid}`,
-          checksum,
-          mimeType: file.mimetype,
-          size: file.size || file.buffer?.length,
-        };
-      }
-
-      // Web3Storage upload path (legacy)
-      if (!this.client) {
-        throw new Error("Web3Storage client not initialized");
-      }
-
-      logger.info(`Preparing to upload file: ${file.originalname} to IPFS...`);
-
-      // Convert to File object if needed (using modern approach)
-      const fileObject = new File([file.buffer], file.originalname, {
-        type: file.mimetype,
-      });
-
-      // Calculate checksum for integrity verification
-      const checksum = await this.calculateFileHash(file.buffer);
-      logger.info(`File checksum (SHA-256): ${checksum}`);
-
-      // First try modern Web3Storage API methods
-      let cid;
-      logger.info(`Using modern Web3Storage API...`);
-
-      try {
-        // Use the put method directly with array of File objects (modern approach)
-        logger.info("Attempting upload with client.put()");
-        cid = await this.client.put([fileObject], {
-          name: file.originalname,
-          maxRetries: 3,
-          wrapWithDirectory: false,
-        });
-      } catch (putError) {
-        logger.info(
-          "put() method failed, trying alternative methods:",
-          putError.message
+      if (this.storageType !== "pinata") {
+        throw new Error(
+          `uploadToIPFS called but storage type is "${this.storageType}", not "pinata"`
         );
-
-        // Try different upload methods available in various client versions
-        if (typeof this.client.uploadFile === "function") {
-          logger.info("Using client.uploadFile method");
-          cid = await this.client.uploadFile(fileObject);
-        } else if (typeof this.client.upload === "function") {
-          logger.info("Using client.upload method");
-          cid = await this.client.upload(fileObject);
-        } else if (
-          this.client.store &&
-          typeof this.client.store.add === "function"
-        ) {
-          logger.info("Using client.store.add method");
-          const result = await this.client.store.add(fileObject);
-          cid = result.cid || result.toString();
-        } else if (typeof this.client.uploadDirectory === "function") {
-          logger.info("Using client.uploadDirectory method with single file");
-          cid = await this.client.uploadDirectory([fileObject]);
-        } else {
-          throw new Error(
-            "No compatible upload method found in Web3Storage client"
-          );
-        }
       }
 
-      logger.info(`✅ File uploaded successfully with CID: ${cid}`);
-
-      // Generate proper gateway URLs (using modern gateway)
-      const w3sUrl = `https://w3s.link/ipfs/${cid}`;
-      const dwebUrl = `https://dweb.link/ipfs/${cid}`;
+      const checksum = await this.calculateFileHash(file.buffer);
+      const { cid, url } = await uploadToPinata(file);
 
       return {
         success: true,
-        cid: cid.toString(),
+        cid,
         fileName: file.originalname,
-        url: w3sUrl,
-        alternateUrl: dwebUrl,
+        url,
+        alternateUrl: `https://ipfs.io/ipfs/${cid}`,
         checksum,
         mimeType: file.mimetype,
         size: file.size || file.buffer?.length,
       };
     } catch (error) {
       logger.error("Failed to upload to IPFS:", error);
-
-      // If the upload fails due to method not found or API sunset, fall back to local storage
-      if (
-        error.message.includes("not a function") ||
-        error.message.includes("API feature has been sunset")
-      ) {
-        logger.info(
-          "Web3Storage API has changed, falling back to local storage"
-        );
-        if (this.storageService) {
-          return await this.storageService.storeFile(file);
-        }
-      }
-
       throw error;
     }
   }
@@ -494,20 +391,21 @@ class SecureStorageService {
       throw new Error("Storage service not initialized");
     }
 
-    if (this.storageService) {
+    if (this.storageType === "pinata") {
+      logger.info("Using Pinata for upload");
+      return await this.uploadToIPFS(file);
+    } else if (this.storageService) {
       logger.info("Using local storage service for upload");
       return await this.storageService.storeFile(file);
-    } else if (this.client) {
-      logger.info("Using Web3Storage for upload");
-      return await this.uploadToIPFS(file);
     } else {
       // Should never reach here if initialization is done properly
       logger.warn("Storage service not initialized, using mock response");
+      const mockCid = `mock-${Date.now().toString(16).slice(-10)}`;
       return {
         success: true,
-        cid: `mock-${Date.now().toString(16).slice(-10)}`,
+        cid: mockCid,
         fileName: file.originalname,
-        url: `https://w3s.link/ipfs/mock-${Date.now().toString(16).slice(-10)}`,
+        url: `https://ipfs.io/ipfs/${mockCid}`,
       };
     }
   }
@@ -582,8 +480,8 @@ class SecureStorageService {
         ...auditMetadata,
       });
 
-      // For Web3Storage, we can't delete directly, so just use the API
-      // API will handle marking the file as deleted in the database
+      // Deletion goes through the API, which marks the record deleted in
+      // MongoDB and may unpin from Pinata depending on retention policy.
       const response = await apiService.delete(
         `${this.config.endpoints.delete}/${reference}`,
         {
@@ -723,33 +621,28 @@ class SecureStorageService {
 
   async fetchFromIPFS(hash, progressCallback) {
     try {
-      // Make sure client is initialized
-      if (!this.client || !this.initialized) {
-        throw new Error("Storage client not initialized");
+      if (!this.initialized) {
+        throw new Error("Storage service not initialized");
       }
 
-      // Use Web3Storage to retrieve the content
       progressCallback?.(40);
 
-      // Resolve gateway: prefer provider-specific env var, then generic fallback
-      const gateway =
+      const primaryUrl =
         this.storageType === "pinata"
           ? getPinataGatewayUrl(hash)
-          : `${process.env.IPFS_GATEWAY || "https://w3s.link/ipfs/"}${hash}`;
-      const url =
-        this.storageType === "pinata" ? gateway : `${gateway}`;
+          : `${process.env.IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/"}${hash}`;
 
-      logger.info(`Fetching from IPFS gateway: ${url}`);
+      logger.info(`Fetching from IPFS gateway: ${primaryUrl}`);
 
       let response;
       try {
-        response = await fetch(url);
+        response = await fetch(primaryUrl);
         if (!response.ok) {
           throw new Error(`Failed response: ${response.status}`);
         }
       } catch (primaryError) {
-        logger.info(`Primary gateway failed, trying fallback gateway`);
-        const fallbackUrl = `https://dweb.link/ipfs/${hash}`;
+        logger.info(`Primary gateway failed, trying public fallback`);
+        const fallbackUrl = `https://ipfs.io/ipfs/${hash}`;
         response = await fetch(fallbackUrl);
         if (!response.ok) {
           throw new Error(`Fallback gateway failed: ${response.status}`);
@@ -784,83 +677,25 @@ class SecureStorageService {
 
   async validateIPFSConnection() {
     try {
-      if (!this.initialized || !this.client) {
-        logger.error("❌ Storage client not initialized");
+      if (!this.initialized) {
+        logger.error("❌ Storage service not initialized");
         return false;
       }
 
-      logger.info("Testing Web3Storage connection...");
-
-      try {
-        // Create a small test file for connection validation
-        const testContent = JSON.stringify({
-          test: "connection_validation",
-          timestamp: new Date().toISOString(),
-        });
-
-        const testBuffer =
-          typeof TextEncoder !== "undefined"
-            ? new TextEncoder().encode(testContent)
-            : Buffer.from(testContent);
-
-        const testBlob = new Blob([testBuffer], { type: "application/json" });
-        const testFile = new File([testBlob], "connection-test.json", {
-          type: "application/json",
-        });
-
-        logger.info("Uploading test file to validate connection");
-
-        // Try multiple ways to upload based on available methods in the client
-        try {
-          // Modern put method with appropriate options
-          logger.info("Attempting with client.put()");
-          await this.client.put([testFile], {
-            maxRetries: 2,
-            wrapWithDirectory: false,
-          });
-        } catch (putError) {
-          logger.info(
-            "put() failed, trying alternative methods:",
-            putError.message
-          );
-
-          // Try different API methods in sequence
-          if (typeof this.client.uploadFile === "function") {
-            await this.client.uploadFile(testFile);
-          } else if (typeof this.client.upload === "function") {
-            await this.client.upload(testFile);
-          } else if (
-            this.client.store &&
-            typeof this.client.store.add === "function"
-          ) {
-            await this.client.store.add(testFile);
-          } else {
-            // Just check if connected to space
-            const space = this.client.currentSpace?.();
-            if (!space) {
-              throw new Error(
-                "No space connected and no upload methods available"
-              );
-            }
-          }
-        }
-
-        logger.info("✅ Web3Storage connection validated successfully");
-        return true;
-      } catch (error) {
-        logger.error("❌ IPFS validation failed:", error);
-
-        // Try to reinitialize if connection failed
-        logger.info("Attempting to reinitialize connection...");
-
-        // Wait 2 seconds before attempting reinitialization
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        await this.initialize();
-        return this.client && this.initialized;
+      if (this.storageType === "pinata") {
+        const ok = await testPinataConnection();
+        logger.info(
+          ok
+            ? "✅ Pinata connection validated"
+            : "❌ Pinata authentication failed"
+        );
+        return ok;
       }
+
+      // Local storage has no remote connection to validate.
+      return true;
     } catch (error) {
-      logger.error("❌ IPFS connection validation critical failure:", error);
+      logger.error("❌ IPFS connection validation failure:", error);
       return false;
     }
   }

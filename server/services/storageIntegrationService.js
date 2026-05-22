@@ -7,7 +7,7 @@ import { logger } from "../config/loggerConfig.js";
 
 /**
  * Hybrid Storage Service
- * Integrates Web3Storage (IPFS) with MongoDB metadata storage
+ * Integrates Pinata (IPFS) with MongoDB metadata storage
  */
 class StorageIntegrationService {
   async uploadFile(file, userId, metadata = {}) {
@@ -65,7 +65,7 @@ class StorageIntegrationService {
         category: metadata.category,
       });
 
-      // 3. Upload to Web3Storage
+      // 3. Upload to IPFS via Pinata
       const uploadResult = await secureStorageService.uploadToIPFS(file);
 
       if (!uploadResult || !uploadResult.cid) {
@@ -75,7 +75,7 @@ class StorageIntegrationService {
       // 4. Update MongoDB record with IPFS details
       fileDoc.cid = uploadResult.cid;
       fileDoc.ipfsUrl =
-        uploadResult.url || `https://dweb.link/ipfs/${uploadResult.cid}`;
+        uploadResult.url || `https://gateway.pinata.cloud/ipfs/${uploadResult.cid}`;
       fileDoc.status = "available";
 
       await fileDoc.save();
@@ -177,7 +177,7 @@ class StorageIntegrationService {
         };
       }
 
-      // If content requested, fetch from Web3Storage
+      // If content requested, fetch from IPFS
       const content = await secureStorageService.fetchFromIPFS(fileDoc.cid);
 
       // Log content access for HIPAA compliance
