@@ -155,8 +155,9 @@ const AppContent = () => {
         console.warn("AppContent: Emergency loop break after 6s", {
           location: location.pathname,
         });
-        sessionStorage.setItem("auth_verification_override", "true");
-        sessionStorage.setItem("bypass_route_protection", "true");
+        // Don't set bypass flags here — letting unauthenticated users through
+        // protected routes creates a security hole. ProtectedRoute will see no
+        // valid JWT and redirect to /login on its own.
         setIsVerifying(false);
         setIsInitialized(true);
         clearVerificationCache();
@@ -174,10 +175,13 @@ const AppContent = () => {
 
   // Initial authentication verification
   useEffect(() => {
-    if (initAttemptedRef.current) return;
-    initAttemptedRef.current = true;
-
     const initAuth = async () => {
+      // Guard inside the async fn so React Strict Mode's effect double-invoke
+      // doesn't prevent execution (timer is cancelled by cleanup before it fires
+      // on the first cycle, so the ref is never prematurely set).
+      if (initAttemptedRef.current) return;
+      initAttemptedRef.current = true;
+
       setIsVerifying(true);
       try {
         console.log("AppContent: Verifying auth state...");

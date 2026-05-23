@@ -237,7 +237,8 @@ const isPublicRoute = (path) => {
     "/health",
     "/api/auth/login",
     "/api/auth/register",
-    "/api/auth/wallet/connect",
+    "/api/auth/wallet/challenge",
+    "/api/auth/wallet/authenticate",
     "/api/docs",
     "/api/public",
   ];

@@ -241,7 +241,8 @@ export const ENDPOINTS = {
     LOGIN: "/login",
     REGISTER: "/register",
     VERIFY: "/verify",
-    CONNECT: "/wallet/connect",
+    CHALLENGE: "/wallet/challenge",
+    AUTHENTICATE: "/wallet/authenticate",
     // Helper to build full endpoint paths
     getPath: (endpoint) => `${ENDPOINTS.AUTH.BASE}${endpoint}`,
   },

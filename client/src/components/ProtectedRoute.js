@@ -220,6 +220,15 @@ const ProtectedRoute = ({
           "healthmint_wallet_address"
         );
 
+        // Use fresh values from verifyAuth result to avoid stale closure reads.
+        // isAuthenticated / isNewUser / isRegistrationComplete from hook state
+        // are always the initial values during the first render cycle (before
+        // the awaited state updates flush), so we must read from `result` here.
+        const freshIsAuthenticated = result.isAuthenticated ?? isAuthenticated;
+        const freshIsNewUser = result.isNewUser ?? isNewUser;
+        const freshIsRegistrationComplete =
+          result.isRegistrationComplete ?? isRegistrationComplete;
+
         if (!isWalletConnected && !isWalletConnectedFromStorage) {
           setRedirectPath("/login");
         } else if (
@@ -227,9 +236,9 @@ const ProtectedRoute = ({
           !hasWalletAddress
         ) {
           setRedirectPath("/login");
-        } else if (requireBackendAuth && !isAuthenticated) {
+        } else if (requireBackendAuth && !freshIsAuthenticated) {
           setRedirectPath("/login");
-        } else if (!isRegistrationComplete && isNewUser) {
+        } else if (!freshIsRegistrationComplete && freshIsNewUser) {
           setRedirectPath("/register");
         } else if (
           !isRoleSelected &&

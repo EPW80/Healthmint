@@ -46,61 +46,49 @@ class AuthService {
     this._isNewUser = localStorage.getItem(this.isNewUserKey) === "true";
   }
 
-  async verifyAuth(token) {
+  async verifyAuth() {
+    const buildResult = () => ({
+      isAuthenticated: this.isAuthenticated(),
+      isNewUser: this._isNewUser,
+      isRegistrationComplete: this.isRegistrationComplete(),
+      userProfile: this.userProfile,
+    });
+
     if (this.mockMode) {
-      logger.info('Using mock auth service in development mode');
-      // Return mock authentication data after a short delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { 
-        authenticated: true, 
-        user: { 
-          id: '123', 
-          role: 'patient',
-          address: '0x123...456',
-          name: 'Test Patient'
-        } 
-      };
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return buildResult();
     }
-    
+
     try {
       const response = await fetch(`${this.apiBaseUrl}/auth/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${this.token}`
         }
       });
-      
-      // Check if response type is JSON before parsing
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        logger.error('API returned non-JSON response:', await response.text());
         throw new Error('API returned non-JSON response');
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Auth verification failed with status: ${response.status}`);
+        throw new Error(errorData.message || `Auth verification failed: ${response.status}`);
       }
-      
-      return await response.json();
+
+      const data = await response.json();
+      // Normalise server response to the shape useAuth expects
+      return {
+        isAuthenticated: data.isAuthenticated ?? data.authenticated ?? true,
+        isNewUser: data.isNewUser ?? this._isNewUser,
+        isRegistrationComplete: data.isRegistrationComplete ?? this.isRegistrationComplete(),
+        userProfile: data.userProfile ?? data.user ?? this.userProfile,
+      };
     } catch (error) {
       logger.error('Auth verification error:', error);
-      
-      // Fallback to mock mode if in development
-      if (process.env.NODE_ENV !== 'production') {
-        logger.warn('Falling back to mock auth data');
-        return { 
-          authenticated: true, 
-          user: { 
-            id: '123', 
-            role: 'patient',
-            address: '0x123...456',
-            name: 'Test Patient (Mock)'
-          } 
-        };
-      }
-      throw error;
+      return buildResult();
     }
   }
 

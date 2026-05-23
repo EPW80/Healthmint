@@ -231,22 +231,70 @@ const useAuth = () => {
         ? walletAddress
         : `0x${walletAddress}`;
 
-      const response = await fetch("/api/auth/wallet/connect", {
+      // Step 1: request a challenge message from the server.
+      const challengeRes = await fetch("/api/auth/wallet/challenge", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address: formattedAddress }),
       });
+      const challengeData = await challengeRes.json();
+      if (!challengeRes.ok) {
+        throw new Error(challengeData.message || "Failed to get challenge");
+      }
+      const { challengeMessage } = challengeData;
 
-      const data = await response.json();
-      console.log("Auth API response:", data);
+      // Step 2: ask the wallet to sign the challenge (EIP-191 personal_sign).
+      if (!window.ethereum) {
+        throw new Error("No wallet detected. Install MetaMask to continue.");
+      }
+      const signature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [challengeMessage, formattedAddress],
+      });
 
-      if (!response.ok) {
-        throw new Error(data.message || "Authentication request failed");
+      // Step 3: exchange the signed challenge for a JWT.
+      const authRes = await fetch("/api/auth/wallet/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: formattedAddress,
+          signature,
+          message: challengeMessage,
+        }),
+      });
+      const data = await authRes.json();
+      if (!authRes.ok) {
+        throw new Error(data.message || "Authentication failed");
       }
 
-      return data;
+      // Persist the JWT in the auth service (in-memory) so verifyAuth works
+      authService.updateAuthState({
+        token: data.token,
+        refreshToken: data.refreshToken ?? null,
+        expiresAt: null,
+        userProfile: data.user ?? null,
+        isNewUser: data.isNewUser ?? false,
+      });
+
+      // Update this hook's local state
+      const isNew = data.isNewUser ?? false;
+      setIsAuthenticated(true);
+      setIsNewUser(isNew);
+      setIsRegistrationComplete(!!data.user && !isNew);
+      if (data.user) {
+        setUserIdentity(data.user);
+        dispatch(updateUserProfile(data.user));
+        const role = data.user.roles?.[0] ?? data.user.role;
+        if (role) dispatch(setRole(role));
+      }
+
+      return {
+        success: true,
+        isNewUser: isNew,
+        isRegistrationComplete: !!data.user && !isNew,
+        userProfile: data.user ?? null,
+        token: data.token,
+      };
     } catch (error) {
       console.error("Login error:", error);
       setError(error.message);

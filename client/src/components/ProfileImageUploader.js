@@ -99,8 +99,15 @@ const ProfileImageUploader = ({
         validateFile(file);
         setLoading(true);
 
-        // Create local preview (for immediate UI feedback)
-        const preview = URL.createObjectURL(file);
+        // Encode as a data URL so the preview survives a page refresh
+        // (blob URLs from URL.createObjectURL are tied to the current Document
+        // and become invalid after reload, leaving the saved profile broken).
+        const preview = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("Failed to read image file"));
+          reader.readAsDataURL(file);
+        });
         setPreviewUrl(preview);
 
         // Upload to secure storage service
@@ -246,7 +253,14 @@ const ProfileImageUploader = ({
         role="group"
         aria-label="Profile image actions"
       >
-        <label htmlFor="profile-image" className="cursor-pointer">
+        <label
+          htmlFor="profile-image"
+          aria-label="Upload new profile picture"
+          aria-disabled={loading}
+          className={`bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-all duration-200 transform hover:scale-110 focus-within:ring-2 focus-within:ring-blue-400 focus-within:ring-opacity-50 inline-flex items-center justify-center ${
+            loading ? "opacity-50 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+          }`}
+        >
           <input
             accept={Object.entries(ALLOWED_FILE_TYPES)
               .flatMap(([_, exts]) => exts)
@@ -256,16 +270,8 @@ const ProfileImageUploader = ({
             onChange={handleImageUpload}
             disabled={loading}
             className="hidden"
-            aria-label="Upload profile picture"
           />
-          <button
-            type="button"
-            disabled={loading}
-            aria-label="Upload new profile picture"
-            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-all duration-200 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Camera size={20} aria-hidden="true" />
-          </button>
+          <Camera size={20} aria-hidden="true" />
         </label>
 
         {previewUrl && (

@@ -17,13 +17,20 @@ const contractJsonPath = path.resolve(
   __dirname,
   "../../client/src/contracts/HealthDataMarketplace.json"
 );
-const contractJson = JSON.parse(fs.readFileSync(contractJsonPath, "utf8"));
+let contractABI = null;
+try {
+  const contractJson = JSON.parse(fs.readFileSync(contractJsonPath, "utf8"));
+  contractABI = contractJson.abi;
+} catch {
+  logger.warn(
+    "HealthDataMarketplace.json not found — run `truffle compile` to generate it. " +
+    "Blockchain transaction features will be unavailable until the contract is compiled."
+  );
+}
 
 // Debug logs for troubleshooting
 logger.debug("Loaded ENV Variables:", JSON.stringify(process.env, null, 2));
 logger.debug("NETWORK_CONFIG:", JSON.stringify(NETWORK_CONFIG, null, 2));
-
-const contractABI = contractJson.abi;
 
 class TransactionServiceError extends Error {
   constructor(message, code = "TRANSACTION_ERROR", details = {}) {

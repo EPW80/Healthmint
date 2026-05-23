@@ -22,8 +22,7 @@ class WalletService {
     }
     
     try {
-      console.log(`Attempting to connect wallet at ${this.apiBaseUrl}/auth/wallet/connect`);
-      const response = await fetch(`${this.apiBaseUrl}/auth/wallet/connect`, {
+      const response = await fetch(`${this.apiBaseUrl}/auth/wallet/authenticate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
