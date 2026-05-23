@@ -18,6 +18,7 @@ const RoleSelector = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const walletAddress = useSelector((state) => state.wallet.address);
+  const isWalletConnected = useSelector((state) => state.wallet.isConnected);
 
   // Local state
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +27,10 @@ const RoleSelector = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Check logout and wallet connection status
+  // Guard: redirect to login if wallet disconnects while on this page.
+  // AppContent's route already blocks entry when !isConnected, but the wallet
+  // can disconnect mid-session. We use Redux state (same source as AppContent)
+  // to avoid a redirect loop caused by stale localStorage keys.
   useEffect(() => {
     if (isLogoutInProgress()) {
       console.log("RoleSelector: Logout in progress, redirecting to login");
@@ -34,17 +38,11 @@ const RoleSelector = () => {
       return;
     }
 
-    const isWalletConnected =
-      localStorage.getItem("healthmint_wallet_connection") === "true";
-    const hasWalletAddress = !!localStorage.getItem(
-      "healthmint_wallet_address"
-    );
-
-    if (!isWalletConnected || !hasWalletAddress) {
+    if (!isWalletConnected || !walletAddress) {
       console.log("RoleSelector: No wallet connection, redirecting to login");
       navigate("/login", { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, isWalletConnected, walletAddress]);
 
   // Check for existing role and redirect if found
   useEffect(() => {

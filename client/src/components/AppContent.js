@@ -125,7 +125,7 @@ const AppContent = () => {
     switchNetwork,
     getPendingTransactions,
   } = useWalletConnect();
-  const { isNewUser, verifyAuth, clearVerificationCache } = useAuth();
+  const { isAuthenticated, isNewUser, verifyAuth, clearVerificationCache } = useAuth();
 
   // State management
   const [isInitialized, setIsInitialized] = useState(false);
@@ -334,7 +334,11 @@ const AppContent = () => {
           <Route
             path="/login"
             element={
-              isConnected ? (
+              // Require both wallet connection AND a valid JWT before
+              // redirecting away. isConnected alone just means the address
+              // is cached from a prior session — the user still needs to
+              // re-sign with MetaMask to get a fresh token.
+              isConnected && isAuthenticated ? (
                 isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
