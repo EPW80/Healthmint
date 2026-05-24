@@ -126,6 +126,12 @@ const ProtectedRoute = ({
 
   // Cleanup on unmount
   useEffect(() => {
+    // Reset on every effect run. Strict Mode does mount→cleanup→remount, and
+    // the cleanup below sets this to false — without this line, the second
+    // mount (and every dep-change re-run) would leave isMounted stuck at false,
+    // so the auth-check finally block would skip setting authCheckCompletedRef,
+    // letting subsequent effect re-fires repeat the auth check indefinitely.
+    isMounted.current = true;
     return () => {
       isMounted.current = false;
       clearVerificationCache();
