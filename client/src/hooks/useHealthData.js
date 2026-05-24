@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
+import generateMockHealthRecords from "../mockData/mockHealthRecords.js";
 
 const useHealthData = (options = {}) => {
   const {

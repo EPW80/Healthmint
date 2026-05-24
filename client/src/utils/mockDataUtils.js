@@ -1,5 +1,5 @@
 // src/utils/mockDataUtils.js
-import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
+import generateMockHealthRecords from "../mockData/mockHealthRecords.js";
 
 /**
  * Constants for storage keys and configuration

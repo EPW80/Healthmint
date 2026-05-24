@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle, AlertCircle, Filter, ArrowUpDown } from "lucide-react";
-import generateMockHealthRecords from "../mockData/mockHeatlhRecords.js";
+import generateMockHealthRecords from "../mockData/mockHealthRecords.js";
 
 const HealthDataGrid = () => {
   const [healthRecords, setHealthRecords] = useState([]);
