@@ -6,6 +6,7 @@ import { rateLimiters } from "../middleware/rateLimiter.js";
 import { logger } from "../config/loggerConfig.js";
 import hipaaCompliance from "../middleware/hipaaCompliance.js";
 import userService from "../services/userService.js";
+import User from "../models/User.js";
 import { USER_ROLES, AUDIT_TYPES } from "../constants/index.js";
 import jwt from "jsonwebtoken";
 import { validateAddress } from "../validation/index.js";
@@ -492,35 +493,42 @@ router.post(
       throw createError.unauthorized("Invalid signature");
     }
 
-    // Find or create user based on wallet address
+    // Find or create user based on wallet address.
+    // Query Mongo directly — the userService wrapper routes through HTTP back
+    // into our own API and is broken (calls /users/{address} which doesn't exist).
     let user;
     try {
-      user = await userService.getUserByAddress(address);
+      const lowerAddress = address.toLowerCase();
+      user = await User.findOne({ address: lowerAddress });
 
-      // If user doesn't exist, create a new one
       if (!user) {
-        user = await userService.createUser({
-          address: address.toLowerCase(),
-          roles: ["patient"], // Default role
-          createdAt: new Date(),
-          walletConnected: true,
+        user = await User.create({
+          address: lowerAddress,
+          role: "patient",
         });
-
         logger.info("Created new user from wallet authentication", {
-          address: address.toLowerCase(),
+          address: lowerAddress,
         });
       }
-
-      // Update last login time
-      await userService.updateUser(address, { lastLogin: new Date() });
     } catch (dbError) {
       logger.error("Database error during authentication", {
         error: dbError.message,
         address,
       });
-
       throw createError.serverError("Authentication processing error", {
         code: ERROR_CODES.SERVER_ERROR.code,
+      });
+    }
+
+    // Non-critical: update lastLogin stamp. Don't abort auth on failure.
+    try {
+      user.security = user.security || {};
+      user.security.lastLogin = new Date();
+      await user.save();
+    } catch (updateErr) {
+      logger.warn("Failed to update lastLogin — continuing", {
+        error: updateErr.message,
+        address,
       });
     }
 

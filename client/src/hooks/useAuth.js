@@ -266,6 +266,14 @@ const useAuth = () => {
       if (!authRes.ok) {
         throw new Error(data.message || "Authentication failed");
       }
+      // A 200 with no token is a server bug — fail loudly rather than
+      // silently writing `undefined` into authService.token, which makes
+      // isAuthenticated() return false on every subsequent API call.
+      if (!data.token) {
+        throw new Error(
+          "Authentication response did not include a token. Check server logs."
+        );
+      }
 
       // Persist the JWT in the auth service (in-memory) so verifyAuth works
       authService.updateAuthState({

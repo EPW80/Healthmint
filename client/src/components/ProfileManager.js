@@ -592,6 +592,7 @@ const ProfileManager = () => {
       const updatedProfile = {
         ...userProfile,
         ...sanitizedData,
+        address: walletAddress,
         profileImage: previewUrl,
         profileImageHash: storageReference,
         lastUpdated: new Date().toISOString(),

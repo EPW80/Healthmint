@@ -44,6 +44,22 @@ export const createError = {
     error.hipaaRelated = true;
     return error;
   },
+
+  internal: (message, details = {}) => {
+    const error = new Error(message || "Internal server error");
+    error.code = "INTERNAL_ERROR";
+    error.statusCode = 500;
+    error.details = details;
+    return error;
+  },
+
+  serverError: (message, details = {}) => {
+    const error = new Error(message || "Server error");
+    error.code = "SERVER_ERROR";
+    error.statusCode = 500;
+    error.details = details;
+    return error;
+  },
 };
 
 export const errorHandler = (err, req, res, next) => {

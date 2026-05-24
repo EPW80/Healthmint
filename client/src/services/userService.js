@@ -176,6 +176,13 @@ class UserService {
 
   async updateProfile(profileData) {
     try {
+      // Sync wallet address to localStorage if available in profileData.
+      // This ensures authService.ensureValidToken() can recover the session
+      // when the address exists in Redux state but not in localStorage.
+      const address = profileData?.address;
+      if (address && !localStorage.getItem("healthmint_wallet_address")) {
+        localStorage.setItem("healthmint_wallet_address", address);
+      }
       await authService.ensureValidToken();
       const sanitizedData = hipaaComplianceService.sanitizeData(profileData, {
         excludeFields: ["profileImageHash", "walletType", "password"],
