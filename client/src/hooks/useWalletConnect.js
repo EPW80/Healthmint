@@ -322,6 +322,13 @@ const useWalletConnect = (options = {}) => {
   useEffect(() => {
     if (!window.ethereum?.on) return;
 
+    // Reset on every effect run. Strict Mode does mount→cleanup→remount, and the
+    // cleanup below sets this to false — without this line, the second mount (and
+    // every subsequent dep-change re-run) would leave the ref stuck at false,
+    // causing connectWallet's finally block to skip setLoading(false) and stall
+    // the UI in a permanent loading state.
+    isActive.current = true;
+
     // Handle account changes
     const handleAccountsChanged = (accounts) => {
       if (!isActive.current) return;
