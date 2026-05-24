@@ -77,6 +77,11 @@ healthmint-delegation.car
 *.ucan
 *.bak
 
+# Runtime directories (auto-created by server/index.js on boot)
+/server/uploads/
+/server/logs/
+/server/data/
+
 # Local tooling / unrelated scaffolding (not part of the project)
 .claude/
 skills-main/
