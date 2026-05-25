@@ -1,5 +1,5 @@
 // src/components/UserRegistration.js
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import {
   ArrowRight,
   ArrowLeft,
 } from "lucide-react";
+import { Button } from "./ui/index.js";
 import { setRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
@@ -41,6 +42,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
   const [registrationSuccessful, setRegistrationSuccessful] = useState(false);
+  const stepHeadingRef = useRef(null);
 
   // Check for existing wallet address on mount and update form state
   useEffect(() => {
@@ -59,6 +61,13 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       return () => clearTimeout(timer);
     }
   }, [registrationSuccessful, navigate]);
+
+  // Move focus to step heading for screen-reader context
+  useEffect(() => {
+    if (stepHeadingRef.current) {
+      stepHeadingRef.current.focus();
+    }
+  }, [step]);
 
   // Handle input changes
   const handleInputChange = useCallback((e) => {
@@ -259,7 +268,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   // Step 1: Role Selection
   const renderRoleSelection = () => (
     <div className="mb-8">
-      <h2 className="text-2xl font-semibold mb-6">Choose Your Role</h2>
+      <h2 ref={stepHeadingRef} tabIndex="-1" className="text-2xl font-semibold mb-6">Choose Your Role</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Patient Role Card */}
@@ -302,19 +311,14 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
 
       <div className="mt-8 flex justify-end">
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="large"
           onClick={nextStep}
           disabled={!selectedRole || loading}
-          className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center gap-2 ${
-            !selectedRole || loading
-              ? "bg-blue-300 cursor-not-allowed"
-              : "hover:bg-blue-600"
-          }`}
         >
-          <span>Next Step</span>
-          <ArrowRight size={18} />
-        </button>
+          Next Step <ArrowRight size={18} />
+        </Button>
       </div>
     </div>
   );
@@ -322,7 +326,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   // Step 2: Personal Information
   const renderPersonalInfo = () => (
     <div className="mb-8">
-      <h2 className="text-2xl font-semibold mb-6">Personal Information</h2>
+      <h2 ref={stepHeadingRef} tabIndex="-1" className="text-2xl font-semibold mb-6">Personal Information</h2>
 
       <div className="space-y-6">
         <div>
@@ -404,28 +408,17 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
 
       <div className="mt-8 flex justify-between">
-        <button
-          type="button"
-          onClick={prevStep}
-          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-        >
-          <ArrowLeft size={18} />
-          <span>Back</span>
-        </button>
-
-        <button
-          type="button"
+        <Button variant="ghost" size="large" onClick={prevStep}>
+          <ArrowLeft size={18} /> Back
+        </Button>
+        <Button
+          variant="primary"
+          size="large"
           onClick={nextStep}
           disabled={!formState.name || loading}
-          className={`px-6 py-2 rounded-lg bg-blue-500 text-white flex items-center gap-2 ${
-            !formState.name || loading
-              ? "bg-blue-300 cursor-not-allowed"
-              : "hover:bg-blue-600"
-          }`}
         >
-          <span>Next Step</span>
-          <ArrowRight size={18} />
-        </button>
+          Next Step <ArrowRight size={18} />
+        </Button>
       </div>
     </div>
   );
@@ -433,7 +426,7 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   // Step 3: HIPAA Consent
   const renderHipaaConsent = () => (
     <div className="mb-8">
-      <h2 className="text-2xl font-semibold mb-6">HIPAA Consent</h2>
+      <h2 ref={stepHeadingRef} tabIndex="-1" className="text-2xl font-semibold mb-6">HIPAA Consent</h2>
 
       <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-6">
         <div className="flex items-start mb-4">
@@ -520,39 +513,25 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
 
       <div className="mt-8 flex justify-between">
-        <button
-          type="button"
-          onClick={prevStep}
-          className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-        >
-          <ArrowLeft size={18} />
-          <span>Back</span>
-        </button>
-
-        <button
+        <Button variant="ghost" size="large" onClick={prevStep}>
+          <ArrowLeft size={18} /> Back
+        </Button>
+        <Button
           type="submit"
+          variant="primary"
+          size="large"
           onClick={handleSubmit}
-          disabled={
-            !formState.agreeToTerms || !formState.agreeToHipaa || loading
-          }
-          className={`px-6 py-2 rounded-lg flex items-center gap-2 ${
-            !formState.agreeToTerms || !formState.agreeToHipaa || loading
-              ? "bg-blue-300 cursor-not-allowed text-white"
-              : "bg-blue-500 hover:bg-blue-600 text-white"
-          }`}
+          disabled={!formState.agreeToTerms || !formState.agreeToHipaa}
+          loading={loading}
         >
           {loading ? (
-            <>
-              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-              <span>Completing Registration...</span>
-            </>
+            "Completing Registration..."
           ) : (
             <>
-              <span>Complete Registration</span>
-              <Save size={18} />
+              Complete Registration <Save size={18} />
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -654,13 +654,16 @@ const Dashboard = ({ onNavigate }) => {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="border-b border-gray-200 pb-3 mb-4">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-lg font-semibold text-gray-800">Patient Record</h4>
+                        <h4 className="text-lg font-semibold text-gray-800">
+                          Patient Record
+                        </h4>
                         <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                           Last updated: {new Date().toLocaleDateString()}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Record ID: {viewingRecord?.substring(0, 8) || 'REC-12345-XYZ'} • 
+                        Record ID:{" "}
+                        {viewingRecord?.substring(0, 8) || "REC-12345-XYZ"} •
                         HIPAA-compliant viewing session • Access logged
                       </p>
                     </div>
@@ -668,7 +671,9 @@ const Dashboard = ({ onNavigate }) => {
                     <div className="space-y-6">
                       {/* Vital Signs */}
                       <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">Vital Signs</h5>
+                        <h5 className="font-medium text-gray-900 mb-2">
+                          Vital Signs
+                        </h5>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                           <div className="bg-blue-50 p-2 rounded">
                             <p className="text-gray-500">Blood Pressure</p>
@@ -688,10 +693,12 @@ const Dashboard = ({ onNavigate }) => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Medications */}
                       <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">Current Medications</h5>
+                        <h5 className="font-medium text-gray-900 mb-2">
+                          Current Medications
+                        </h5>
                         <table className="min-w-full text-sm">
                           <thead className="bg-gray-50">
                             <tr>
@@ -719,30 +726,50 @@ const Dashboard = ({ onNavigate }) => {
                           </tbody>
                         </table>
                       </div>
-                      
+
                       {/* Diagnoses */}
                       <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">Diagnoses</h5>
+                        <h5 className="font-medium text-gray-900 mb-2">
+                          Diagnoses
+                        </h5>
                         <ul className="list-disc pl-5 space-y-1 text-sm">
                           <li>Type 2 Diabetes Mellitus (E11.9)</li>
                           <li>Essential Hypertension (I10)</li>
                           <li>Hyperlipidemia (E78.5)</li>
                         </ul>
                       </div>
-                      
+
                       {/* Doctor's Notes */}
                       <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">Clinical Notes</h5>
+                        <h5 className="font-medium text-gray-900 mb-2">
+                          Clinical Notes
+                        </h5>
                         <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-sm">
-                          <p>Patient is showing good management of glucose levels with current medication regimen. Blood pressure is within target range. Discussed importance of regular physical activity and consistent medication adherence.</p>
-                          <p className="mt-2">Follow-up appointment scheduled in 3 months. Patient expressed understanding of care plan.</p>
-                          <p className="mt-2 text-xs text-gray-500">Dr. Johnson • Primary Care • 03/15/2025</p>
+                          <p>
+                            Patient is showing good management of glucose levels
+                            with current medication regimen. Blood pressure is
+                            within target range. Discussed importance of regular
+                            physical activity and consistent medication
+                            adherence.
+                          </p>
+                          <p className="mt-2">
+                            Follow-up appointment scheduled in 3 months. Patient
+                            expressed understanding of care plan.
+                          </p>
+                          <p className="mt-2 text-xs text-gray-500">
+                            Dr. Johnson • Primary Care • 03/15/2025
+                          </p>
                         </div>
                       </div>
-                      
+
                       {/* HIPAA Compliance Footer */}
                       <div className="mt-4 pt-3 border-t border-gray-200 text-xs text-gray-500">
-                        <p>This medical record is protected under HIPAA Privacy Rule (45 CFR Parts 160 and 164). Unauthorized access, use, or disclosure is strictly prohibited and may result in penalties.</p>
+                        <p>
+                          This medical record is protected under HIPAA Privacy
+                          Rule (45 CFR Parts 160 and 164). Unauthorized access,
+                          use, or disclosure is strictly prohibited and may
+                          result in penalties.
+                        </p>
                       </div>
                     </div>
                   </div>

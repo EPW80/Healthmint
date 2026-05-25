@@ -1,6 +1,6 @@
-import { handleLogout } from './logoutUtils';
+import { handleLogout } from "./logoutUtils";
 
-describe('logoutUtils', () => {
+describe("logoutUtils", () => {
   beforeEach(() => {
     jest.useFakeTimers();
   });
@@ -10,9 +10,9 @@ describe('logoutUtils', () => {
     jest.useRealTimers();
   });
 
-  test('handleLogout should clear auth state and redirect to login page', async () => {
+  test("handleLogout should clear auth state and redirect to login page", async () => {
     const replaceSpy = jest.fn();
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(window, "location", {
       value: { replace: replaceSpy },
       writable: true,
     });
@@ -20,6 +20,6 @@ describe('logoutUtils', () => {
     await handleLogout();
     jest.runAllTimers();
 
-    expect(replaceSpy).toHaveBeenCalledWith('/login');
+    expect(replaceSpy).toHaveBeenCalledWith("/login");
   });
 });

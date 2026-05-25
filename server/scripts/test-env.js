@@ -124,14 +124,13 @@ check(
 // live Pinata auth test
 process.stdout.write("  … testing Pinata JWT against api.pinata.cloud …\r");
 try {
-  const res = await httpGet("https://api.pinata.cloud/data/testAuthentication", {
-    Authorization: `Bearer ${pinataJwt}`,
-  });
-  check(
-    "Pinata JWT authenticates",
-    res.status === 200,
-    `HTTP ${res.status}`
+  const res = await httpGet(
+    "https://api.pinata.cloud/data/testAuthentication",
+    {
+      Authorization: `Bearer ${pinataJwt}`,
+    }
   );
+  check("Pinata JWT authenticates", res.status === 200, `HTTP ${res.status}`);
   if (res.status === 200) info("Pinata response", res.body.trim());
 } catch (err) {
   check("Pinata JWT authenticates", false, err.message);
@@ -236,7 +235,11 @@ if (mongoUri) {
 
 // ── 7. Logging ────────────────────────────────────────────────────────────────
 console.log("\n[7] Logging");
-check("LOG_LEVEL present", Boolean(process.env.LOG_LEVEL), process.env.LOG_LEVEL);
+check(
+  "LOG_LEVEL present",
+  Boolean(process.env.LOG_LEVEL),
+  process.env.LOG_LEVEL
+);
 check("LOG_DIR present", Boolean(process.env.LOG_DIR), process.env.LOG_DIR);
 
 // ── Summary ───────────────────────────────────────────────────────────────────

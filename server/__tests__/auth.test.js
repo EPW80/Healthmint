@@ -13,7 +13,9 @@ function makeApp() {
   app.use("/api/auth", authRoutes);
   // Minimal error shim so thrown AppErrors become real HTTP responses.
   app.use((err, _req, res, _next) => {
-    res.status(err.statusCode || 500).json({ success: false, message: err.message });
+    res
+      .status(err.statusCode || 500)
+      .json({ success: false, message: err.message });
   });
   return app;
 }

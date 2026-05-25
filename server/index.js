@@ -151,7 +151,7 @@ process.on("unhandledRejection", (reason, promise) => {
   sessionStorage.setItem("last_redirect_time", currentTime.toString());
 
   // Log current localStorage state for debugging (if localStorage is available)
-  if (typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== "undefined") {
     logger.debug("Current localStorage state:", {
       wallet_connection: localStorage.getItem("healthmint_wallet_connection"),
       wallet_address: localStorage.getItem("healthmint_wallet_address"),

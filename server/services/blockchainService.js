@@ -57,7 +57,7 @@ class BlockchainService {
         MAX_GAS_PRICE: "100",
         CONTRACT_ADDRESSES: {},
       };
-      
+
       logger.info("NETWORK_CONFIG configured");
 
       // Initialize provider
@@ -78,14 +78,14 @@ class BlockchainService {
       } else {
         logger.warn("No private key provided, transaction signing unavailable");
       }
-      
+
       // Load contract addresses
       this.contractAddresses = {
         PATIENT_CONSENT: process.env.CONTRACT_PATIENT_CONSENT,
         HEALTH_DATA_REGISTRY: process.env.CONTRACT_HEALTH_DATA_REGISTRY,
         HEALTH_DATA_MARKETPLACE: process.env.CONTRACT_HEALTH_DATA_MARKETPLACE,
       };
-      
+
       // Initialize contracts if addresses are available
       if (this.wallet && this.contractAddresses.PATIENT_CONSENT) {
         const consentAbi = loadContractAbi(
@@ -97,7 +97,7 @@ class BlockchainService {
           this.wallet
         );
       }
-      
+
       if (this.wallet && this.contractAddresses.HEALTH_DATA_REGISTRY) {
         const registryAbi = loadContractAbi(
           path.resolve(__dirname, "../contracts/HealthDataRegistry.json")
@@ -108,10 +108,13 @@ class BlockchainService {
           this.wallet
         );
       }
-      
+
       if (this.wallet && this.contractAddresses.HEALTH_DATA_MARKETPLACE) {
         const marketplaceAbi = loadContractAbi(
-          path.resolve(__dirname, "../../client/src/contracts/HealthDataMarketplace.json")
+          path.resolve(
+            __dirname,
+            "../../client/src/contracts/HealthDataMarketplace.json"
+          )
         );
         this.contracts.HealthDataMarketplace = new ethers.Contract(
           this.contractAddresses.HEALTH_DATA_MARKETPLACE,
@@ -119,9 +122,11 @@ class BlockchainService {
           this.wallet
         );
       }
-      
+
       if (Object.keys(this.contracts).length === 0) {
-        logger.info("No valid contract address provided, skipping contract initialization");
+        logger.info(
+          "No valid contract address provided, skipping contract initialization"
+        );
       }
 
       this.initialized = true;
@@ -131,111 +136,130 @@ class BlockchainService {
       throw error;
     }
   }
-  
+
   // New secure methods for blockchain operations
   async grantConsent(patientAddress, providerAddress, dataId, expiryTime) {
     if (!this.initialized || !this.wallet) {
-      throw createError.serviceUnavailable("Blockchain service not initialized");
+      throw createError.serviceUnavailable(
+        "Blockchain service not initialized"
+      );
     }
-    
+
     if (!this.contracts.PatientConsent) {
-      throw createError.serviceUnavailable("Patient consent contract not initialized");
+      throw createError.serviceUnavailable(
+        "Patient consent contract not initialized"
+      );
     }
-    
+
     try {
       const tx = await this.contracts.PatientConsent.grantConsent(
-        providerAddress, 
+        providerAddress,
         dataId,
         expiryTime,
-        { 
+        {
           gasLimit: this.networkConfig.GAS_LIMIT,
-          from: patientAddress  // This acts as a check, not actual signing
+          from: patientAddress, // This acts as a check, not actual signing
         }
       );
-      
-      const receipt = await tx.wait(this.networkConfig.TRANSACTION_CONFIRMATIONS);
+
+      const receipt = await tx.wait(
+        this.networkConfig.TRANSACTION_CONFIRMATIONS
+      );
       return {
         transactionHash: receipt.transactionHash,
         blockNumber: receipt.blockNumber,
-        events: receipt.events
+        events: receipt.events,
       };
     } catch (error) {
       logger.error("Error granting consent:", error);
       throw createError.badRequest(`Failed to grant consent: ${error.message}`);
     }
   }
-  
+
   async revokeConsent(patientAddress, providerAddress, dataId) {
     if (!this.initialized || !this.wallet) {
-      throw createError.serviceUnavailable("Blockchain service not initialized");
+      throw createError.serviceUnavailable(
+        "Blockchain service not initialized"
+      );
     }
-    
+
     try {
       const tx = await this.contracts.PatientConsent.revokeConsent(
         providerAddress,
         dataId,
-        { 
+        {
           gasLimit: this.networkConfig.GAS_LIMIT,
-          from: patientAddress  // For verification
+          from: patientAddress, // For verification
         }
       );
-      
-      const receipt = await tx.wait(this.networkConfig.TRANSACTION_CONFIRMATIONS);
+
+      const receipt = await tx.wait(
+        this.networkConfig.TRANSACTION_CONFIRMATIONS
+      );
       return {
         transactionHash: receipt.transactionHash,
-        blockNumber: receipt.blockNumber
+        blockNumber: receipt.blockNumber,
       };
     } catch (error) {
       logger.error("Error revoking consent:", error);
-      throw createError.badRequest(`Failed to revoke consent: ${error.message}`);
+      throw createError.badRequest(
+        `Failed to revoke consent: ${error.message}`
+      );
     }
   }
-  
+
   async registerDataOnChain(patientAddress, dataHash, metadata, price) {
     if (!this.initialized || !this.wallet) {
-      throw createError.serviceUnavailable("Blockchain service not initialized");
+      throw createError.serviceUnavailable(
+        "Blockchain service not initialized"
+      );
     }
-    
+
     try {
       const priceWei = ethers.utils.parseEther(price.toString());
-      
+
       const tx = await this.contracts.HealthDataRegistry.registerData(
         dataHash,
         JSON.stringify(metadata),
         priceWei,
-        { 
+        {
           gasLimit: this.networkConfig.GAS_LIMIT,
-          from: patientAddress  // For verification
+          from: patientAddress, // For verification
         }
       );
-      
-      const receipt = await tx.wait(this.networkConfig.TRANSACTION_CONFIRMATIONS);
+
+      const receipt = await tx.wait(
+        this.networkConfig.TRANSACTION_CONFIRMATIONS
+      );
       return {
         transactionHash: receipt.transactionHash,
-        dataId: receipt.events.find(e => e.event === "DataRegistered")?.args?.dataId,
-        blockNumber: receipt.blockNumber
+        dataId: receipt.events.find((e) => e.event === "DataRegistered")?.args
+          ?.dataId,
+        blockNumber: receipt.blockNumber,
       };
     } catch (error) {
       logger.error("Error registering data:", error);
       throw createError.badRequest(`Failed to register data: ${error.message}`);
     }
   }
-  
+
   // Utility methods
   getNetworkInfo() {
     if (!this.initialized) {
-      throw createError.serviceUnavailable("Blockchain service not initialized");
+      throw createError.serviceUnavailable(
+        "Blockchain service not initialized"
+      );
     }
-    
+
     const network = process.env.BLOCKCHAIN_NETWORK || "SEPOLIA";
     return {
       network: this.networkConfig[network].NETWORK_NAME,
       chainId: this.networkConfig[network].CHAIN_ID,
       isTestnet: this.networkConfig[network].IS_TESTNET,
-      blockExplorer: this.networkConfig[network].BLOCK_EXPLORER
+      blockExplorer: this.networkConfig[network].BLOCK_EXPLORER,
     };
   }
-  
+
   createDataHash(data) {
     return ethers.utils.id(JSON.stringify(data));
   }

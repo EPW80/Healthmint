@@ -178,14 +178,12 @@ router.post(
 
     // Validate required fields
     if (!providerAddress || !dataId) {
-      throw createError.validation(
-        "Provider address and data ID are required"
-      );
+      throw createError.validation("Provider address and data ID are required");
     }
 
     // Verify the user is operating on their own data
     const patientAddress = req.user.address.toLowerCase();
-    
+
     // Create audit log for consent action
     await hipaaCompliance.createAuditLog("CONSENT_TRANSACTION_INITIATED", {
       userId: req.user.id,
@@ -200,7 +198,8 @@ router.post(
     try {
       if (granted) {
         // Calculate expiry time if not provided (default 30 days)
-        const actualExpiryTime = expiryTime || Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60);
+        const actualExpiryTime =
+          expiryTime || Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
         result = await blockchainService.grantConsent(
           patientAddress,
           providerAddress,
@@ -227,8 +226,10 @@ router.post(
 
       res.json({
         success: true,
-        message: granted ? "Consent granted successfully" : "Consent revoked successfully",
-        transaction: result
+        message: granted
+          ? "Consent granted successfully"
+          : "Consent revoked successfully",
+        transaction: result,
       });
     } catch (error) {
       await hipaaCompliance.createAuditLog("CONSENT_TRANSACTION_FAILED", {
@@ -240,7 +241,7 @@ router.post(
         error: error.message,
         ip: req.ip,
       });
-      
+
       throw error; // Will be caught by the asyncHandler
     }
   })
@@ -374,7 +375,7 @@ router.post(
     }
 
     const patientAddress = req.user.address.toLowerCase();
-    
+
     try {
       const result = await blockchainService.registerDataOnChain(
         patientAddress,
@@ -382,7 +383,7 @@ router.post(
         metadata,
         price || 0
       );
-      
+
       await hipaaCompliance.createAuditLog("DATA_REGISTERED_ON_CHAIN", {
         userId: req.user.id,
         userAddress: patientAddress,
@@ -395,7 +396,7 @@ router.post(
       res.json({
         success: true,
         message: "Health data registered on blockchain",
-        transaction: result
+        transaction: result,
       });
     } catch (error) {
       await hipaaCompliance.createAuditLog("DATA_REGISTRATION_FAILED", {
@@ -405,7 +406,7 @@ router.post(
         error: error.message,
         ip: req.ip,
       });
-      
+
       throw error;
     }
   })

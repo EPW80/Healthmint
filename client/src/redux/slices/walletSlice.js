@@ -356,7 +356,6 @@ export const {
   updateAccount,
   updateNetwork,
   resetWalletState,
-  setWalletConnection,
 } = walletSlice.actions;
 
 // Selectors for easily accessing state

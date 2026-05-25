@@ -224,7 +224,7 @@ const ProfileManager = () => {
       if (!values.name) {
         errors.name = "Name is required";
       }
-      if (values.email && !/\S+@\S+\.\S+/.test(values.email)) {
+      if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
         errors.email = "Please enter a valid email address";
       }
       return errors;

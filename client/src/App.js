@@ -14,12 +14,6 @@ const App = () => {
   const userIdentifier =
     localStorage.getItem("healthmint_wallet_address") || "anonymous";
 
-  // Clear leftover auth bypass flags from any prior emergency loop fire.
-  // These flags would let unauthenticated users into protected routes, and
-  // they outlive the event that set them (sessionStorage lasts the whole tab).
-  sessionStorage.removeItem("auth_verification_override");
-  sessionStorage.removeItem("bypass_route_protection");
-
   useEffect(() => {
     const logAppStartup = async () => {
       try {
@@ -60,7 +54,9 @@ const App = () => {
               consentPurpose: "Using Healthmint platform",
             }}
           >
-            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Router
+              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            >
               <NavigationProvider>
                 <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
                   <AppContent />

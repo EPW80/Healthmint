@@ -1,8 +1,20 @@
 // src/components/AppContent.js
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import useWalletConnect from "../hooks/useWalletConnect.js";
+import {
+  useWalletAddress,
+  useIsConnected,
+  useWalletNetwork,
+} from "../hooks/useWallet.js";
 import useAuth from "../hooks/useAuth.js";
 import {
   selectRole,
@@ -16,100 +28,100 @@ import {
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { clearWalletConnection } from "../redux/slices/walletSlice.js";
 import { performLogout } from "../utils/authLoopPrevention.js";
+import { STORAGE_KEYS } from "../config/storageKeys.js";
 import { AlertCircle, LogOut, X, Check } from "lucide-react";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
+import Modal from "./ui/Modal.js";
+import { Button } from "./ui/index.js";
 
-// Components
+// Always-eager shell components (needed on first paint)
 import WalletConnect from "./WalletConnect.js";
 import Navigation from "./Navigation.js";
 import Footer from "./Footer.js";
 import RoleSelector from "./roles/RoleSelector.js";
 import ProtectedRoute from "./ProtectedRoute.js";
-import Dashboard from "./dashboard/Dashboard.js";
-import ProfileManager from "./ProfileManager.js";
-import DataUpload from "./DataUpload.js";
-import DataBrowser from "./DataBrowser.js";
-import UserRegistration from "./UserRegistration.js";
-import TransactionsPage from "../pages/TransactionPage.js";
-import DataMarketplace from "../pages/DataMarketplace.js";
-import DataContributionPortal from "../pages/DataContributionPortal.js";
-import AccessHistoryPage from "../pages/AccessHistoryPage.js"; // Add Access History import
-import {
-  HipaaGuide,
-  DataSharingBenefits,
-  PrivacyBestPractices,
-  CitationGuidelines,
-  ResearchEthics,
-  CollaborationNetwork,
-} from "../pages/resources"; // Add Resource imports
-import DataVisualization from "./analytics/DataVisualization.js";
-import StatisticalAnalysis from "./analytics/StatisticalAnalysis.js";
-import PopulationStudies from "./analytics/PopulationStudies.js";
-import FileUploader from "../components/FileUploader";
-import StoragePage from '../pages/StoragePage';
+
+// Lazy-loaded page components (split into separate chunks)
+const Dashboard = lazy(() => import("./dashboard/Dashboard.js"));
+const ProfileManager = lazy(() => import("./ProfileManager.js"));
+const DataUpload = lazy(() => import("./DataUpload.js"));
+const DataBrowser = lazy(() => import("./DataBrowser.js"));
+const UserRegistration = lazy(() => import("./UserRegistration.js"));
+const TransactionsPage = lazy(() => import("../pages/TransactionPage.js"));
+const DataMarketplace = lazy(() => import("../pages/DataMarketplace.js"));
+const DataContributionPortal = lazy(
+  () => import("../pages/DataContributionPortal.js")
+);
+const AccessHistoryPage = lazy(() => import("../pages/AccessHistoryPage.js"));
+const DataVisualization = lazy(
+  () => import("./analytics/DataVisualization.js")
+);
+const StatisticalAnalysis = lazy(
+  () => import("./analytics/StatisticalAnalysis.js")
+);
+const PopulationStudies = lazy(
+  () => import("./analytics/PopulationStudies.js")
+);
+const FileUploader = lazy(() => import("../components/FileUploader"));
+const StoragePage = lazy(() => import("../pages/StoragePage"));
+
+// Resource pages (lazy — each loads on demand)
+const HipaaGuide = lazy(() => import("../pages/resources/HipaaGuide.js"));
+const DataSharingBenefits = lazy(
+  () => import("../pages/resources/DataSharingBenefits.js")
+);
+const PrivacyBestPractices = lazy(
+  () => import("../pages/resources/PrivacyBestPractices.js")
+);
+const CitationGuidelines = lazy(
+  () => import("../pages/resources/CitationGuidelines.js")
+);
+const ResearchEthics = lazy(
+  () => import("../pages/resources/ResearchEthics.js")
+);
+const CollaborationNetwork = lazy(
+  () => import("../pages/resources/CollaborationNetwork.js")
+);
 
 // Logout Confirmation Dialog
-const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => {
-  useEffect(() => {
-    const handleEsc = (e) => e.key === "Escape" && onCancel();
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onCancel]);
-
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "auto";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      aria-modal="true"
-      role="dialog"
-    >
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 m-4">
-        <div className="flex items-start mb-4">
-          <div className="bg-red-100 p-2 rounded-full mr-3">
-            <LogOut className="text-red-600 w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Confirm Logout
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Are you sure you want to log out? This will disconnect your
-              wallet.
-            </p>
-            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-md flex">
-              <AlertCircle className="text-yellow-600 w-5 h-5 mr-2" />
-              <p className="text-sm text-yellow-700">
-                Pending transactions or unsaved changes may be lost.
-              </p>
-            </div>
-          </div>
+const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => (
+  <Modal
+    isOpen={isOpen}
+    onClose={onCancel}
+    title="Confirm Logout"
+    className="max-w-md"
+  >
+    <div className="p-6">
+      <div className="flex items-start mb-4">
+        <div className="bg-red-100 p-2 rounded-full mr-3 flex-shrink-0">
+          <LogOut className="text-red-600 w-6 h-6" />
         </div>
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onClick={onCancel}
-          >
-            <X className="w-4 h-4 mr-2 inline" /> Cancel
-          </button>
-          <button
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-            onClick={onConfirm}
-          >
-            <Check className="w-4 h-4 mr-2 inline" /> Confirm Logout
-          </button>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Confirm Logout
+          </h3>
+          <p className="mt-2 text-sm text-gray-600">
+            Are you sure you want to log out? This will disconnect your wallet.
+          </p>
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-md flex items-start">
+            <AlertCircle className="text-yellow-600 w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-yellow-700">
+              Pending transactions or unsaved changes may be lost.
+            </p>
+          </div>
         </div>
       </div>
+      <div className="flex justify-end gap-3 mt-6">
+        <Button variant="ghost" onClick={onCancel}>
+          <X className="w-4 h-4" /> Cancel
+        </Button>
+        <Button variant="danger" onClick={onConfirm}>
+          <Check className="w-4 h-4" /> Confirm Logout
+        </Button>
+      </div>
     </div>
-  );
-};
+  </Modal>
+);
 
 // Main AppContent Component
 const AppContent = () => {
@@ -117,15 +129,16 @@ const AppContent = () => {
   const location = useLocation();
   const userRole = useSelector(selectRole);
   const isRoleSelected = useSelector(selectIsRoleSelected);
-  const {
-    isConnected,
-    address,
-    network,
-    disconnectWallet,
-    switchNetwork,
-    getPendingTransactions,
-  } = useWalletConnect();
-  const { isAuthenticated, isNewUser, verifyAuth, clearVerificationCache } = useAuth();
+  // Read-only wallet state via selector hooks (avoids re-render on every
+  // useWalletConnect internal state change).
+  const isConnected = useIsConnected();
+  const address = useWalletAddress();
+  const network = useWalletNetwork();
+  // Mutation methods still come from the full hook.
+  const { disconnectWallet, switchNetwork, getPendingTransactions } =
+    useWalletConnect();
+  const { isAuthenticated, isNewUser, verifyAuth, clearVerificationCache } =
+    useAuth();
 
   // State management
   const [isInitialized, setIsInitialized] = useState(false);
@@ -290,24 +303,11 @@ const AppContent = () => {
   const shouldShowNavigation = useCallback(() => {
     return (
       isConnected &&
-      (address || localStorage.getItem("healthmint_wallet_address")) &&
+      (address || localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS)) &&
       !isNewUser &&
       !["/login", "/register", "/select-role"].includes(location.pathname)
     );
   }, [isConnected, address, isNewUser, location.pathname]);
-
-  // Memoized Navigation to prevent re-renders
-  const MemoizedNavigation = React.memo(
-    ({ account, onLogout, role, network, onSwitchNetwork }) => (
-      <Navigation
-        account={account}
-        onLogout={onLogout}
-        role={role}
-        network={network}
-        onSwitchNetwork={onSwitchNetwork}
-      />
-    )
-  );
 
   if (!isInitialized || isVerifying) {
     return (
@@ -321,8 +321,8 @@ const AppContent = () => {
   return (
     <>
       {shouldShowNavigation() && (
-        <MemoizedNavigation
-          account={address || localStorage.getItem("healthmint_wallet_address")}
+        <Navigation
+          account={address || localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS)}
           onLogout={initiateLogout}
           role={userRole}
           network={network}
@@ -330,346 +330,355 @@ const AppContent = () => {
         />
       )}
       <div className="flex-1">
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              // Require both wallet connection AND a valid JWT before
-              // redirecting away. isConnected alone just means the address
-              // is cached from a prior session — the user still needs to
-              // re-sign with MetaMask to get a fresh token.
-              isConnected && isAuthenticated ? (
-                isNewUser ? (
+        <Suspense
+          fallback={
+            <div className="flex justify-center items-center min-h-screen">
+              <LoadingSpinner size="large" label="Loading page..." showLabel />
+            </div>
+          }
+        >
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                // Require both wallet connection AND a valid JWT before
+                // redirecting away. isConnected alone just means the address
+                // is cached from a prior session — the user still needs to
+                // re-sign with MetaMask to get a fresh token.
+                isConnected && isAuthenticated ? (
+                  isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <Navigate to="/dashboard" replace />
+                  )
+                ) : (
+                  <WalletConnect />
+                )
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                !isConnected ? (
+                  <Navigate to="/login" replace />
+                ) : isNewUser ? (
+                  <UserRegistration
+                    walletAddress={
+                      address ||
+                      localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS)
+                    }
+                    onComplete={handleRegistrationComplete}
+                  />
+                ) : (
+                  <Navigate
+                    to={isRoleSelected ? "/dashboard" : "/select-role"}
+                    replace
+                  />
+                )
+              }
+            />
+            <Route
+              path="/select-role"
+              element={
+                !isConnected ? (
+                  <Navigate to="/login" replace />
+                ) : isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : (
+                  <RoleSelector />
+                )
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={[]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <Dashboard />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <ProfileManager />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <DataUpload />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/browse"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <DataBrowser />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            {/* Analytics Tool Routes */}
+            <Route
+              path="/analysis/visualization"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <DataVisualization />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analysis/statistics"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <StatisticalAnalysis />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analysis/population-studies"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <PopulationStudies />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            {/* Add Access History route */}
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <AccessHistoryPage />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            {/* Data Marketplace route */}
+            <Route
+              path="/marketplace"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <DataMarketplace />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contribute"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <DataContributionPortal />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <TransactionsPage />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            {/* Resource Routes */}
+            <Route
+              path="/resources/hipaa-guide"
+              element={
+                <ProtectedRoute>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <HipaaGuide />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resources/sharing-benefits"
+              element={
+                <ProtectedRoute>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <DataSharingBenefits />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resources/privacy-practices"
+              element={
+                <ProtectedRoute>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <PrivacyBestPractices />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            {/* Researcher-specific Resource Routes */}
+            <Route
+              path="/resources/citation-guidelines"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <CitationGuidelines />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resources/research-ethics"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <ResearchEthics />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/network/join"
+              element={
+                <ProtectedRoute allowedRoles={["researcher"]}>
+                  {isNewUser ? (
+                    <Navigate to="/register" replace />
+                  ) : !isRoleSelected ? (
+                    <Navigate to="/select-role" replace />
+                  ) : (
+                    <CollaborationNetwork />
+                  )}
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/test/upload" element={<FileUploader />} />
+            <Route
+              path="/storage"
+              element={
+                !isConnected ? (
+                  <Navigate to="/login" replace />
+                ) : isNewUser ? (
+                  <Navigate to="/register" replace />
+                ) : !isRoleSelected ? (
+                  <Navigate to="/select-role" replace />
+                ) : (
+                  <StoragePage />
+                )
+              }
+            />
+            <Route
+              path="/"
+              element={
+                !isConnected ? (
+                  <Navigate to="/login" replace />
+                ) : isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
                   <Navigate to="/select-role" replace />
                 ) : (
                   <Navigate to="/dashboard" replace />
                 )
-              ) : (
-                <WalletConnect />
-              )
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              !isConnected ? (
-                <Navigate to="/login" replace />
-              ) : isNewUser ? (
-                <UserRegistration
-                  walletAddress={
-                    address || localStorage.getItem("healthmint_wallet_address")
-                  }
-                  onComplete={handleRegistrationComplete}
-                />
-              ) : (
-                <Navigate
-                  to={isRoleSelected ? "/dashboard" : "/select-role"}
-                  replace
-                />
-              )
-            }
-          />
-          <Route
-            path="/select-role"
-            element={
-              !isConnected ? (
-                <Navigate to="/login" replace />
-              ) : isNewUser ? (
-                <Navigate to="/register" replace />
-              ) : (
-                <RoleSelector />
-              )
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={[]}>
-                {isNewUser ? (
+              }
+            />
+            <Route
+              path="*"
+              element={
+                !isConnected ? (
+                  <Navigate to="/login" replace />
+                ) : isNewUser ? (
                   <Navigate to="/register" replace />
                 ) : !isRoleSelected ? (
                   <Navigate to="/select-role" replace />
                 ) : (
-                  <Dashboard />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <ProfileManager />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/upload"
-            element={
-              <ProtectedRoute allowedRoles={["patient"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <DataUpload />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/browse"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <DataBrowser />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          {/* Analytics Tool Routes */}
-          <Route
-            path="/analysis/visualization"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <DataVisualization />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analysis/statistics"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <StatisticalAnalysis />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analysis/population-studies"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <PopulationStudies />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          {/* Add Access History route */}
-          <Route
-            path="/history"
-            element={
-              <ProtectedRoute allowedRoles={["patient"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <AccessHistoryPage />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          {/* Data Marketplace route */}
-          <Route
-            path="/marketplace"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <DataMarketplace />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/contribute"
-            element={
-              <ProtectedRoute allowedRoles={["patient"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <DataContributionPortal />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/transactions"
-            element={
-              <ProtectedRoute>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <TransactionsPage />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          {/* Resource Routes */}
-          <Route
-            path="/resources/hipaa-guide"
-            element={
-              <ProtectedRoute>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <HipaaGuide />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/resources/sharing-benefits"
-            element={
-              <ProtectedRoute>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <DataSharingBenefits />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/resources/privacy-practices"
-            element={
-              <ProtectedRoute>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <PrivacyBestPractices />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          {/* Researcher-specific Resource Routes */}
-          <Route
-            path="/resources/citation-guidelines"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <CitationGuidelines />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/resources/research-ethics"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <ResearchEthics />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/network/join"
-            element={
-              <ProtectedRoute allowedRoles={["researcher"]}>
-                {isNewUser ? (
-                  <Navigate to="/register" replace />
-                ) : !isRoleSelected ? (
-                  <Navigate to="/select-role" replace />
-                ) : (
-                  <CollaborationNetwork />
-                )}
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/test/upload" element={<FileUploader />} />
-          <Route
-            path="/storage"
-            element={
-              !isConnected ? (
-                <Navigate to="/login" replace />
-              ) : isNewUser ? (
-                <Navigate to="/register" replace />
-              ) : !isRoleSelected ? (
-                <Navigate to="/select-role" replace />
-              ) : (
-                <StoragePage />
-              )
-            }
-          />
-          <Route
-            path="/"
-            element={
-              !isConnected ? (
-                <Navigate to="/login" replace />
-              ) : isNewUser ? (
-                <Navigate to="/register" replace />
-              ) : !isRoleSelected ? (
-                <Navigate to="/select-role" replace />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-          <Route
-            path="*"
-            element={
-              !isConnected ? (
-                <Navigate to="/login" replace />
-              ) : isNewUser ? (
-                <Navigate to="/register" replace />
-              ) : !isRoleSelected ? (
-                <Navigate to="/select-role" replace />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        </Routes>
+                  <Navigate to="/dashboard" replace />
+                )
+              }
+            />
+          </Routes>
+        </Suspense>
       </div>
       <LogoutConfirmationDialog
         isOpen={showLogoutDialog}

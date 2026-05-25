@@ -71,8 +71,14 @@ if (!fs.existsSync(logDir)) {
 }
 
 // Debugging Environment Variables
-logger.info("Loaded ENCRYPTION_KEY:", process.env.ENCRYPTION_KEY ? "Present" : "Not Found");
-logger.info("Loaded JWT_SECRET:", process.env.JWT_SECRET ? "Present" : "Not Found");
+logger.info(
+  "Loaded ENCRYPTION_KEY:",
+  process.env.ENCRYPTION_KEY ? "Present" : "Not Found"
+);
+logger.info(
+  "Loaded JWT_SECRET:",
+  process.env.JWT_SECRET ? "Present" : "Not Found"
+);
 logger.info("Running in:", NODE_ENV);
 logger.info("Allowed Origins:", ALLOWED_ORIGINS);
 
@@ -112,13 +118,16 @@ const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
 // Add this to your server.js or app.js file
-const frontendURL = process.env.FRONTEND_URL || 'https://healthmint-copyone.vercel.app';
+const frontendURL =
+  process.env.FRONTEND_URL || "https://healthmint-copyone.vercel.app";
 
 // Configure CORS
-app.use(cors({
-  origin: [frontendURL, 'http://localhost:3000'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [frontendURL, "http://localhost:3000"],
+    credentials: true,
+  })
+);
 
 // CORS Configuration - Make sure this is properly set up
 const corsOptions = {
@@ -243,9 +252,7 @@ try {
 
   const isConnected = await secureStorageService.validateIPFSConnection();
   logger.info(
-    isConnected
-      ? "✅ IPFS connection validated"
-      : "⚠️ IPFS connection failed"
+    isConnected ? "✅ IPFS connection validated" : "⚠️ IPFS connection failed"
   );
 } catch (error) {
   logger.error("❌ Error initializing storage service:", error.message);

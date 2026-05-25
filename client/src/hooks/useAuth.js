@@ -6,6 +6,7 @@ import { updateUserProfile } from "../redux/slices/userSlice.js";
 import authService from "../services/authService.js";
 import { isLogoutInProgress } from "../utils/authLoopPrevention.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
+import { STORAGE_KEYS } from "../config/storageKeys.js";
 
 const useAuth = () => {
   const dispatch = useDispatch();
@@ -113,9 +114,9 @@ const useAuth = () => {
       // Fallback implementation if function doesn't exist (shouldn't happen after our patch)
       console.warn("Using fallback auth verification in useAuth hook");
 
-      const walletAddress = localStorage.getItem("healthmint_wallet_address");
+      const walletAddress = localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS);
       const isWalletConnected =
-        localStorage.getItem("healthmint_wallet_connection") === "true";
+        localStorage.getItem(STORAGE_KEYS.WALLET_CONNECTION) === "true";
 
       if (!walletAddress || !isWalletConnected) {
         setIsAuthenticated(false);
@@ -145,9 +146,9 @@ const useAuth = () => {
         return null;
       }
 
-      const storedRole = localStorage.getItem("healthmint_user_role");
+      const storedRole = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
       const isUserNew =
-        localStorage.getItem("healthmint_is_new_user") === "true";
+        localStorage.getItem(STORAGE_KEYS.IS_NEW_USER) === "true";
 
       // Update state based on the verification
       setIsAuthenticated(true);

@@ -34,7 +34,7 @@ found six real vulnerabilities, and fixed each in a focused commit.
 
 ### Security 🔐
 
-- HIPAA-*aware* design (see [SECURITY.md](./SECURITY.md))
+- HIPAA-_aware_ design (see [SECURITY.md](./SECURITY.md))
 - Off-chain encryption-key custody (keys never touch the chain)
 - Signed-nonce wallet authentication (EIP-191)
 - Purchase records anchored on-chain via `purchaseData()` events
@@ -66,7 +66,7 @@ healthmint/ ├── client/ ├── contracts/ ├── migrations/ ├─�
 ## API Overview
 
 | Category       | Endpoints (examples)                                              |
-|----------------|-------------------------------------------------------------------|
+| -------------- | ----------------------------------------------------------------- |
 | Authentication | `/api/auth/wallet/challenge`, `/wallet/authenticate`, `/register` |
 | Health Data    | `/api/data/upload`, `/browse`, `/purchase`                        |
 | Storage        | `/api/storage/upload`, `/get/:id`                                 |

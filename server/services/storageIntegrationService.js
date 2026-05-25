@@ -75,7 +75,8 @@ class StorageIntegrationService {
       // 4. Update MongoDB record with IPFS details
       fileDoc.cid = uploadResult.cid;
       fileDoc.ipfsUrl =
-        uploadResult.url || `https://gateway.pinata.cloud/ipfs/${uploadResult.cid}`;
+        uploadResult.url ||
+        `https://gateway.pinata.cloud/ipfs/${uploadResult.cid}`;
       fileDoc.status = "available";
 
       await fileDoc.save();

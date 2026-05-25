@@ -38,7 +38,9 @@ const validateAndNormalizeAddress = (address) => {
 const generateTokens = (user) => {
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    throw new Error("JWT_SECRET is not configured — server should have refused to start");
+    throw new Error(
+      "JWT_SECRET is not configured — server should have refused to start"
+    );
   }
 
   // Create payload with essential user data
@@ -393,9 +395,8 @@ router.post(
     }
 
     const normalized = addressValidation.normalizedAddress.toLowerCase();
-    const { message, nonce } = blockchainService.generateChallengeMessage(
-      normalized
-    );
+    const { message, nonce } =
+      blockchainService.generateChallengeMessage(normalized);
 
     // Persist. A new challenge supersedes any previous outstanding one for
     // the same address (deleteMany), so a stale nonce can't be used to

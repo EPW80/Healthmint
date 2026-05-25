@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Lockfiles
+package-lock.json
+**/package-lock.json
+yarn.lock
+
+# Build output
+build/
+**/build/
+dist/
+**/dist/
+
+# Coverage
+coverage/
+**/coverage/
+
+# Truffle / Hardhat artifacts
+artifacts/
+cache/
+client/src/contracts/
+
+# Env files
+.env
+.env.*
+
+# Logs
+*.log
+
+# Misc
+.next/
+.cache/

@@ -29,18 +29,22 @@ describe("blockchainService.generateChallengeMessage", () => {
 describe("blockchainService.verifySignature", () => {
   it("accepts a signature that recovers to the claimed address", async () => {
     const wallet = ethers.Wallet.createRandom();
-    const { message } = blockchainService.generateChallengeMessage(wallet.address);
+    const { message } = blockchainService.generateChallengeMessage(
+      wallet.address
+    );
     const signature = await wallet.signMessage(message);
 
-    expect(blockchainService.verifySignature(message, signature, wallet.address)).toBe(
-      true
-    );
+    expect(
+      blockchainService.verifySignature(message, signature, wallet.address)
+    ).toBe(true);
   });
 
   it("rejects a signature from a different wallet", async () => {
     const signer = ethers.Wallet.createRandom();
     const someoneElse = ethers.Wallet.createRandom();
-    const { message } = blockchainService.generateChallengeMessage(signer.address);
+    const { message } = blockchainService.generateChallengeMessage(
+      signer.address
+    );
     const signature = await signer.signMessage(message);
 
     expect(
@@ -50,16 +54,24 @@ describe("blockchainService.verifySignature", () => {
 
   it("rejects a tampered message", async () => {
     const wallet = ethers.Wallet.createRandom();
-    const { message } = blockchainService.generateChallengeMessage(wallet.address);
+    const { message } = blockchainService.generateChallengeMessage(
+      wallet.address
+    );
     const signature = await wallet.signMessage(message);
 
     expect(
-      blockchainService.verifySignature(message + "tampered", signature, wallet.address)
+      blockchainService.verifySignature(
+        message + "tampered",
+        signature,
+        wallet.address
+      )
     ).toBe(false);
   });
 
   it("returns false (does not throw) on malformed input", () => {
     expect(blockchainService.verifySignature(null, null, null)).toBe(false);
-    expect(blockchainService.verifySignature("m", "not-a-sig", "0x01")).toBe(false);
+    expect(blockchainService.verifySignature("m", "not-a-sig", "0x01")).toBe(
+      false
+    );
   });
 });

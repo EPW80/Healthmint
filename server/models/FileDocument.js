@@ -231,52 +231,55 @@ const fileDocumentSchema = new mongoose.Schema(
 );
 
 // Text search index
-fileDocumentSchema.index({ 
-  fileName: "text", 
-  description: "text", 
-  tags: "text" 
+fileDocumentSchema.index({
+  fileName: "text",
+  description: "text",
+  tags: "text",
 });
 
 // Custom method to securely validate access passphrase
 fileDocumentSchema.methods.validatePassphrase = async function (passphrase) {
   if (!this.accessPassphrase) return true;
-  
+
   // Decrypt stored passphrase
-  const decryptedStored = await hipaaConfig.encryption.decrypt(this.accessPassphrase);
+  const decryptedStored = await hipaaConfig.encryption.decrypt(
+    this.accessPassphrase
+  );
   return decryptedStored === passphrase;
 };
 
 // Method to generate secure access URL
-fileDocumentSchema.methods.generateAccessUrl = function (expiresInMinutes = 30) {
+fileDocumentSchema.methods.generateAccessUrl = function (
+  expiresInMinutes = 30
+) {
   const expiresAt = Date.now() + expiresInMinutes * 60 * 1000;
   const token = hipaaConfig.encryption.generateToken({
     fileId: this._id.toString(),
     cid: this.cid,
     expiresAt,
   });
-  
-  return `${process.env.API_URL || 'http://localhost:5000'}/api/files/access/${token}`;
+
+  return `${process.env.API_URL || "http://localhost:5000"}/api/files/access/${token}`;
 };
 
 // Static method to find accessible files for a user
-fileDocumentSchema.statics.findAccessibleByUser = function (userId, options = {}) {
+fileDocumentSchema.statics.findAccessibleByUser = function (
+  userId,
+  options = {}
+) {
   const query = {
-    $or: [
-      { owner: userId },
-      { authorizedUsers: userId },
-      { isPublic: true },
-    ],
+    $or: [{ owner: userId }, { authorizedUsers: userId }, { isPublic: true }],
     isDeleted: false,
   };
-  
+
   if (options.category) {
     query.category = options.category;
   }
-  
+
   if (options.containsPHI === true || options.containsPHI === false) {
     query.containsPHI = options.containsPHI;
   }
-  
+
   return this.find(query);
 };
 
@@ -291,7 +294,7 @@ fileDocumentSchema.pre("save", function (next) {
 // Middleware: Log file access for HIPAA compliance
 fileDocumentSchema.pre("findOne", async function () {
   const fileId = this.getQuery()._id;
-  
+
   try {
     await hipaaConfig.audit.logEvent({
       type: "file_access",
@@ -319,7 +322,7 @@ fileDocumentSchema.statics.softDelete = async function (fileId, userId) {
     },
     { new: true }
   );
-  
+
   await hipaaConfig.audit.logEvent({
     type: "file_deleted",
     resourceId: fileId,
@@ -330,7 +333,7 @@ fileDocumentSchema.statics.softDelete = async function (fileId, userId) {
       cid: result.cid,
     },
   });
-  
+
   return result;
 };
 

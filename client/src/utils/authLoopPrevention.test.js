@@ -1,4 +1,4 @@
-import { performLogout } from './authLoopPrevention';
+import { performLogout } from "./authLoopPrevention";
 
 // Mock localStorage and sessionStorage
 const localStorageMock = (() => {
@@ -41,13 +41,15 @@ Object.defineProperty(window, "localStorage", { value: localStorageMock });
 Object.defineProperty(window, "sessionStorage", { value: sessionStorageMock });
 Object.defineProperty(window, "location", { value: locationMock });
 
-describe('authLoopPrevention', () => {
+describe("authLoopPrevention", () => {
   beforeEach(() => {
     // Mock localStorage and sessionStorage
-    jest.spyOn(global.localStorage, 'clear').mockImplementation(() => {});
-    jest.spyOn(global.sessionStorage, 'clear').mockImplementation(() => {});
-    jest.spyOn(global.localStorage, 'removeItem').mockImplementation(() => {});
-    jest.spyOn(global.sessionStorage, 'removeItem').mockImplementation(() => {});
+    jest.spyOn(global.localStorage, "clear").mockImplementation(() => {});
+    jest.spyOn(global.sessionStorage, "clear").mockImplementation(() => {});
+    jest.spyOn(global.localStorage, "removeItem").mockImplementation(() => {});
+    jest
+      .spyOn(global.sessionStorage, "removeItem")
+      .mockImplementation(() => {});
     // Use fake timers to control setTimeout
     jest.useFakeTimers();
   });
@@ -57,9 +59,11 @@ describe('authLoopPrevention', () => {
     jest.useRealTimers();
   });
 
-  test('performLogout should clear auth storage and redirect to login page', async () => {
+  test("performLogout should clear auth storage and redirect to login page", async () => {
     // Spy on window.location.replace
-    const replaceSpy = jest.spyOn(window.location, 'replace').mockImplementation(() => {});
+    const replaceSpy = jest
+      .spyOn(window.location, "replace")
+      .mockImplementation(() => {});
 
     // Call performLogout
     const logoutPromise = performLogout();
@@ -73,7 +77,7 @@ describe('authLoopPrevention', () => {
     expect(localStorage.clear).toHaveBeenCalled();
     expect(sessionStorage.clear).toHaveBeenCalled();
     // Verify redirect to login page
-    expect(replaceSpy).toHaveBeenCalledWith('/login');
+    expect(replaceSpy).toHaveBeenCalledWith("/login");
 
     replaceSpy.mockRestore();
   });

@@ -241,8 +241,9 @@ const ProfileImageUploader = ({
             className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/50 rounded-full m-auto w-[150px] h-[150px]"
             aria-live="polite"
             aria-busy={loading}
+            aria-label="Uploading image"
           >
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-white border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-white border-t-transparent" aria-hidden="true"></div>
           </div>
         )}
       </div>
@@ -258,7 +259,9 @@ const ProfileImageUploader = ({
           aria-label="Upload new profile picture"
           aria-disabled={loading}
           className={`bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-all duration-200 transform hover:scale-110 focus-within:ring-2 focus-within:ring-blue-400 focus-within:ring-opacity-50 inline-flex items-center justify-center ${
-            loading ? "opacity-50 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+            loading
+              ? "opacity-50 cursor-not-allowed pointer-events-none"
+              : "cursor-pointer"
           }`}
         >
           <input

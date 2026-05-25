@@ -1,25 +1,31 @@
 // src/services/authService.js
 import hipaaComplianceService from "./hipaaComplianceService.js";
 import { ENV } from "../config/environmentConfig.js";
+import { STORAGE_KEYS, userProfileKey } from "../config/storageKeys.js";
 import logger from "../utils/logger.js";
 
 class AuthService {
   constructor() {
     this.API_URL = ENV.API_URL || "/api";
-    this.tokenKey = "healthmint_auth_token";
-    this.refreshTokenKey = "healthmint_refresh_token";
-    this.tokenExpiryKey = "healthmint_token_expiry";
-    this.userProfileKey = "healthmint_user_profile";
-    this.walletAddressKey = "healthmint_wallet_address";
-    this.isNewUserKey = "healthmint_is_new_user";
+    this.tokenKey = STORAGE_KEYS.AUTH_TOKEN;
+    this.refreshTokenKey = STORAGE_KEYS.REFRESH_TOKEN;
+    this.tokenExpiryKey = STORAGE_KEYS.TOKEN_EXPIRY;
+    this.userProfileKey = STORAGE_KEYS.USER_PROFILE;
+    this.walletAddressKey = STORAGE_KEYS.WALLET_ADDRESS;
+    this.isNewUserKey = STORAGE_KEYS.IS_NEW_USER;
 
-    this.apiBaseUrl = process.env.REACT_APP_API_URL || '/api';
-    this.mockMode = process.env.NODE_ENV !== 'production' || !process.env.REACT_APP_API_URL;
+    this.apiBaseUrl = process.env.REACT_APP_API_URL || "/api";
+    this.mockMode =
+      process.env.NODE_ENV !== "production" || !process.env.REACT_APP_API_URL;
 
     // Add mock users for testing
     if (this.mockMode) {
       this.mockUsers = {
-        '0x123...': { address: '0x123...', role: 'patient', name: 'Test Patient' },
+        "0x123...": {
+          address: "0x123...",
+          role: "patient",
+          name: "Test Patient",
+        },
         // Add more mock users as needed
       };
     }
@@ -55,27 +61,29 @@ class AuthService {
     });
 
     if (this.mockMode) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       return buildResult();
     }
 
     try {
       const response = await fetch(`${this.apiBaseUrl}/auth/verify`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.token}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
       });
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('API returned non-JSON response');
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("API returned non-JSON response");
       }
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Auth verification failed: ${response.status}`);
+        throw new Error(
+          errorData.message || `Auth verification failed: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -83,11 +91,12 @@ class AuthService {
       return {
         isAuthenticated: data.isAuthenticated ?? data.authenticated ?? true,
         isNewUser: data.isNewUser ?? this._isNewUser,
-        isRegistrationComplete: data.isRegistrationComplete ?? this.isRegistrationComplete(),
+        isRegistrationComplete:
+          data.isRegistrationComplete ?? this.isRegistrationComplete(),
         userProfile: data.userProfile ?? data.user ?? this.userProfile,
       };
     } catch (error) {
-      logger.error('Auth verification error:', error);
+      logger.error("Auth verification error:", error);
       return buildResult();
     }
   }
@@ -298,7 +307,7 @@ class AuthService {
         return storedProfile;
       }
 
-      const savedUserKey = `healthmint_user_${walletAddress}`;
+      const savedUserKey = userProfileKey(walletAddress);
       const savedUser = localStorage.getItem(savedUserKey);
 
       if (savedUser) {
@@ -331,7 +340,7 @@ class AuthService {
       localStorage.removeItem(this.walletAddressKey);
 
       // IMPORTANT: Also clear role to prevent going to role selection screen
-      localStorage.removeItem("healthmint_user_role");
+      localStorage.removeItem(STORAGE_KEYS.USER_ROLE);
 
       // Reset all state variables
       this.token = null;
@@ -360,7 +369,7 @@ class AuthService {
         timestamp: new Date().toISOString(),
       });
 
-      const savedUserKey = `healthmint_user_${userData.address}`;
+      const savedUserKey = userProfileKey(userData.address);
       localStorage.setItem(savedUserKey, JSON.stringify(userData));
 
       this.userProfile = userData;
@@ -421,7 +430,7 @@ class AuthService {
         timestamp: new Date().toISOString(),
       });
 
-      const savedUserKey = `healthmint_user_${userData.address}`;
+      const savedUserKey = userProfileKey(userData.address);
       localStorage.setItem(savedUserKey, JSON.stringify(userData));
 
       this.userProfile = userData;

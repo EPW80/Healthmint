@@ -4,13 +4,15 @@ import hipaaComplianceService from "./hipaaComplianceService.js";
 import errorHandlingService from "./errorHandlingService.js";
 import { STORAGE_CONFIG } from "../config/environmentConfig.js";
 
-// Import encryptionService conditionally to avoid breaking the app if it doesn't exist
+// Import encryptionService conditionally to avoid breaking the app if it doesn't exist.
+// When missing, any upload that requires encryption (HIPAA-relevant or config-enabled)
+// will hard-fail rather than silently upload PHI in the clear.
 let encryptionService = null;
 try {
   encryptionService = require("./encryptionService.js").default;
 } catch (e) {
-  console.warn(
-    "Encryption service not available. Using fallback security measures."
+  console.error(
+    "Encryption service unavailable — uploads requiring encryption will be rejected."
   );
 }
 
@@ -210,20 +212,27 @@ class SecureStorageService {
         userId: options.userIdentifier,
       });
 
-      // Encrypt file if encryption service is available and encryption is enabled
+      // Encrypt file when requested. If encryption was requested but cannot
+      // complete, hard-fail — never silently upload sensitive data in the clear.
       let processedFile = file;
-      if (
-        this.config.encryptFiles &&
+      const encryptionRequested =
         options.encrypt !== false &&
-        encryptionService
-      ) {
+        (this.config.encryptFiles || options.hipaaRelevant);
+      if (encryptionRequested) {
+        if (!encryptionService) {
+          throw new SecureStorageError(
+            "Encryption service unavailable; refusing to upload unencrypted",
+            "ENCRYPTION_UNAVAILABLE"
+          );
+        }
         try {
           processedFile = await encryptionService.encryptFile(file);
           auditMetadata.encrypted = true;
         } catch (e) {
-          console.warn(
-            "File encryption failed, proceeding with unencrypted file:",
-            e
+          throw new SecureStorageError(
+            "File encryption failed; refusing to upload unencrypted",
+            "ENCRYPTION_FAILED",
+            { originalError: e.message }
           );
         }
       }
@@ -341,20 +350,27 @@ class SecureStorageService {
         }
       }
 
-      // Encrypt file if encryption service is available and encryption is enabled
+      // Encrypt file when requested. If encryption was requested but cannot
+      // complete, hard-fail — never silently upload PHI in the clear.
       let processedFile = file;
-      if (
-        this.config.encryptFiles &&
+      const encryptionRequested =
         options.encrypt !== false &&
-        encryptionService
-      ) {
+        (this.config.encryptFiles || options.hipaaRelevant);
+      if (encryptionRequested) {
+        if (!encryptionService) {
+          throw new SecureStorageError(
+            "Encryption service unavailable; refusing to upload unencrypted",
+            "ENCRYPTION_UNAVAILABLE"
+          );
+        }
         try {
           processedFile = await encryptionService.encryptFile(file);
           auditMetadata.encrypted = true;
         } catch (e) {
-          console.warn(
-            "File encryption failed, proceeding with unencrypted file:",
-            e
+          throw new SecureStorageError(
+            "File encryption failed; refusing to upload unencrypted",
+            "ENCRYPTION_FAILED",
+            { originalError: e.message }
           );
         }
       }

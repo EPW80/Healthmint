@@ -1,6 +1,6 @@
-import { performLogout } from '../utils/authLoopPrevention';
+import { performLogout } from "../utils/authLoopPrevention";
 
-describe('Logout Integration', () => {
+describe("Logout Integration", () => {
   beforeEach(() => {
     jest.useFakeTimers(); // Enable fake timers
   });
@@ -10,9 +10,9 @@ describe('Logout Integration', () => {
     jest.useRealTimers(); // Reset to real timers
   });
 
-  test('should redirect to login page after logout, not role selector', async () => {
+  test("should redirect to login page after logout, not role selector", async () => {
     const replaceSpy = jest.fn();
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(window, "location", {
       value: { replace: replaceSpy },
       writable: true,
     });
@@ -20,6 +20,6 @@ describe('Logout Integration', () => {
     await performLogout();
     jest.runAllTimers(); // Fast-forward timers to trigger redirect
 
-    expect(replaceSpy).toHaveBeenCalledWith('/login');
+    expect(replaceSpy).toHaveBeenCalledWith("/login");
   });
 });

@@ -49,7 +49,9 @@ export function wrapKey(dataKey, aad) {
   const iv = crypto.randomBytes(IV_LEN);
   const cipher = crypto.createCipheriv(ALGO, kek, iv);
   if (aad !== undefined && aad !== null) {
-    cipher.setAAD(Buffer.isBuffer(aad) ? aad : Buffer.from(String(aad), "utf8"));
+    cipher.setAAD(
+      Buffer.isBuffer(aad) ? aad : Buffer.from(String(aad), "utf8")
+    );
   }
   const plaintext = Buffer.isBuffer(dataKey)
     ? dataKey
@@ -75,7 +77,9 @@ export function unwrapKey(wrapped, aad) {
   const decipher = crypto.createDecipheriv(ALGO, kek, iv);
   decipher.setAuthTag(authTag);
   if (aad !== undefined && aad !== null) {
-    decipher.setAAD(Buffer.isBuffer(aad) ? aad : Buffer.from(String(aad), "utf8"));
+    decipher.setAAD(
+      Buffer.isBuffer(aad) ? aad : Buffer.from(String(aad), "utf8")
+    );
   }
   const plaintext = Buffer.concat([
     decipher.update(ciphertext),

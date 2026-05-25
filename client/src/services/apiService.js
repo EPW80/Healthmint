@@ -8,12 +8,15 @@ class ApiService {
     this.baseUrl = ENV.API_URL || "/api";
     this.timeout = ENV.API_TIMEOUT || 30000; // 30 seconds default
 
-    // Check if mock mode is explicitly set in localStorage
-    const storedMockMode = localStorage.getItem("use_mock_data");
-    this.mockMode =
-      storedMockMode === "true" ||
-      (storedMockMode !== "false" &&
-        (ENV.USE_MOCK_API || ENV.NODE_ENV !== "production"));
+    // Mock mode is never enabled in production — the localStorage override is
+    // honored only in dev/test so a tester can simulate a backend outage. In
+    // prod we always hit the real API so the UI reflects real state.
+    if (ENV.NODE_ENV === "production") {
+      this.mockMode = false;
+    } else {
+      const storedMockMode = localStorage.getItem("use_mock_data");
+      this.mockMode = storedMockMode !== "false";
+    }
 
     // Default headers
     this.defaultHeaders = {
@@ -379,8 +382,10 @@ class ApiService {
         );
       }
 
-      // If API fails, try to use mock data as fallback
-      if (!this.mockMode) {
+      // Dev-only: if the real API fails, fall back to mock data so the UI is
+      // usable without a backend. In production we surface the error instead —
+      // silently swapping in fake data would mislead the user about real state.
+      if (!this.mockMode && ENV.NODE_ENV !== "production") {
         console.log(`[API] Trying mock data fallback for ${endpoint}`);
         const tempMockMode = this.mockMode;
         this.mockMode = true;
@@ -530,8 +535,8 @@ class ApiService {
         xhr.send(formData);
       });
     } catch (error) {
-      // Try mock upload as fallback
-      if (!this.mockMode) {
+      // Dev-only: try a mock upload to keep the UI working without a backend.
+      if (!this.mockMode && ENV.NODE_ENV !== "production") {
         console.log(`[API] Trying mock file upload fallback`);
         const tempMockMode = this.mockMode;
         this.mockMode = true;
@@ -703,8 +708,8 @@ Anonymized: ${record.anonymized ? "Yes" : "No"}
         contentType,
       };
     } catch (error) {
-      // Try mock download as fallback
-      if (!this.mockMode) {
+      // Dev-only: fall back to a mock download to keep the UI testable.
+      if (!this.mockMode && ENV.NODE_ENV !== "production") {
         console.log(`[API] Trying mock file download fallback`);
         const tempMockMode = this.mockMode;
         this.mockMode = true;

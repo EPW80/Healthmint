@@ -203,13 +203,15 @@ export const Button = ({
   children,
   variant = "primary",
   size = "medium",
+  type = "button",
   disabled = false,
+  loading = false,
   onClick,
   className = "",
   ...props
 }) => {
   const baseClasses =
-    "rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50";
+    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50";
 
   const sizeClasses = {
     small: "px-3 py-1 text-sm",
@@ -221,20 +223,41 @@ export const Button = ({
     primary: "bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-300",
     secondary:
       "bg-purple-500 hover:bg-purple-600 text-white focus:ring-purple-300",
+    danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-300",
     outlined:
       "border border-blue-500 text-blue-500 hover:bg-blue-50 focus:ring-blue-200",
+    ghost:
+      "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-200",
     text: "text-blue-500 hover:bg-blue-50 focus:ring-blue-200",
   };
 
+  const disabledClasses = {
+    primary: "bg-blue-300 text-white cursor-not-allowed",
+    secondary: "bg-purple-300 text-white cursor-not-allowed",
+    danger: "bg-red-300 text-white cursor-not-allowed",
+    outlined: "border border-blue-200 text-blue-300 cursor-not-allowed",
+    ghost: "border border-gray-200 text-gray-400 cursor-not-allowed",
+    text: "text-blue-300 cursor-not-allowed",
+  };
+
+  const isDisabled = disabled || loading;
+
   return (
     <button
-      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${
-        disabled ? "opacity-50 cursor-not-allowed" : ""
+      type={type}
+      className={`${baseClasses} ${sizeClasses[size]} ${
+        isDisabled ? disabledClasses[variant] : variantClasses[variant]
       } ${className}`}
-      disabled={disabled}
+      disabled={isDisabled}
       onClick={onClick}
       {...props}
     >
+      {loading && (
+        <div
+          className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"
+          aria-hidden="true"
+        />
+      )}
       {children}
     </button>
   );
@@ -242,9 +265,18 @@ export const Button = ({
 
 Button.propTypes = {
   children: PropTypes.node,
-  variant: PropTypes.oneOf(["primary", "secondary", "outlined", "text"]),
+  variant: PropTypes.oneOf([
+    "primary",
+    "secondary",
+    "danger",
+    "outlined",
+    "ghost",
+    "text",
+  ]),
   size: PropTypes.oneOf(["small", "medium", "large"]),
+  type: PropTypes.oneOf(["button", "submit", "reset"]),
   disabled: PropTypes.bool,
+  loading: PropTypes.bool,
   onClick: PropTypes.func,
   className: PropTypes.string,
 };

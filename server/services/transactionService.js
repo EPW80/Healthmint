@@ -24,7 +24,7 @@ try {
 } catch {
   logger.warn(
     "HealthDataMarketplace.json not found — run `truffle compile` to generate it. " +
-    "Blockchain transaction features will be unavailable until the contract is compiled."
+      "Blockchain transaction features will be unavailable until the contract is compiled."
   );
 }
 

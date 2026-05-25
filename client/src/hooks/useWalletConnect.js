@@ -2,12 +2,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { ethers } from "ethers";
+import { STORAGE_KEYS } from "../config/storageKeys.js";
 
 // Redux actions
 import {
   updateWalletConnection,
   clearWalletConnection,
-  setWalletConnection,
   selectIsConnected,
   selectAddress,
   selectChainId,
@@ -141,8 +141,8 @@ const useWalletConnect = (options = {}) => {
       const networkDetails = getNetworkFromChainId(connectedChainId);
 
       // Save wallet information to localStorage immediately
-      localStorage.setItem("healthmint_wallet_address", connectedAddress);
-      localStorage.setItem("healthmint_wallet_connection", "true");
+      localStorage.setItem(STORAGE_KEYS.WALLET_ADDRESS, connectedAddress);
+      localStorage.setItem(STORAGE_KEYS.WALLET_CONNECTION, "true");
 
       // Update Redux state
       dispatch(
@@ -179,8 +179,8 @@ const useWalletConnect = (options = {}) => {
       setError(errorMessage);
 
       // Clean up any partial wallet connection data
-      localStorage.removeItem("healthmint_wallet_address");
-      localStorage.removeItem("healthmint_wallet_connection");
+      localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS);
+      localStorage.removeItem(STORAGE_KEYS.WALLET_CONNECTION);
 
       return {
         success: false,
@@ -202,11 +202,6 @@ const useWalletConnect = (options = {}) => {
       // Set logout flag first
       sessionStorage.setItem("logout_in_progress", "true");
 
-      // Also clear any auth verification bypass flags
-      sessionStorage.removeItem("auth_verification_override");
-      sessionStorage.removeItem("bypass_route_protection");
-      sessionStorage.removeItem("bypass_role_check");
-
       // If MetaMask is available, attempt to disconnect
       if (typeof window.ethereum !== "undefined") {
         try {
@@ -227,17 +222,11 @@ const useWalletConnect = (options = {}) => {
       }
 
       // Clear wallet state in Redux
-      dispatch(
-        setWalletConnection({
-          address: null,
-          isConnected: false,
-          network: null,
-        })
-      );
+      dispatch(clearWalletConnection());
 
       // Clean localStorage
-      localStorage.removeItem("healthmint_wallet_address");
-      localStorage.removeItem("healthmint_wallet_connection");
+      localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS);
+      localStorage.removeItem(STORAGE_KEYS.WALLET_CONNECTION);
 
       // Set the reconnect flag
       sessionStorage.setItem("force_wallet_reconnect", "true");
@@ -338,8 +327,8 @@ const useWalletConnect = (options = {}) => {
         dispatch(clearWalletConnection());
 
         // Also clear localStorage
-        localStorage.removeItem("healthmint_wallet_address");
-        localStorage.removeItem("healthmint_wallet_connection");
+        localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS);
+        localStorage.removeItem(STORAGE_KEYS.WALLET_CONNECTION);
 
         dispatch(
           addNotification({
@@ -352,7 +341,7 @@ const useWalletConnect = (options = {}) => {
         const newAccount = accounts[0];
 
         // Update localStorage
-        localStorage.setItem("healthmint_wallet_address", newAccount);
+        localStorage.setItem(STORAGE_KEYS.WALLET_ADDRESS, newAccount);
 
         // Update Redux state
         dispatch(updateUserProfile({ address: newAccount }));
@@ -395,18 +384,36 @@ const useWalletConnect = (options = {}) => {
     window.ethereum.on("accountsChanged", handleAccountsChanged);
     window.ethereum.on("chainChanged", handleChainChanged);
 
-    // Check if there's a wallet address in localStorage but not in Redux
-    const storedAddress = localStorage.getItem("healthmint_wallet_address");
+    // Restore wallet session from localStorage, but ONLY after confirming the
+    // stored address is one of the currently authorized accounts in the user's
+    // wallet. Treating the localStorage value as identity by itself is a
+    // spoofing vector — anyone with DevTools can write any address there.
+    const storedAddress = localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS);
     const storedConnection =
-      localStorage.getItem("healthmint_wallet_connection") === "true";
+      localStorage.getItem(STORAGE_KEYS.WALLET_CONNECTION) === "true";
 
     if (storedAddress && storedConnection && !address) {
       window.ethereum
-        .request({ method: "eth_chainId" })
-        .then((chainId) => {
+        .request({ method: "eth_accounts" })
+        .then(async (accounts) => {
+          const normalizedStored = storedAddress.toLowerCase();
+          const isAuthorized = (accounts || []).some(
+            (acc) => acc.toLowerCase() === normalizedStored
+          );
+
+          if (!isAuthorized) {
+            // Stored address isn't backed by the current wallet — clear it
+            // rather than auto-restore a possibly-spoofed identity.
+            localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS);
+            localStorage.removeItem(STORAGE_KEYS.WALLET_CONNECTION);
+            return;
+          }
+
+          const chainId = await window.ethereum.request({
+            method: "eth_chainId",
+          });
           const networkDetails = getNetworkFromChainId(chainId);
 
-          // Update Redux state
           dispatch(
             updateWalletConnection({
               address: storedAddress,
@@ -417,8 +424,6 @@ const useWalletConnect = (options = {}) => {
               lastConnected: Date.now(),
             })
           );
-
-          // Update user profile
           dispatch(updateUserProfile({ address: storedAddress }));
         })
         .catch(console.error);
@@ -434,8 +439,8 @@ const useWalletConnect = (options = {}) => {
             const connectedAddress = accounts[0];
 
             // Save to localStorage
-            localStorage.setItem("healthmint_wallet_address", connectedAddress);
-            localStorage.setItem("healthmint_wallet_connection", "true");
+            localStorage.setItem(STORAGE_KEYS.WALLET_ADDRESS, connectedAddress);
+            localStorage.setItem(STORAGE_KEYS.WALLET_CONNECTION, "true");
 
             // Get chain ID
             window.ethereum

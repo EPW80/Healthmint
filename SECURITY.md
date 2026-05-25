@@ -6,7 +6,7 @@ IPFS backend. This document is candid. It records a security
 self-audit I performed on my own code, the bugs I found and fixed, and — just
 as importantly — what this project still does **not** do.
 
-The honest version up front: **Healthmint is HIPAA-*aware*, not
+The honest version up front: **Healthmint is HIPAA-_aware_, not
 HIPAA-compliant.** It demonstrates the engineering patterns a compliant system
 needs (encryption, consent, access control, audit logging). It has not been
 certified, formally audited, or operated under a compliance program, and it
@@ -26,14 +26,14 @@ a real diff you can read.
 > branch (tag `pre-audit-2025-05`). The findings below were reconstructed
 > faithfully from that real code; nothing was invented.
 
-| # | Issue | Severity | Fix |
-|---|-------|----------|-----|
-| 1 | **On-chain encryption key leak.** The `HealthData` struct stored the symmetric `encryptionKey` as a public string next to the IPFS CID. Anyone reading contract state on Sepolia could fetch ciphertext + key and decrypt every dataset. | Critical | [`b305766`](https://github.com/EPW80/Healthmint/commit/b305766) |
-| 2 | **Wallet auth bypass.** `POST /api/auth/wallet/connect` issued a JWT for any address in the request body, with no proof of wallet control. | Critical | [`b97f1dd`](https://github.com/EPW80/Healthmint/commit/b97f1dd) |
-| 3 | **Hardcoded JWT fallback secret.** Token signing fell back to a literal string committed to the repo when `JWT_SECRET` was unset — forgeable sessions. | High | [`8fe197a`](https://github.com/EPW80/Healthmint/commit/8fe197a) |
-| 4 | **Hardcoded Infura key in source.** `deploy-direct.js` embedded an Infura project URL in the committed source. | Medium | [`a62c384`](https://github.com/EPW80/Healthmint/commit/a62c384) |
-| 5 | **Auth tokens persisted to `localStorage`.** JWT + refresh token were written to `localStorage` and restored on load — long-lived bearer tokens exposed to any XSS or shared machine. | High | [`b91a653`](https://github.com/EPW80/Healthmint/commit/b91a653) |
-| 6 | **Audit log was a no-op.** HIPAA "audit logging" only `console.log`-ed and vanished on process exit. | High | [`660b786`](https://github.com/EPW80/Healthmint/commit/660b786) |
+| #   | Issue                                                                                                                                                                                                                                    | Severity | Fix                                                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------- |
+| 1   | **On-chain encryption key leak.** The `HealthData` struct stored the symmetric `encryptionKey` as a public string next to the IPFS CID. Anyone reading contract state on Sepolia could fetch ciphertext + key and decrypt every dataset. | Critical | [`b305766`](https://github.com/EPW80/Healthmint/commit/b305766) |
+| 2   | **Wallet auth bypass.** `POST /api/auth/wallet/connect` issued a JWT for any address in the request body, with no proof of wallet control.                                                                                               | Critical | [`b97f1dd`](https://github.com/EPW80/Healthmint/commit/b97f1dd) |
+| 3   | **Hardcoded JWT fallback secret.** Token signing fell back to a literal string committed to the repo when `JWT_SECRET` was unset — forgeable sessions.                                                                                   | High     | [`8fe197a`](https://github.com/EPW80/Healthmint/commit/8fe197a) |
+| 4   | **Hardcoded Infura key in source.** `deploy-direct.js` embedded an Infura project URL in the committed source.                                                                                                                           | Medium   | [`a62c384`](https://github.com/EPW80/Healthmint/commit/a62c384) |
+| 5   | **Auth tokens persisted to `localStorage`.** JWT + refresh token were written to `localStorage` and restored on load — long-lived bearer tokens exposed to any XSS or shared machine.                                                    | High     | [`b91a653`](https://github.com/EPW80/Healthmint/commit/b91a653) |
+| 6   | **Audit log was a no-op.** HIPAA "audit logging" only `console.log`-ed and vanished on process exit.                                                                                                                                     | High     | [`660b786`](https://github.com/EPW80/Healthmint/commit/660b786) |
 
 ### What the fixes actually do
 
@@ -70,7 +70,7 @@ than hidden:
 
 - **No HIPAA certification or compliance program.** No BAAs, no risk
   assessment, no breach-notification process, no Security Rule attestation.
-  The HIPAA framing is *aspirational design*, not a claim of compliance.
+  The HIPAA framing is _aspirational design_, not a claim of compliance.
 - **No formal smart-contract audit.** The contract uses OpenZeppelin
   primitives (`ReentrancyGuard`, `Pausable`, `AccessControl`) but has not been
   professionally audited or formally verified.

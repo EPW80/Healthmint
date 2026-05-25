@@ -131,10 +131,7 @@ class ServerHipaaComplianceService {
     return CryptoJS.AES.encrypt(dataStr, key).toString();
   }
 
-  decryptData(
-    encryptedData,
-    key = process.env.ENCRYPTION_KEY
-  ) {
+  decryptData(encryptedData, key = process.env.ENCRYPTION_KEY) {
     const decrypted = CryptoJS.AES.decrypt(encryptedData, key).toString(
       CryptoJS.enc.Utf8
     );

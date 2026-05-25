@@ -32,9 +32,16 @@ contract("HealthDataMarketplace — reentrancy on purchaseData", (accounts) => {
   beforeEach(async () => {
     market = await HealthDataMarketplace.new({ from: admin });
     await market.registerUser("patient", "enc-seller", { from: seller });
-    await market.listHealthData("ipfs://cid-1", price, "genomics", MIN_RETENTION, false, {
-      from: seller,
-    });
+    await market.listHealthData(
+      "ipfs://cid-1",
+      price,
+      "genomics",
+      MIN_RETENTION,
+      false,
+      {
+        from: seller,
+      }
+    );
   });
 
   it("blocks a re-entrant purchaseData() call via the refund hook", async () => {

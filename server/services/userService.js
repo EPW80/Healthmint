@@ -113,7 +113,7 @@ class ServerUserService {
       const user = await User.findOneAndUpdate(
         { address: lowerAddress },
         { $set: update },
-        { new: true, runValidators: true },
+        { new: true, runValidators: true }
       );
 
       if (metadata.requestedBy) {
@@ -194,7 +194,7 @@ class ServerUserService {
 
     try {
       const user = await User.findOne({ address: lowerAddress }).select(
-        "auditLog accessControl",
+        "auditLog accessControl"
       );
       return user?.auditLog ?? [];
     } catch (error) {

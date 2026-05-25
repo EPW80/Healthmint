@@ -35,19 +35,18 @@ class UserService {
           await authService.ensureValidToken();
           const response = await apiService.get(`${this.basePath}/profile`);
 
-          // Check if we have a valid response with data
-          if (
-            response &&
-            response.data &&
-            Object.keys(response.data).length > 0
-          ) {
-            // Store the updated profile in localStorage
+          // Server returns { success: true, profile: {...} } per
+          // server/routes/users.js — not { data: ... }. The previous code
+          // checked the wrong key and always fell through to the warning
+          // even when the API call succeeded.
+          const profileData = response?.profile ?? response?.data;
+          if (profileData && Object.keys(profileData).length > 0) {
             localStorage.setItem(
               this.userProfileKey,
-              JSON.stringify(response.data)
+              JSON.stringify(profileData)
             );
             console.log("Retrieved fresh profile from API");
-            return response.data;
+            return profileData;
           } else {
             console.warn(
               "User profile API returned no data, using cached or default profile"

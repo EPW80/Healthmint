@@ -197,7 +197,9 @@ async function logDeploymentSuccess(
   logger.info("Network ID:", networkId);
   logger.info("Block number:", artifact.networks[networkId].blockNumber);
   logger.info("Deployed by:", wallet.address);
-  logger.info("Files updated: deployment-info.json, .env (CONTRACT_ADDRESS updated)");
+  logger.info(
+    "Files updated: deployment-info.json, .env (CONTRACT_ADDRESS updated)"
+  );
 
   // Verify balance after deployment
   const provider = wallet.provider;

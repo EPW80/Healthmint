@@ -25,7 +25,7 @@ const CATEGORIES = [
   "General Health",
   "Laboratory",
   "Genetics",
-  "Immunization"
+  "Immunization",
 ];
 
 // Study types for research-specific filtering

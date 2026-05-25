@@ -1,6 +1,6 @@
 // src/TestApp.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 const SimplePage = () => (
   <div className="p-8 max-w-4xl mx-auto">

@@ -110,11 +110,11 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
     if (userRole === "patient") {
       // Add patient-specific items - insert after Home
       baseItems.splice(
-        1, 
+        1,
         0,
         {
           to: "/storage", // Add Health Storage only for patients
-          label: "Health Storage", 
+          label: "Health Storage",
           icon: HardDrive,
         },
         {

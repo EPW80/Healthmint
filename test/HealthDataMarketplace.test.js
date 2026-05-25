@@ -39,9 +39,16 @@ contract("HealthDataMarketplace", (accounts) => {
   });
 
   async function listOne(from = seller) {
-    await market.listHealthData("ipfs://cid-1", price, "genomics", MIN_RETENTION, false, {
-      from,
-    });
+    await market.listHealthData(
+      "ipfs://cid-1",
+      price,
+      "genomics",
+      MIN_RETENTION,
+      false,
+      {
+        from,
+      }
+    );
     return 1; // first data id (counter starts at 1)
   }
 
@@ -66,7 +73,11 @@ contract("HealthDataMarketplace", (accounts) => {
 
       // Buyer now has (unexpired) access.
       const access = await market.checkAccess(id, buyer);
-      assert.equal(access.hasAccess, true, "buyer should have access post-purchase");
+      assert.equal(
+        access.hasAccess,
+        true,
+        "buyer should have access post-purchase"
+      );
     });
   });
 
@@ -77,12 +88,18 @@ contract("HealthDataMarketplace", (accounts) => {
 
     it("rejects verifyData() from a non-verifier", async () => {
       const id = await listOne();
-      await expectRevert(market.verifyData(id, true, { from: stranger }), "Not a verifier");
+      await expectRevert(
+        market.verifyData(id, true, { from: stranger }),
+        "Not a verifier"
+      );
     });
 
     it("rejects getAuditTrail() for a non-owner / non-admin", async () => {
       const id = await listOne();
-      await expectRevert(market.getAuditTrail(id, { from: stranger }), "Not authorized");
+      await expectRevert(
+        market.getAuditTrail(id, { from: stranger }),
+        "Not authorized"
+      );
     });
 
     it("rejects listHealthData() from an unregistered account", async () => {
@@ -140,7 +157,11 @@ contract("HealthDataMarketplace", (accounts) => {
         (e) => e.type === "function" && e.name === "listHealthData"
       );
       assert.ok(fn, "listHealthData should exist");
-      assert.equal(fn.inputs.length, 5, "listHealthData must not take an _encryptionKey arg");
+      assert.equal(
+        fn.inputs.length,
+        5,
+        "listHealthData must not take an _encryptionKey arg"
+      );
       const names = fn.inputs.map((i) => i.name.toLowerCase());
       assert.ok(
         !names.some((n) => n.includes("encryptionkey") || n.includes("key")),

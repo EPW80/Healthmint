@@ -50,7 +50,8 @@ export const STORAGE_CONFIG = {
 
   // IPFS configuration
   IPFS_PROVIDER: process.env.IPFS_PROVIDER || "pinata",
-  IPFS_GATEWAY: process.env.IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/",
+  IPFS_GATEWAY:
+    process.env.IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/",
   IPFS_FALLBACK_GATEWAY: "https://ipfs.io/ipfs/",
 
   // Performance settings

@@ -8,11 +8,7 @@ import userReducer from "./slices/userSlice.js";
 import walletReducer from "./slices/walletSlice.js";
 import roleReducer from "./slices/roleSlice.js";
 import notificationReducer from "./slices/notificationSlice.js";
-
-// Local storage keys
-const STORAGE_KEYS = {
-  WALLET: "healthmint_wallet_state",
-};
+import { STORAGE_KEYS } from "../config/storageKeys.js";
 
 // Persistence configuration
 const PERSISTENCE_CONFIG = {
@@ -131,7 +127,7 @@ store.subscribe(() => {
     if (wallet.isConnected) {
       const persistableWalletState = createPersistableWalletState(wallet);
       localStorage.setItem(
-        STORAGE_KEYS.WALLET,
+        STORAGE_KEYS.WALLET_STATE,
         JSON.stringify(persistableWalletState)
       );
     }
@@ -145,7 +141,9 @@ const initializeStore = () => {
   try {
     // Restore wallet state
     const restoreWalletState = () => {
-      const persistedWalletState = localStorage.getItem(STORAGE_KEYS.WALLET);
+      const persistedWalletState = localStorage.getItem(
+        STORAGE_KEYS.WALLET_STATE
+      );
       if (persistedWalletState) {
         try {
           const parsedState = JSON.parse(persistedWalletState);
@@ -165,11 +163,11 @@ const initializeStore = () => {
             return true;
           } else {
             // Clear expired state
-            localStorage.removeItem(STORAGE_KEYS.WALLET);
+            localStorage.removeItem(STORAGE_KEYS.WALLET_STATE);
           }
         } catch (parseError) {
           console.warn("Error parsing wallet state:", parseError);
-          localStorage.removeItem(STORAGE_KEYS.WALLET);
+          localStorage.removeItem(STORAGE_KEYS.WALLET_STATE);
         }
       }
       return false;
@@ -185,7 +183,7 @@ const initializeStore = () => {
     }
   } catch (error) {
     console.error("Failed to initialize store from persisted state:", error);
-    localStorage.removeItem(STORAGE_KEYS.WALLET);
+    localStorage.removeItem(STORAGE_KEYS.WALLET_STATE);
   }
 };
 

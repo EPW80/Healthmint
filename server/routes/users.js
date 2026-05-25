@@ -114,7 +114,7 @@ router.put(
         { errors: validateResult.errors }
       );
     }
-    const validatedData = updateData; 
+    const validatedData = updateData;
 
     // Check if user is updating their own profile or has admin access
     const isSelf = normalizedAddress === requestedBy;

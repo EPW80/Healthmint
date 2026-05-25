@@ -1,5 +1,5 @@
 // src/components/Footer.js
-import React from "react";
+import React, { memo } from "react";
 import PropTypes from "prop-types";
 import { Github, Twitter, Mail, ExternalLink } from "lucide-react";
 
@@ -107,4 +107,4 @@ Footer.propTypes = {
   contactEmail: PropTypes.string,
 };
 
-export default Footer;
+export default memo(Footer);

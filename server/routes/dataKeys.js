@@ -23,17 +23,15 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-const isHexCid = (s) => typeof s === "string" && s.length > 0 && s.length <= 256;
+const isHexCid = (s) =>
+  typeof s === "string" && s.length > 0 && s.length <= 256;
 
 router.post(
   "/",
   asyncHandler(async (req, res) => {
     const { cid, dataKey } = req.body || {};
     if (!isHexCid(cid) || !dataKey || typeof dataKey !== "string") {
-      throw createError.validation(
-        undefined,
-        "cid and dataKey are required"
-      );
+      throw createError.validation(undefined, "cid and dataKey are required");
     }
 
     const ownerAddress = req.user?.address?.toLowerCase();

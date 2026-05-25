@@ -1,5 +1,5 @@
 // client/src/components/ui/LoadingSpinner.js
-import React from "react";
+import React, { memo } from "react";
 import PropTypes from "prop-types";
 
 const LoadingSpinner = ({
@@ -80,4 +80,4 @@ LoadingSpinner.propTypes = {
   spinnerStyle: PropTypes.object, // For custom inline styles
 };
 
-export default LoadingSpinner;
+export default memo(LoadingSpinner);

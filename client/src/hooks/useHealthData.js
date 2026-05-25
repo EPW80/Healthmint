@@ -1,150 +1,93 @@
 // src/hooks/useHealthData.js
+//
+// Thin Redux wrapper around the data slice. The state lives in
+// state.data and the load/fetch logic lives in dataSlice's
+// loadHealthRecordsAsync thunk — this hook only memoizes the
+// dispatch/selector glue and exposes the legacy API consumers expect.
+//
+// Previously this hook held the entire state in useState, which caused
+// duplicate fetches and a silently-broken auth read (it called
+// localStorage.getItem("token") — the wrong key — so it always fell
+// back to mock data even with a valid session).
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
-import generateMockHealthRecords from "../mockData/mockHealthRecords.js";
+import {
+  loadHealthRecordsAsync,
+  setFilters as setFiltersAction,
+  updateFilter as updateFilterAction,
+  resetFilters as resetFiltersAction,
+  clearError as clearErrorAction,
+  selectHealthData,
+  selectUserRecords,
+  selectDataLoading,
+  selectDataError,
+  selectDataFilters,
+  selectDataTotalCount,
+  selectApiFailure,
+} from "../redux/slices/dataSlice.js";
+import { STORAGE_KEYS } from "../config/storageKeys.js";
 
 const useHealthData = (options = {}) => {
-  const {
-    initialFilters = {},
-    loadOnMount = true,
-    useMockData = false,
-  } = options;
+  const { initialFilters, loadOnMount = true, useMockData = false } = options;
+  const dispatch = useDispatch();
 
-  const [healthData, setHealthData] = useState([]);
-  const [userRecords, setUserRecords] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [filters, setFilters] = useState(initialFilters);
-  const [totalCount, setTotalCount] = useState(0);
-  const [apiFailure, setApiFailure] = useState(false);
+  const healthData = useSelector(selectHealthData);
+  const userRecords = useSelector(selectUserRecords);
+  const loading = useSelector(selectDataLoading);
+  const error = useSelector(selectDataError);
+  const filters = useSelector(selectDataFilters);
+  const totalCount = useSelector(selectDataTotalCount);
+  const apiFailure = useSelector(selectApiFailure);
 
-  // Function to load user's storage files
-  const loadUserStorageFiles = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchHealthData = useCallback(
+    () => dispatch(loadHealthRecordsAsync({ useMockData })),
+    [dispatch, useMockData]
+  );
 
-      const token = localStorage.getItem("token");
-
-      if (!useMockData && token) {
-        try {
-          // Try loading real data from storage API
-          const response = await axios.get("/api/storage/files", {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 8000, // 8 second timeout
-          });
-
-          console.log("Storage API response:", response.data);
-
-          // Check if we have files in the response
-          if (
-            response.data &&
-            (response.data.files ||
-              (response.data.results && response.data.results.length > 0))
-          ) {
-            // Handle different response formats
-            const files = response.data.files || response.data.results || [];
-            console.log("Files loaded from API:", files.length);
-
-            if (files.length > 0) {
-              // Map the storage files to match the health records format
-              const formattedRecords = files.map((file) => ({
-                id: file._id || file.id,
-                title: file.fileName || file.name || "Untitled Record",
-                description:
-                  file.description ||
-                  `${file.category || "Health"} data record`,
-                category: file.category || "Health",
-                verified: file.registeredOnChain || false,
-                anonymized: file.anonymized || !file.containsPHI,
-                format:
-                  file.fileType ||
-                  file.format ||
-                  (file.mimeType
-                    ? file.mimeType.split("/")[1].toUpperCase()
-                    : "PDF"),
-                recordCount: 1,
-                uploadDate:
-                  file.createdAt || file.uploadDate || new Date().toISOString(),
-                fileSize: file.fileSize || 0,
-                tags: file.tags || [],
-                shared: file.shared || false,
-                owner: file.owner,
-              }));
-
-              setUserRecords(formattedRecords);
-              setHealthData(formattedRecords);
-              setTotalCount(formattedRecords.length);
-              setLoading(false);
-              return; // Exit early with real data
-            }
-          }
-        } catch (apiError) {
-          console.warn(
-            "API request failed, using mock data:",
-            apiError.message
-          );
-          setApiFailure(true);
-          // Continue to mock data
-        }
-      }
-
-      console.log("Using mock health records");
-      const mockRecords = generateMockHealthRecords(10);
-      setUserRecords(mockRecords);
-      setHealthData(mockRecords);
-      setTotalCount(mockRecords.length);
-    } catch (err) {
-      console.error("Error loading health data:", err);
-      setError(err.message || "Could not load health records");
-
-      // Fallback to mock data even on error
-      const fallbackMockRecords = generateMockHealthRecords(5);
-      setUserRecords(fallbackMockRecords);
-      setHealthData(fallbackMockRecords);
-      setTotalCount(fallbackMockRecords.length);
-    } finally {
-      setLoading(false);
+  // Apply initialFilters once if provided. We only do this when the option is
+  // present because callers that don't pass it expect the slice's filter
+  // state to be left alone.
+  useEffect(() => {
+    if (initialFilters) {
+      dispatch(setFiltersAction(initialFilters));
     }
-  }, [useMockData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (loadOnMount) {
-      loadUserStorageFiles();
+      fetchHealthData();
     }
-  }, [loadOnMount, loadUserStorageFiles]);
+  }, [loadOnMount, fetchHealthData]);
 
-  // Add helper functions needed for Dashboard and Storage pages
   const getRecordDetails = useCallback(
     async (recordId) => {
       if (!recordId) return null;
 
-      // First check if we have it locally
+      // Prefer the cached record.
       const localRecord = userRecords.find((r) => r.id === recordId);
       if (localRecord) return localRecord;
 
-      // If not found locally, try API
       try {
-        const token = localStorage.getItem("token");
-        if (token) {
-          const response = await axios.get(`/api/storage/files/${recordId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.data && response.data.file) {
-            // Format the response
-            return {
-              id: response.data.file._id || response.data.file.id,
-              title: response.data.file.fileName || response.data.file.name,
-              description: response.data.file.description,
-              category: response.data.file.category || "Health",
-              // ...other fields
-            };
-          }
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        if (!token) return null;
+        const response = await axios.get(`/api/storage/files/${recordId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.data?.file) {
+          const file = response.data.file;
+          return {
+            id: file._id || file.id,
+            title: file.fileName || file.name,
+            description: file.description,
+            category: file.category || "Health",
+          };
         }
         return null;
-      } catch (error) {
-        console.error("Error fetching record details:", error);
+      } catch (err) {
+        console.error("getRecordDetails: failed", err);
         return null;
       }
     },
@@ -154,10 +97,9 @@ const useHealthData = (options = {}) => {
   const downloadRecord = useCallback(
     async (recordId) => {
       try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         if (!token) return { success: false, error: "Not authenticated" };
 
-        // Make API call to download endpoint
         const response = await axios.get(
           `/api/storage/files/${recordId}?content=true`,
           {
@@ -166,11 +108,9 @@ const useHealthData = (options = {}) => {
           }
         );
 
-        // Find record to get file name
         const record = userRecords.find((r) => r.id === recordId);
         const fileName = record?.title || `health-record-${recordId}.pdf`;
 
-        // Create download link
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
@@ -178,14 +118,28 @@ const useHealthData = (options = {}) => {
         document.body.appendChild(link);
         link.click();
         link.remove();
+        window.URL.revokeObjectURL(url);
 
         return { success: true };
-      } catch (error) {
-        console.error("Error downloading record:", error);
-        return { success: false, error: error.message };
+      } catch (err) {
+        console.error("downloadRecord: failed", err);
+        return { success: false, error: err.message };
       }
     },
     [userRecords]
+  );
+
+  const updateFilter = useCallback(
+    (key, value) => dispatch(updateFilterAction({ key, value })),
+    [dispatch]
+  );
+  const resetFilters = useCallback(
+    () => dispatch(resetFiltersAction()),
+    [dispatch]
+  );
+  const clearError = useCallback(
+    () => dispatch(clearErrorAction()),
+    [dispatch]
   );
 
   return {
@@ -198,14 +152,12 @@ const useHealthData = (options = {}) => {
     apiFailure,
     getRecordDetails,
     downloadRecord,
-    loadUserStorageFiles,
-    updateFilter: (key, value) => {
-      setFilters((prev) => ({ ...prev, [key]: value }));
-    },
-    resetFilters: () => {
-      setFilters(initialFilters);
-    },
-    refreshData: loadUserStorageFiles,
+    fetchHealthData,
+    loadUserStorageFiles: fetchHealthData,
+    refreshData: fetchHealthData,
+    updateFilter,
+    resetFilters,
+    clearError,
   };
 };
 

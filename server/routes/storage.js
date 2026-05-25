@@ -1,24 +1,26 @@
-import express from 'express';
+import express from "express";
 import { logger } from "../config/loggerConfig.js";
-import multer from 'multer';
-import { verifyToken } from '../middleware/authMiddleware.js';
-import storageIntegrationService from '../services/storageIntegrationService.js';
-import testEndpointMiddleware from '../middleware/testEndpointMiddleware.js';
-import storageTestController from '../controllers/storageTestController.js';
+import multer from "multer";
+import { verifyToken } from "../middleware/authMiddleware.js";
+import storageIntegrationService from "../services/storageIntegrationService.js";
+import testEndpointMiddleware from "../middleware/testEndpointMiddleware.js";
+import storageTestController from "../controllers/storageTestController.js";
 
 const router = express.Router();
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
 });
 
-router.post('/test-ipfs-flow', 
+router.post(
+  "/test-ipfs-flow",
   testEndpointMiddleware,
   storageTestController.testIpfsFlow
 );
 
-router.post('/test-upload',
-  testEndpointMiddleware, 
+router.post(
+  "/test-upload",
+  testEndpointMiddleware,
   storageTestController.testUpload
 );
 

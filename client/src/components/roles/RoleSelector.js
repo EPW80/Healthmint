@@ -12,6 +12,7 @@ import hipaaComplianceService from "../../services/hipaaComplianceService.js";
 import authService from "../../services/authService.js";
 import authUtils from "../../utils/authUtils.js";
 import { isLogoutInProgress } from "../../utils/authLoopPrevention.js";
+import { STORAGE_KEYS } from "../../config/storageKeys.js";
 
 const RoleSelector = () => {
   const dispatch = useDispatch();
@@ -57,12 +58,6 @@ const RoleSelector = () => {
         return false;
       }
 
-      if (sessionStorage.getItem("bypass_role_check") === "true") {
-        console.log("RoleSelector: Bypassing role check");
-        sessionStorage.removeItem("bypass_role_check");
-        return false;
-      }
-
       const userProfile = authService.getCurrentUser();
       if (userProfile?.role) {
         console.log(`RoleSelector: Found role in profile: ${userProfile.role}`);
@@ -70,7 +65,7 @@ const RoleSelector = () => {
         return true;
       }
 
-      const storedRole = localStorage.getItem("healthmint_user_role");
+      const storedRole = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
       if (storedRole) {
         console.log(`RoleSelector: Found role in localStorage: ${storedRole}`);
         dispatch(setRole(storedRole));
@@ -82,7 +77,6 @@ const RoleSelector = () => {
 
     const hasRole = checkExistingRole();
     if (hasRole && !isRedirecting) {
-      sessionStorage.setItem("bypass_route_protection", "true");
       setIsRedirecting(true);
       setInitialCheckDone(true);
       navigate("/dashboard", { replace: true });
@@ -94,7 +88,7 @@ const RoleSelector = () => {
   // Validate wallet address
   useEffect(() => {
     const localStorageAddress = localStorage.getItem(
-      "healthmint_wallet_address"
+      STORAGE_KEYS.WALLET_ADDRESS
     );
     if (!walletAddress && !localStorageAddress) {
       setError("Wallet address not found. Please reconnect your wallet.");
@@ -117,7 +111,6 @@ const RoleSelector = () => {
 
       try {
         console.log(`RoleSelector: Setting role: ${role}`);
-        sessionStorage.setItem("bypass_route_protection", "true");
         sessionStorage.setItem("temp_selected_role", role);
 
         await hipaaComplianceService.createAuditLog("ROLE_SELECTION", {
@@ -127,7 +120,7 @@ const RoleSelector = () => {
         });
 
         const currentWalletAddress =
-          walletAddress || localStorage.getItem("healthmint_wallet_address");
+          walletAddress || localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESS);
         if (!currentWalletAddress) {
           throw new Error(
             "Wallet address not found. Please reconnect your wallet."
@@ -155,9 +148,9 @@ const RoleSelector = () => {
           authService.completeRegistration(updatedUserData);
         }
 
-        localStorage.setItem("healthmint_user_role", role);
-        localStorage.setItem("healthmint_is_new_user", "false");
-        localStorage.setItem("healthmint_wallet_connection", "true");
+        localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
+        localStorage.setItem(STORAGE_KEYS.IS_NEW_USER, "false");
+        localStorage.setItem(STORAGE_KEYS.WALLET_CONNECTION, "true");
 
         dispatch(setRole(role));
         dispatch(updateUserProfile(updatedUserData));
@@ -183,7 +176,6 @@ const RoleSelector = () => {
             duration: 3000,
           })
         );
-        sessionStorage.removeItem("bypass_route_protection");
         sessionStorage.removeItem("temp_selected_role");
         setIsLoading(false);
         setIsRedirecting(false);

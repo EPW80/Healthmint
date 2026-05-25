@@ -1,5 +1,5 @@
 // src/components/ProtectedRoute.js
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useSelector, useDispatch } from "react-redux";
 import { Navigate, useLocation } from "react-router-dom";
@@ -8,6 +8,7 @@ import useAuth from "../hooks/useAuth.js";
 import { selectIsRoleSelected, selectRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { isLogoutInProgress } from "../utils/authLoopPrevention.js";
+import { STORAGE_KEYS } from "../config/storageKeys.js";
 import LoadingSpinner from "./ui/LoadingSpinner.js";
 
 // This object tracks redirects to prevent infinite loops and excessive redirects
@@ -69,7 +70,6 @@ const ProtectedRoute = ({
 
   const [isLoading, setIsLoading] = useState(true);
   const [redirectPath, setRedirectPath] = useState(null);
-  const [bypassAuth, setBypassAuth] = useState(false);
 
   const { isConnected: isWalletConnected } = useWalletConnection();
   const {
@@ -85,21 +85,6 @@ const ProtectedRoute = ({
   const prevPath = useRef(location.pathname);
   const authCheckAttempts = useRef(0);
   const debugId = useMemo(() => Math.random().toString(36).substring(2, 8), []);
-
-  // Check bypass flags
-  const checkBypassFlags = useCallback(() => {
-    // Only allow bypass in development AND with session flag
-    if (
-      process.env.NODE_ENV === "development" &&
-      sessionStorage.getItem("bypass_route_protection") === "true"
-    ) {
-      console.log(
-        `[ProtectedRoute:${debugId}] Bypassing route protection (dev only)`
-      );
-      return true;
-    }
-    return false;
-  }, [debugId]);
 
   // Check for logout in progress - this is the most important check
   useEffect(() => {
@@ -140,7 +125,7 @@ const ProtectedRoute = ({
 
   // Authentication check
   useEffect(() => {
-    if (bypassAuth || authCheckCompletedRef.current) {
+    if (authCheckCompletedRef.current) {
       setIsLoading(false);
       return;
     }
@@ -151,13 +136,6 @@ const ProtectedRoute = ({
         `[ProtectedRoute:${debugId}] Logout in progress, redirecting to login`
       );
       setRedirectPath("/login");
-      setIsLoading(false);
-      authCheckCompletedRef.current = true;
-      return;
-    }
-
-    if (checkBypassFlags()) {
-      setBypassAuth(true);
       setIsLoading(false);
       authCheckCompletedRef.current = true;
       return;
@@ -212,18 +190,10 @@ const ProtectedRoute = ({
           return;
         }
 
-        if (sessionStorage.getItem("auth_verification_override") === "true") {
-          console.log(`[ProtectedRoute:${debugId}] Auth override active`);
-          setBypassAuth(true);
-          setIsLoading(false);
-          authCheckCompletedRef.current = true;
-          return;
-        }
-
         const isWalletConnectedFromStorage =
-          localStorage.getItem("healthmint_wallet_connection") === "true";
+          localStorage.getItem(STORAGE_KEYS.WALLET_CONNECTION) === "true";
         const hasWalletAddress = !!localStorage.getItem(
-          "healthmint_wallet_address"
+          STORAGE_KEYS.WALLET_ADDRESS
         );
 
         // Use fresh values from verifyAuth result to avoid stale closure reads.
@@ -248,14 +218,14 @@ const ProtectedRoute = ({
           setRedirectPath("/register");
         } else if (
           !isRoleSelected &&
-          !localStorage.getItem("healthmint_user_role") &&
+          !localStorage.getItem(STORAGE_KEYS.USER_ROLE) &&
           !sessionStorage.getItem("temp_selected_role")
         ) {
           setRedirectPath("/select-role");
         } else if (allowedRoles.length > 0) {
           const effectiveRole =
             userRole ||
-            localStorage.getItem("healthmint_user_role") ||
+            localStorage.getItem(STORAGE_KEYS.USER_ROLE) ||
             sessionStorage.getItem("temp_selected_role");
           if (!allowedRoles.includes(effectiveRole)) {
             dispatch(
@@ -270,7 +240,7 @@ const ProtectedRoute = ({
         } else if (location.pathname === "/") {
           const hasRole =
             isRoleSelected ||
-            localStorage.getItem("healthmint_user_role") ||
+            localStorage.getItem(STORAGE_KEYS.USER_ROLE) ||
             sessionStorage.getItem("temp_selected_role");
           if (hasRole) {
             setRedirectPath("/dashboard");
@@ -295,7 +265,6 @@ const ProtectedRoute = ({
     checkAuth();
   }, [
     redirectPath,
-    bypassAuth,
     isWalletConnected,
     isAuthenticated,
     isRegistrationComplete,
@@ -308,12 +277,11 @@ const ProtectedRoute = ({
     location.pathname,
     dispatch,
     debugId,
-    checkBypassFlags,
   ]);
 
   // Emergency timeout
   useEffect(() => {
-    if (bypassAuth || !isLoading || authCheckCompletedRef.current) return;
+    if (!isLoading || authCheckCompletedRef.current) return;
 
     const handleEmergency = () => {
       if (!isMounted.current) return;
@@ -335,7 +303,7 @@ const ProtectedRoute = ({
 
     const timer = setTimeout(handleEmergency, 8000);
     return () => clearTimeout(timer);
-  }, [isLoading, dispatch, debugId, bypassAuth]);
+  }, [isLoading, dispatch, debugId]);
 
   if (isLoading) {
     return (
@@ -347,11 +315,6 @@ const ProtectedRoute = ({
         />
       </div>
     );
-  }
-
-  if (bypassAuth) {
-    console.log(`[ProtectedRoute:${debugId}] Rendering children due to bypass`);
-    return children;
   }
 
   if (redirectPath) {
