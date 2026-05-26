@@ -120,7 +120,7 @@ const store = configureStore({
 store.subscribe(() => {
   try {
     const state = store.getState();
-    const { wallet, auth } = state;
+    const { wallet } = state;
 
     // Persist wallet state (address, chainId — not secrets) for UX continuity.
     // Auth tokens are intentionally NOT persisted — they live in memory only.
