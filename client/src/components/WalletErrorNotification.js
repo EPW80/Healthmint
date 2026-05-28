@@ -222,7 +222,7 @@ const WalletErrorNotification = ({
 
             <button
               onClick={handleDismiss}
-              className={`px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50
+              className={`px-3 py-1.5 bg-surface border border-line text-fg hover:bg-surface
                         rounded font-medium text-sm transition-colors focus:outline-none focus:ring-2
                         focus:ring-gray-400 focus:ring-opacity-50`}
             >

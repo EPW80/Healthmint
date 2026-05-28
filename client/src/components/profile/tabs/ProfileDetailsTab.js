@@ -14,7 +14,7 @@ const ProfileDetailsTab = ({
         <div>
           <label
             htmlFor="bio"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-fg mb-1"
           >
             Bio
           </label>
@@ -24,7 +24,7 @@ const ProfileDetailsTab = ({
             value={formState.bio}
             onChange={handleFormChange}
             rows="4"
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder={
               userRole === "patient"
                 ? "Share a bit about yourself (this will not be shared with your health data)"
@@ -37,7 +37,7 @@ const ProfileDetailsTab = ({
           <h3 className="text-sm font-semibold text-blue-700 mb-1">
             {userRole === "patient" ? "Patient ID" : "Researcher ID"}
           </h3>
-          <p className="text-sm text-gray-700 break-all">{walletAddress}</p>
+          <p className="text-sm text-fg break-all">{walletAddress}</p>
         </div>
       </div>
     </>

@@ -18,7 +18,7 @@ const PrivacyTab = ({ userRole, formState, handleFormChange }) => {
                       name={`sharingPreferences.${key}`}
                       checked={formState.sharingPreferences?.[key] || false}
                       onChange={handleFormChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-line text-blue-600 focus:ring-blue-500"
                     />
                     <span className="ml-2">
                       {key === "anonymousSharing"
@@ -42,7 +42,7 @@ const PrivacyTab = ({ userRole, formState, handleFormChange }) => {
                     name={`privacyPreferences.${key}`}
                     checked={formState.privacyPreferences?.[key] || false}
                     onChange={handleFormChange}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-line text-blue-600 focus:ring-blue-500"
                   />
                   <span className="ml-2">
                     {key === "publicProfile"

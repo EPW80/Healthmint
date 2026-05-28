@@ -58,7 +58,7 @@ const StatisticalAnalysis = () => {
       <div className="flex items-center mb-6">
         <button
           onClick={() => navigate("/dashboard")}
-          className="mr-4 p-2 rounded-full hover:bg-gray-100"
+          className="mr-4 p-2 rounded-full hover:bg-surface-raised"
           aria-label="Back to dashboard"
         >
           <ArrowLeft size={20} />
@@ -73,7 +73,7 @@ const StatisticalAnalysis = () => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {/* Dataset Selection */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">
               Select Dataset for Analysis
             </h2>
@@ -81,7 +81,7 @@ const StatisticalAnalysis = () => {
             {availableDatasets.length === 0 ? (
               <div className="text-center py-6 bg-blue-50 rounded-lg">
                 <FileSpreadsheet className="w-12 h-12 text-blue-400 mx-auto mb-2" />
-                <p className="text-gray-600 mb-4">
+                <p className="text-fg-muted mb-4">
                   No datasets available for analysis
                 </p>
                 <button
@@ -94,24 +94,25 @@ const StatisticalAnalysis = () => {
             ) : (
               <div className="space-y-3">
                 {availableDatasets.map((dataset) => (
-                  <div
+                  <button
                     key={dataset.id}
-                    className={`border rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors ${
+                    type="button"
+                    className={`w-full text-left border rounded-token p-4 transition-colors ${
                       selectedDataset === dataset.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200"
+                        ? "border-accent bg-accent/10"
+                        : "border-line hover:bg-surface-raised"
                     }`}
                     onClick={() => setSelectedDataset(dataset.id)}
                   >
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="font-medium">{dataset.name}</h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-fg-muted">
                           {dataset.recordCount.toLocaleString()} records
                         </p>
                       </div>
                       {selectedDataset === dataset.id && (
-                        <div className="bg-blue-500 text-white p-1 rounded-full">
+                        <div className="bg-accent text-accent-fg p-1 rounded-full">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className="h-5 w-5"
@@ -127,14 +128,14 @@ const StatisticalAnalysis = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
           {/* Analysis Types */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Analysis Techniques</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -145,7 +146,7 @@ const StatisticalAnalysis = () => {
                   <Calculator className="w-10 h-10 text-blue-500 mr-4" />
                   <div>
                     <h3 className="font-medium">Descriptive Statistics</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       Calculate mean, median, mode, standard deviation
                     </p>
                   </div>
@@ -159,7 +160,7 @@ const StatisticalAnalysis = () => {
                   <Activity className="w-10 h-10 text-green-500 mr-4" />
                   <div>
                     <h3 className="font-medium">Hypothesis Testing</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       T-tests, chi-square, ANOVA
                     </p>
                   </div>
@@ -173,7 +174,7 @@ const StatisticalAnalysis = () => {
                   <TrendingUp className="w-10 h-10 text-purple-500 mr-4" />
                   <div>
                     <h3 className="font-medium">Regression Analysis</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       Linear, logistic, and multivariate regression
                     </p>
                   </div>
@@ -187,7 +188,7 @@ const StatisticalAnalysis = () => {
                   <Sigma className="w-10 h-10 text-red-500 mr-4" />
                   <div>
                     <h3 className="font-medium">Correlation Analysis</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       Pearson, Spearman, point-biserial
                     </p>
                   </div>
@@ -201,7 +202,7 @@ const StatisticalAnalysis = () => {
                 className={`px-6 py-2 rounded-lg flex items-center gap-2 ${
                   selectedDataset
                     ? "bg-blue-500 text-white hover:bg-blue-600"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-surface-raised text-fg-muted cursor-not-allowed"
                 }`}
               >
                 Run Analysis
@@ -210,23 +211,23 @@ const StatisticalAnalysis = () => {
           </div>
 
           {/* Advanced Options */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Advanced Options</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div
-                className={`border rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer transition-colors ${!selectedDataset ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`border rounded-lg p-4 text-center hover:bg-surface cursor-pointer transition-colors ${!selectedDataset ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                <BarChart3 className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                <BarChart3 className="w-8 h-8 text-fg-muted mx-auto mb-2" />
                 <p className="text-sm font-medium">Custom Models</p>
               </div>
 
               <div
-                className={`border rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer transition-colors ${!selectedDataset ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`border rounded-lg p-4 text-center hover:bg-surface cursor-pointer transition-colors ${!selectedDataset ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-gray-500 mx-auto mb-2"
+                  className="w-8 h-8 text-fg-muted mx-auto mb-2"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -242,11 +243,11 @@ const StatisticalAnalysis = () => {
               </div>
 
               <div
-                className={`border rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer transition-colors ${!selectedDataset ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`border rounded-lg p-4 text-center hover:bg-surface cursor-pointer transition-colors ${!selectedDataset ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-gray-500 mx-auto mb-2"
+                  className="w-8 h-8 text-fg-muted mx-auto mb-2"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

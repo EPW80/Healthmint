@@ -23,7 +23,7 @@ const DataManagementTab = ({
           Healthmint.
         </div>
 
-        <div className="border border-gray-200 rounded-lg mb-4">
+        <div className="border border-line rounded-lg mb-4">
           <button
             className="w-full flex justify-between items-center p-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-t-lg"
             onClick={() => toggleAccordion("dataStats")}
@@ -39,41 +39,38 @@ const DataManagementTab = ({
             />
           </button>
           {openAccordion === "dataStats" && (
-            <div
-              id="data-stats-content"
-              className="p-4 border-t border-gray-200"
-            >
+            <div id="data-stats-content" className="p-4 border-t border-line">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-2">
                   <p className="text-2xl font-semibold text-blue-600">
                     {userProfile?.totalUploads || 0}
                   </p>
-                  <p className="text-sm text-gray-600">Uploaded Records</p>
+                  <p className="text-sm text-fg-muted">Uploaded Records</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-semibold text-blue-600">
                     {userProfile?.totalShared || 0}
                   </p>
-                  <p className="text-sm text-gray-600">Shared Records</p>
+                  <p className="text-sm text-fg-muted">Shared Records</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-semibold text-blue-600">
                     {userProfile?.accessRequests || 0}
                   </p>
-                  <p className="text-sm text-gray-600">Access Requests</p>
+                  <p className="text-sm text-fg-muted">Access Requests</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-semibold text-blue-600">
                     {userProfile?.earnings || "0"}
                   </p>
-                  <p className="text-sm text-gray-600">ETH Earned</p>
+                  <p className="text-sm text-fg-muted">ETH Earned</p>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="border border-gray-200 rounded-lg">
+        <div className="border border-line rounded-lg">
           <button
             className="w-full flex justify-between items-center p-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-t-lg"
             onClick={() => toggleAccordion("dataExport")}
@@ -89,23 +86,20 @@ const DataManagementTab = ({
             />
           </button>
           {openAccordion === "dataExport" && (
-            <div
-              id="data-export-content"
-              className="p-4 border-t border-gray-200"
-            >
-              <p className="text-sm text-gray-600 mb-4">
+            <div id="data-export-content" className="p-4 border-t border-line">
+              <p className="text-sm text-fg-muted mb-4">
                 Export all your health data in one of the following formats:
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
-                <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                <button className="flex items-center justify-center gap-2 px-4 py-2 border border-line text-fg rounded-md hover:bg-surface focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                   <Download size={18} />
                   Export as JSON
                 </button>
-                <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                <button className="flex items-center justify-center gap-2 px-4 py-2 border border-line text-fg rounded-md hover:bg-surface focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                   <Download size={18} />
                   Export as CSV
                 </button>
-                <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                <button className="flex items-center justify-center gap-2 px-4 py-2 border border-line text-fg rounded-md hover:bg-surface focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                   <Download size={18} />
                   Export as PDF
                 </button>
@@ -125,7 +119,7 @@ const DataManagementTab = ({
         research purposes.
       </div>
 
-      <div className="border border-gray-200 rounded-lg mb-4">
+      <div className="border border-line rounded-lg mb-4">
         <button
           className="w-full flex justify-between items-center p-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-t-lg"
           onClick={() => toggleAccordion("researchUsage")}
@@ -141,41 +135,38 @@ const DataManagementTab = ({
           />
         </button>
         {openAccordion === "researchUsage" && (
-          <div
-            id="research-usage-content"
-            className="p-4 border-t border-gray-200"
-          >
+          <div id="research-usage-content" className="p-4 border-t border-line">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-2">
                 <p className="text-2xl font-semibold text-purple-600">
                   {userProfile?.datasetsAccessed || 0}
                 </p>
-                <p className="text-sm text-gray-600">Datasets Accessed</p>
+                <p className="text-sm text-fg-muted">Datasets Accessed</p>
               </div>
               <div className="text-center p-2">
                 <p className="text-2xl font-semibold text-purple-600">
                   {userProfile?.activeStudies || 0}
                 </p>
-                <p className="text-sm text-gray-600">Active Studies</p>
+                <p className="text-sm text-fg-muted">Active Studies</p>
               </div>
               <div className="text-center p-2">
                 <p className="text-2xl font-semibold text-purple-600">
                   {userProfile?.pendingRequests || 0}
                 </p>
-                <p className="text-sm text-gray-600">Pending Requests</p>
+                <p className="text-sm text-fg-muted">Pending Requests</p>
               </div>
               <div className="text-center p-2">
                 <p className="text-2xl font-semibold text-red-600">
                   {userProfile?.totalSpent || "0"}
                 </p>
-                <p className="text-sm text-gray-600">ETH Spent</p>
+                <p className="text-sm text-fg-muted">ETH Spent</p>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      <div className="border border-gray-200 rounded-lg">
+      <div className="border border-line rounded-lg">
         <button
           className="w-full flex justify-between items-center p-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-t-lg"
           onClick={() => toggleAccordion("ethics")}
@@ -191,12 +182,12 @@ const DataManagementTab = ({
           />
         </button>
         {openAccordion === "ethics" && (
-          <div id="ethics-content" className="p-4 border-t border-gray-200">
+          <div id="ethics-content" className="p-4 border-t border-line">
             <textarea
               name="ethicsStatement"
               value={formState.ethicsStatement || ""}
               onChange={handleFormChange}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mb-4"
+              className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500 mb-4"
               rows="4"
               placeholder="Describe your approach to research ethics and data protection..."
               aria-label="Research ethics statement"
@@ -207,9 +198,9 @@ const DataManagementTab = ({
                 name="ethicsAgreement"
                 checked={formState.ethicsAgreement || false}
                 onChange={handleFormChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-line text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-fg">
                 I agree to use all data in accordance with established research
                 ethics guidelines
               </span>

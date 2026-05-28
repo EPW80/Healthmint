@@ -99,7 +99,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
   // Loading state
   if (loading && userRecords.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <div className="bg-surface rounded-xl shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -111,7 +111,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
   // Error state
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <div className="bg-surface rounded-xl shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
           <AlertCircle size={20} className="text-red-500" />
@@ -137,7 +137,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
   // Empty state
   if (userRecords.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <div className="bg-surface rounded-xl shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
         <div className="text-center py-8 bg-blue-50 rounded-lg">
           <FileText className="w-12 h-12 text-blue-300 mx-auto mb-3" />
@@ -156,18 +156,18 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+    <div className="bg-surface rounded-xl shadow-md p-6 mb-8">
       <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
 
       {/* Record viewer modal */}
       {viewingRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <div className="bg-surface rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-4 border-b border-line flex justify-between items-center">
               <h3 className="text-xl font-semibold">Health Record Details</h3>
               <button
                 onClick={closeViewer}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-fg-muted hover:text-fg"
                 aria-label="Close details"
               >
                 <svg
@@ -207,14 +207,12 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
       <div className="space-y-6">
         {Object.entries(groupedRecords).map(([category, records]) => (
           <div key={category}>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">
-              {category}
-            </h3>
+            <h3 className="text-lg font-medium text-fg mb-3">{category}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {records.map((record) => (
                 <div
                   key={record.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  className="border border-line rounded-lg p-4 hover:bg-surface transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center">
@@ -244,11 +242,11 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
                     )}
                   </div>
 
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  <p className="text-sm text-fg-muted mb-2 line-clamp-2">
                     {record.description || `${category} health data record`}
                   </p>
 
-                  <div className="flex items-center text-xs text-gray-500 mb-3">
+                  <div className="flex items-center text-xs text-fg-muted mb-3">
                     <div className="flex items-center mr-3">
                       {record.anonymized ? (
                         <Lock size={12} className="mr-1" />
@@ -269,7 +267,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                  <div className="flex justify-between items-center text-xs text-fg-muted mb-3">
                     <span>
                       Updated:{" "}
                       {new Date(record.uploadDate).toLocaleDateString()}
@@ -279,7 +277,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
                     </span>
                   </div>
 
-                  <div className="flex border-t border-gray-100 pt-3 gap-2">
+                  <div className="flex border-t border-line pt-3 gap-2">
                     <button
                       onClick={() => handleViewRecord(record.id)}
                       className="flex-1 flex items-center justify-center gap-1 text-xs text-blue-600 hover:text-blue-800"
@@ -316,7 +314,7 @@ const HealthDataSection = ({ walletAddress, userRole }) => {
         <div className="mt-6 text-center">
           <button
             onClick={fetchHealthData}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 border border-line rounded-lg text-fg hover:bg-surface transition-colors"
           >
             Load More Records
           </button>

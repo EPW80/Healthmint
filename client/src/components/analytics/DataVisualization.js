@@ -57,7 +57,7 @@ const DataVisualization = () => {
       <div className="flex items-center mb-6">
         <button
           onClick={() => navigate("/dashboard")}
-          className="mr-4 p-2 rounded-full hover:bg-gray-100"
+          className="mr-4 p-2 rounded-full hover:bg-surface-raised"
           aria-label="Back to dashboard"
         >
           <ArrowLeft size={20} />
@@ -72,13 +72,13 @@ const DataVisualization = () => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {/* Dataset Selection */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Select Dataset</h2>
 
             {availableDatasets.length === 0 ? (
               <div className="text-center py-6 bg-blue-50 rounded-lg">
                 <FileSpreadsheet className="w-12 h-12 text-blue-400 mx-auto mb-2" />
-                <p className="text-gray-600 mb-4">
+                <p className="text-fg-muted mb-4">
                   No datasets available for visualization
                 </p>
                 <button
@@ -91,19 +91,20 @@ const DataVisualization = () => {
             ) : (
               <div className="space-y-3">
                 {availableDatasets.map((dataset) => (
-                  <div
+                  <button
                     key={dataset.id}
-                    className={`border rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors ${
+                    type="button"
+                    className={`w-full text-left border rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors ${
                       selectedDataset === dataset.id
                         ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200"
+                        : "border-line"
                     }`}
                     onClick={() => setSelectedDataset(dataset.id)}
                   >
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="font-medium">{dataset.name}</h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-fg-muted">
                           {dataset.recordCount.toLocaleString()} records
                         </p>
                       </div>
@@ -124,19 +125,19 @@ const DataVisualization = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))}
 
-                <div className="mt-4 border border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer">
-                  <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Upload new dataset</p>
+                <div className="mt-4 border border-dashed border-line rounded-lg p-4 text-center hover:bg-surface cursor-pointer">
+                  <Upload className="w-6 h-6 text-fg-subtle mx-auto mb-2" />
+                  <p className="text-fg-muted">Upload new dataset</p>
                 </div>
               </div>
             )}
           </div>
 
           {/* Visualization Options */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Visualization Type</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -145,7 +146,7 @@ const DataVisualization = () => {
               >
                 <BarChart className="w-12 h-12 text-blue-500 mx-auto mb-3" />
                 <h3 className="font-medium">Bar Charts</h3>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-fg-muted mt-2">
                   Compare values across categories
                 </p>
               </div>
@@ -155,7 +156,7 @@ const DataVisualization = () => {
               >
                 <LineChart className="w-12 h-12 text-green-500 mx-auto mb-3" />
                 <h3 className="font-medium">Line Charts</h3>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-fg-muted mt-2">
                   Track changes over time
                 </p>
               </div>
@@ -165,7 +166,7 @@ const DataVisualization = () => {
               >
                 <PieChart className="w-12 h-12 text-purple-500 mx-auto mb-3" />
                 <h3 className="font-medium">Pie Charts</h3>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-fg-muted mt-2">
                   Show proportions of a whole
                 </p>
               </div>
@@ -177,7 +178,7 @@ const DataVisualization = () => {
                 className={`px-6 py-2 rounded-lg flex items-center gap-2 ${
                   selectedDataset
                     ? "bg-blue-500 text-white hover:bg-blue-600"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-surface-raised text-fg-muted cursor-not-allowed"
                 }`}
               >
                 Create Visualization

@@ -217,7 +217,7 @@ const DatasetPurchaseButton = ({
       <div className="mt-2 flex items-center justify-between bg-blue-50 p-2 rounded-lg">
         {/* Node 1 */}
         <div
-          className={`w-8 h-8 rounded-full ${progressStep >= 0 ? "bg-blue-100 border-blue-500" : "bg-gray-100 border-gray-300"} border-2 flex items-center justify-center text-xs`}
+          className={`w-8 h-8 rounded-full ${progressStep >= 0 ? "bg-blue-100 border-blue-500" : "bg-surface-raised border-line"} border-2 flex items-center justify-center text-xs`}
         >
           {progressStep > 0 ? (
             <Check size={14} className="text-blue-500" />
@@ -226,7 +226,7 @@ const DatasetPurchaseButton = ({
           )}
         </div>
         {/* Line */}
-        <div className="h-[2px] flex-1 bg-gray-200">
+        <div className="h-[2px] flex-1 bg-surface-raised">
           <div
             className="h-full bg-blue-500 transition-all duration-300"
             style={{ width: `${progressStep >= 1 ? "100%" : "0%"}` }}
@@ -234,7 +234,7 @@ const DatasetPurchaseButton = ({
         </div>
         {/* Node 2 */}
         <div
-          className={`w-8 h-8 rounded-full ${progressStep >= 1 ? "bg-blue-100 border-blue-500" : "bg-gray-100 border-gray-300"} border-2 flex items-center justify-center text-xs`}
+          className={`w-8 h-8 rounded-full ${progressStep >= 1 ? "bg-blue-100 border-blue-500" : "bg-surface-raised border-line"} border-2 flex items-center justify-center text-xs`}
         >
           {progressStep > 1 ? (
             <Check size={14} className="text-blue-500" />
@@ -243,7 +243,7 @@ const DatasetPurchaseButton = ({
           )}
         </div>
         {/* Line */}
-        <div className="h-[2px] flex-1 bg-gray-200">
+        <div className="h-[2px] flex-1 bg-surface-raised">
           <div
             className="h-full bg-blue-500 transition-all duration-300"
             style={{ width: `${progressStep >= 2 ? "100%" : "0%"}` }}
@@ -251,7 +251,7 @@ const DatasetPurchaseButton = ({
         </div>
         {/* Node 3 */}
         <div
-          className={`w-8 h-8 rounded-full ${progressStep >= 2 ? "bg-blue-100 border-blue-500" : "bg-gray-100 border-gray-300"} border-2 flex items-center justify-center text-xs`}
+          className={`w-8 h-8 rounded-full ${progressStep >= 2 ? "bg-blue-100 border-blue-500" : "bg-surface-raised border-line"} border-2 flex items-center justify-center text-xs`}
         >
           {progressStep > 2 ? (
             <Check size={14} className="text-blue-500" />
@@ -271,7 +271,7 @@ const DatasetPurchaseButton = ({
       <div className="mt-2 bg-green-50 p-3 rounded-lg border border-green-100 relative">
         <button
           onClick={() => setShowTransactionDetails(false)}
-          className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+          className="absolute right-2 top-2 text-fg-subtle hover:text-fg-muted"
           aria-label="Close details"
         >
           <X size={14} />
@@ -350,7 +350,7 @@ const DatasetPurchaseButton = ({
         {/* Background pulse animation when hovered */}
         {purchaseState === "ready" && (
           <span
-            className={`absolute inset-0 bg-white/20 transition-opacity duration-700 pointer-events-none ${
+            className={`absolute inset-0 bg-surface/20 transition-opacity duration-700 pointer-events-none ${
               hovered ? "opacity-100" : "opacity-0"
             }`}
             style={{ animation: hovered ? "pulse 1.5s infinite" : "none" }}

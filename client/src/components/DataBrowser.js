@@ -964,20 +964,20 @@ const DataBrowser = ({ className, mode = "browse" }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4">
+        <div className="bg-surface rounded-xl p-6 max-w-lg w-full mx-4">
           <div className="mb-4">
             <h3 className="text-xl font-bold mb-2">HIPAA Consent Required</h3>
-            <p className="text-gray-700">Your consent is required for:</p>
+            <p className="text-fg">Your consent is required for:</p>
             <p className="font-medium my-2 text-blue-700">
               {purpose}
               {tierDetails}
             </p>
 
             <div className="my-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <p className="text-sm text-gray-700 mb-3">
+              <p className="text-sm text-fg mb-3">
                 By providing consent, you acknowledge:
               </p>
-              <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+              <ul className="list-disc pl-5 text-sm text-fg space-y-1">
                 <li>This action will be logged for HIPAA compliance</li>
                 <li>Your consent will be securely documented</li>
                 {actionType === "PURCHASE" && (
@@ -1000,7 +1000,7 @@ const DataBrowser = ({ className, mode = "browse" }) => {
           <div className="flex justify-end gap-3 mt-6">
             <button
               onClick={() => handleConsentApproval(false)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-line text-fg rounded-lg hover:bg-surface"
             >
               Decline
             </button>

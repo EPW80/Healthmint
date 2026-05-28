@@ -142,7 +142,7 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
               <Wallet className="text-white" size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-700">
+              <h3 className="text-sm font-medium text-fg">
                 Wallet Balance
               </h3>
               <div className="flex items-center mt-1">
@@ -177,25 +177,34 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
             </button>
           </div>
         </div>
-        <p className="text-xs text-gray-500 mt-3 ml-1">
+        <p className="text-xs text-fg-muted mt-3 ml-1">
           Available for dataset purchases and transactions
         </p>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowModal(false)}
+            aria-label="Close wallet details"
+            tabIndex={-1}
+          />
           <div
-            className="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wallet-modal-title"
+            className="relative bg-surface rounded-xl shadow-xl max-w-md w-full mx-auto overflow-hidden"
           >
-            <div className="flex justify-between items-center border-b border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-gray-800">
+            <div className="flex justify-between items-center border-b border-line p-4">
+              <h3 id="wallet-modal-title" className="text-lg font-semibold text-fg">
                 Wallet Details
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-fg-muted hover:text-fg p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <X size={20} />
               </button>
@@ -203,7 +212,7 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
 
             <div className="p-5">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg mb-5">
-                <h4 className="text-sm font-medium text-gray-600 mb-1">
+                <h4 className="text-sm font-medium text-fg-muted mb-1">
                   Current Balance
                 </h4>
                 <div className="flex items-center">
@@ -214,8 +223,8 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
                 </div>
               </div>
 
-              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                <Clock size={16} className="mr-1.5 text-gray-500" />
+              <h4 className="text-sm font-medium text-fg mb-3 flex items-center">
+                <Clock size={16} className="mr-1.5 text-fg-muted" />
                 Recent Transactions
               </h4>
 
@@ -236,7 +245,7 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
                   {transactionHistory.map((tx) => (
                     <div
                       key={tx.id}
-                      className="flex items-center p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                      className="flex items-center p-2 hover:bg-surface rounded-lg transition-colors"
                     >
                       <div
                         className={`p-2 rounded-full mr-3 ${
@@ -252,10 +261,10 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800">
+                        <p className="text-sm font-medium text-fg">
                           {tx.description}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-fg-muted">
                           {tx.date.toLocaleDateString()} ·{" "}
                           {tx.type === "purchase" ? "-" : "+"}
                           {formatEth(tx.amount)}
@@ -265,16 +274,16 @@ const WalletBalanceDisplay = ({ className = "", refreshTrigger = null }) => {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-fg-muted text-center py-4">
                   No recent transactions found
                 </p>
               )}
             </div>
 
-            <div className="border-t border-gray-200 p-4 text-right">
+            <div className="border-t border-line p-4 text-right">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium transition-colors mr-2 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="px-4 py-2 bg-surface-raised hover:bg-surface-raised rounded-lg text-fg text-sm font-medium transition-colors mr-2 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Close
               </button>

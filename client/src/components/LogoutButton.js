@@ -32,9 +32,9 @@ const LogoutButton = ({
 
   const variantClasses = {
     primary: "bg-blue-600 hover:bg-blue-700 text-white",
-    secondary: "bg-gray-200 hover:bg-gray-300 text-gray-800",
+    secondary: "bg-surface-raised hover:bg-surface-raised text-fg",
     danger: "bg-red-600 hover:bg-red-700 text-white",
-    text: "text-gray-700 hover:text-gray-900 hover:bg-gray-100",
+    text: "text-fg hover:text-fg hover:bg-surface-raised",
   };
 
   const getSpinnerColor = () => {

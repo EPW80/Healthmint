@@ -441,10 +441,11 @@ const AccessHistoryPage = () => {
                 <div className="absolute mt-2 p-3 bg-surface-raised border border-line rounded-token shadow-soft-md z-10">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-fg-muted mb-1">
+                      <label htmlFor="ah-date-start" className="block text-xs text-fg-muted mb-1">
                         Start Date
                       </label>
                       <input
+                        id="ah-date-start"
                         type="date"
                         className="w-full text-sm border border-line-strong rounded-token bg-surface text-fg px-2 py-1"
                         value={customDateRange.start}
@@ -454,10 +455,11 @@ const AccessHistoryPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-fg-muted mb-1">
+                      <label htmlFor="ah-date-end" className="block text-xs text-fg-muted mb-1">
                         End Date
                       </label>
                       <input
+                        id="ah-date-end"
                         type="date"
                         className="w-full text-sm border border-line-strong rounded-token bg-surface text-fg px-2 py-1"
                         value={customDateRange.end}
@@ -486,7 +488,7 @@ const AccessHistoryPage = () => {
       </div>
 
       {/* Access History Table */}
-      <div className="bg-surface border border-line rounded-token shadow-soft-md overflow-hidden">
+      <div className="bg-surface border border-line rounded-token shadow-soft-md overflow-hidden" aria-live="polite" aria-atomic="false">
         {loading ? (
           <div className="flex justify-center items-center p-12">
             <LoadingSpinner size="large" />
@@ -539,6 +541,7 @@ const AccessHistoryPage = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-line">
+              <caption className="sr-only">Data access history log</caption>
               <thead className="bg-surface-raised">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">

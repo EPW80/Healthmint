@@ -214,14 +214,14 @@ const FileUploader = ({ onUploadComplete }) => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-gray-700 text-sm font-semibold mb-2">
+          <label htmlFor="file" className="block text-fg text-sm font-semibold mb-2">
             Select or Drop File
           </label>
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center ${
               dragActive
                 ? "border-indigo-500 bg-indigo-50"
-                : "border-gray-300 hover:border-indigo-400"
+                : "border-line hover:border-indigo-400"
             } transition-colors duration-200`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -247,30 +247,30 @@ const FileUploader = ({ onUploadComplete }) => {
                     </div>
                   )}
                 </div>
-                <div className="text-sm text-gray-900 font-medium">
+                <div className="text-sm text-fg font-medium">
                   {file.name}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-fg-muted mt-1">
                   {formatFileSize(file.size)}
                 </div>
                 <button
                   type="button"
                   onClick={removeFile}
-                  className="mt-3 inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="mt-3 inline-flex items-center px-2.5 py-1.5 border border-line shadow-sm text-xs font-medium rounded text-fg bg-surface hover:bg-surface focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   Remove file
                 </button>
               </div>
             ) : (
               <div className="space-y-2">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                <div className="text-gray-600">
+                <Upload className="mx-auto h-12 w-12 text-fg-subtle" />
+                <div className="text-fg-muted">
                   <span className="font-medium text-indigo-600 hover:text-indigo-500">
                     Click to upload
                   </span>{" "}
                   or drag and drop
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-fg-muted">
                   Files up to 50MB supported
                 </p>
               </div>
@@ -288,7 +288,7 @@ const FileUploader = ({ onUploadComplete }) => {
             <button
               type="button"
               onClick={() => fileInputRef.current.click()}
-              className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="mt-2 inline-flex items-center px-4 py-2 border border-line shadow-sm text-sm font-medium rounded-md text-fg bg-surface hover:bg-surface focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Browse Files
             </button>
@@ -298,7 +298,7 @@ const FileUploader = ({ onUploadComplete }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label
-              className="block text-gray-700 text-sm font-semibold mb-2"
+              className="block text-fg text-sm font-semibold mb-2"
               htmlFor="description"
             >
               Description
@@ -308,7 +308,7 @@ const FileUploader = ({ onUploadComplete }) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-line rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Enter a description of the file"
             ></textarea>
           </div>
@@ -316,7 +316,7 @@ const FileUploader = ({ onUploadComplete }) => {
           <div className="space-y-6">
             <div>
               <label
-                className="block text-gray-700 text-sm font-semibold mb-2"
+                className="block text-fg text-sm font-semibold mb-2"
                 htmlFor="tags"
               >
                 Tags (comma separated)
@@ -326,14 +326,14 @@ const FileUploader = ({ onUploadComplete }) => {
                 id="tags"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-line rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="e.g., lab-results, bloodwork, annual-exam"
               />
             </div>
 
             <div>
               <label
-                className="block text-gray-700 text-sm font-semibold mb-2"
+                className="block text-fg text-sm font-semibold mb-2"
                 htmlFor="category"
               >
                 Category
@@ -342,7 +342,7 @@ const FileUploader = ({ onUploadComplete }) => {
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-line rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="General Health">General Health</option>
                 <option value="Medical Records">Medical Records</option>
@@ -359,7 +359,7 @@ const FileUploader = ({ onUploadComplete }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label
-              className="block text-gray-700 text-sm font-semibold mb-2"
+              className="block text-fg text-sm font-semibold mb-2"
               htmlFor="sensitivity"
             >
               Sensitivity Level
@@ -368,7 +368,7 @@ const FileUploader = ({ onUploadComplete }) => {
               id="sensitivity"
               value={sensitivity}
               onChange={(e) => setSensitivity(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-line rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -384,10 +384,10 @@ const FileUploader = ({ onUploadComplete }) => {
                 id="containsPHI"
                 checked={containsPHI}
                 onChange={(e) => setContainsPHI(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-line rounded"
               />
               <label
-                className="ml-2 block text-sm text-gray-900"
+                className="ml-2 block text-sm text-fg"
                 htmlFor="containsPHI"
               >
                 Contains Protected Health Information (PHI)
@@ -398,7 +398,7 @@ const FileUploader = ({ onUploadComplete }) => {
 
         {uploading && (
           <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-surface-raised rounded-full h-2.5">
               <div
                 className="bg-indigo-600 h-2.5 rounded-full"
                 style={{ width: `${uploadProgress}%` }}
@@ -414,7 +414,7 @@ const FileUploader = ({ onUploadComplete }) => {
           <button
             type="button"
             onClick={onUploadComplete}
-            className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="px-4 py-2 border border-line shadow-sm text-sm font-medium rounded-md text-fg bg-surface hover:bg-surface focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             Cancel
           </button>

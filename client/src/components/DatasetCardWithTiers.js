@@ -132,7 +132,7 @@ const DatasetCardWithTiers = ({
       default:
         return (
           <FileBarChart
-            className="text-gray-500"
+            className="text-fg-muted"
             size={16}
             aria-hidden="true"
           />
@@ -144,18 +144,18 @@ const DatasetCardWithTiers = ({
   if (isLoading) {
     return (
       <div
-        className={`bg-white rounded-lg shadow-md overflow-hidden p-5 ${className}`}
+        className={`bg-surface rounded-lg shadow-md overflow-hidden p-5 ${className}`}
         aria-busy="true"
       >
         <div className="animate-pulse flex flex-col space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-4 bg-gray-200 rounded w-full"></div>
-          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-6 bg-surface-raised rounded w-3/4"></div>
+          <div className="h-4 bg-surface-raised rounded w-full"></div>
+          <div className="h-4 bg-surface-raised rounded w-5/6"></div>
           <div className="flex space-x-2">
-            <div className="h-6 bg-gray-200 rounded w-20"></div>
-            <div className="h-6 bg-gray-200 rounded w-20"></div>
+            <div className="h-6 bg-surface-raised rounded w-20"></div>
+            <div className="h-6 bg-surface-raised rounded w-20"></div>
           </div>
-          <div className="h-10 bg-gray-200 rounded w-full"></div>
+          <div className="h-10 bg-surface-raised rounded w-full"></div>
         </div>
       </div>
     );
@@ -163,12 +163,12 @@ const DatasetCardWithTiers = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg ${className}`}
+      className={`bg-surface rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg ${className}`}
     >
       {/* Card Header */}
-      <div className="p-5 border-b border-gray-100">
+      <div className="p-5 border-b border-line">
         <div className="flex justify-between items-start">
-          <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+          <h3 className="text-xl font-bold text-fg">{title}</h3>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-sm font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md px-2 py-1"
@@ -179,7 +179,7 @@ const DatasetCardWithTiers = ({
           </button>
         </div>
 
-        <p className="text-gray-600 mt-2 line-clamp-2">{description}</p>
+        <p className="text-fg-muted mt-2 line-clamp-2">{description}</p>
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2 mt-3">
@@ -212,13 +212,13 @@ const DatasetCardWithTiers = ({
             tags.map((tag, index) => (
               <span
                 key={index}
-                className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full"
+                className="px-2 py-1 bg-surface-raised text-fg text-xs rounded-full"
               >
                 {tag}
               </span>
             ))}
 
-          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full flex items-center">
+          <span className="px-2 py-1 bg-surface-raised text-fg text-xs rounded-full flex items-center">
             <FileText size={12} className="mr-1" aria-hidden="true" />
             {format}
           </span>
@@ -227,7 +227,7 @@ const DatasetCardWithTiers = ({
 
       {/* Card Body */}
       <div className="p-5">
-        <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
+        <div className="flex justify-between items-center text-sm text-fg-muted mb-3">
           <div className="flex items-center">
             <BarChart size={16} className="mr-1" aria-hidden="true" />
             <span>{recordCount.toLocaleString()} records</span>
@@ -244,7 +244,7 @@ const DatasetCardWithTiers = ({
           <DollarSign size={20} className="mr-1" aria-hidden="true" />
           {currentPrice} ETH
           {selectedTier && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-fg-muted">
               ({selectedTier.name} tier)
             </span>
           )}
@@ -339,18 +339,18 @@ const DatasetCardWithTiers = ({
         {showConfirmation && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div
-              className="bg-white rounded-lg p-6 max-w-md w-full m-4"
+              className="bg-surface rounded-lg p-6 max-w-md w-full m-4"
               role="dialog"
               aria-modal="true"
               aria-labelledby="confirm-purchase-title"
             >
               <h4
                 id="confirm-purchase-title"
-                className="text-lg font-bold text-gray-900 mb-3"
+                className="text-lg font-bold text-fg mb-3"
               >
                 Confirm Purchase
               </h4>
-              <p className="text-gray-600 mb-4">
+              <p className="text-fg-muted mb-4">
                 You are about to purchase{" "}
                 <span className="font-medium">{title}</span>{" "}
                 {selectedTier ? `(${selectedTier.name} tier)` : ""} for{" "}
@@ -375,7 +375,7 @@ const DatasetCardWithTiers = ({
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={handleCancelPurchase}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+                  className="px-4 py-2 border border-line text-fg rounded-lg hover:bg-surface transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
                 >
                   Cancel
                 </button>

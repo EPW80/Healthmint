@@ -301,18 +301,19 @@ const HipaaCompliantDataViewer = ({
     if (typeof value === "object" && value !== null) {
       return (
         <div key={currentPath} className="mb-2">
-          <div
-            className="flex items-center cursor-pointer text-blue-700 hover:text-blue-900"
+          <button
+            type="button"
+            className="flex items-center text-left text-accent hover:text-accent-hover"
             onClick={() => toggleFieldExpansion(currentPath)}
           >
             <span className={`mr-1 ${isExpanded ? "transform rotate-90" : ""}`}>
               ▶
             </span>
             <span className="font-medium">{key}: </span>
-          </div>
+          </button>
 
           {isExpanded && (
-            <div className="pl-4 border-l border-gray-200 mt-1">
+            <div className="pl-4 border-l border-line mt-1">
               {Array.isArray(value)
                 ? value.map((item, index) =>
                     renderDataField(index, item, currentPath)
@@ -327,21 +328,22 @@ const HipaaCompliantDataViewer = ({
     }
 
     return (
-      <div
+      <button
         key={currentPath}
-        className="mb-1"
+        type="button"
+        className="mb-1 w-full text-left"
         onClick={() => trackFieldAccess(currentPath)}
       >
         <span className="font-medium">{key}: </span>
         <span>{String(value)}</span>
-      </div>
+      </button>
     );
   };
 
   // If we're still verifying access or there was an error
   if (hipaa.loading) {
     return (
-      <div className="p-4 bg-gray-100 rounded-lg flex items-center justify-center">
+      <div className="p-4 bg-surface-raised rounded-lg flex items-center justify-center">
         <div className="animate-spin h-5 w-5 mr-3 border-2 border-blue-500 border-t-transparent rounded-full"></div>
         <span>Verifying HIPAA compliance...</span>
       </div>
@@ -369,9 +371,9 @@ const HipaaCompliantDataViewer = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="bg-surface rounded-lg border border-line shadow-sm">
       {/* HIPAA Compliance Header */}
-      <div className="p-4 border-b border-gray-200 bg-blue-50">
+      <div className="p-4 border-b border-line bg-blue-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Shield className="h-5 w-5 text-blue-500 mr-2" />
@@ -383,7 +385,7 @@ const HipaaCompliantDataViewer = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={toggleSensitiveData}
-              className="flex items-center px-3 py-1 text-sm rounded-md border border-gray-300 hover:bg-gray-100 transition-colors"
+              className="flex items-center px-3 py-1 text-sm rounded-md border border-line hover:bg-surface-raised transition-colors"
               aria-pressed={showSensitiveData}
             >
               {showSensitiveData ? (
@@ -401,7 +403,7 @@ const HipaaCompliantDataViewer = ({
 
             <button
               onClick={handleDownload}
-              className="flex items-center px-3 py-1 text-sm rounded-md border border-gray-300 hover:bg-gray-100 transition-colors"
+              className="flex items-center px-3 py-1 text-sm rounded-md border border-line hover:bg-surface-raised transition-colors"
             >
               <Download className="h-4 w-4 mr-1" />
               <span>Download</span>
@@ -457,7 +459,7 @@ const HipaaCompliantDataViewer = ({
         </div>
 
         {/* The actual data display with field-level tracking */}
-        <div className="rounded-md border border-gray-200 p-4 bg-gray-50 overflow-auto">
+        <div className="rounded-md border border-line p-4 bg-surface overflow-auto">
           {viewableData ? (
             <div className="text-sm">
               {Object.keys(viewableData).map((key) =>
@@ -465,7 +467,7 @@ const HipaaCompliantDataViewer = ({
               )}
             </div>
           ) : (
-            <div className="text-gray-500 text-center py-8">
+            <div className="text-fg-muted text-center py-8">
               No data available
             </div>
           )}
@@ -473,7 +475,7 @@ const HipaaCompliantDataViewer = ({
       </div>
 
       {/* HIPAA Compliance Footer */}
-      <div className="p-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-500">
+      <div className="p-3 border-t border-line bg-surface text-xs text-fg-muted">
         <p>
           This data access is logged and monitored in compliance with HIPAA
           regulations.

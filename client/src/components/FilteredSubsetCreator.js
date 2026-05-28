@@ -345,10 +345,10 @@ const FilteredSubsetCreator = ({
   // Render loading state
   if (loading) {
     return (
-      <div className={`bg-white p-6 rounded-lg shadow-md ${className}`}>
+      <div className={`bg-surface p-6 rounded-lg shadow-md ${className}`}>
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner size="large" />
-          <span className="ml-2 text-gray-600">
+          <span className="ml-2 text-fg-muted">
             Loading dataset information...
           </span>
         </div>
@@ -359,16 +359,16 @@ const FilteredSubsetCreator = ({
   // Render error state
   if (error) {
     return (
-      <div className={`bg-white p-6 rounded-lg shadow-md ${className}`}>
+      <div className={`bg-surface p-6 rounded-lg shadow-md ${className}`}>
         <div className="flex items-center text-red-600 mb-4">
           <AlertCircle size={24} className="mr-2" />
           <h3 className="text-lg font-medium">Error</h3>
         </div>
-        <p className="text-gray-700 mb-4">{error}</p>
+        <p className="text-fg mb-4">{error}</p>
         <div className="flex justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 mr-2"
+            className="px-4 py-2 bg-surface-raised text-fg rounded-md hover:bg-surface-raised mr-2"
           >
             Cancel
           </button>
@@ -385,7 +385,7 @@ const FilteredSubsetCreator = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md overflow-hidden ${className}`}
+      className={`bg-surface rounded-lg shadow-md overflow-hidden ${className}`}
     >
       {/* Header */}
       <div className="bg-blue-600 text-white p-4">
@@ -419,24 +419,25 @@ const FilteredSubsetCreator = ({
         {/* Filter form */}
         <div className="mb-6">
           <h3 className="text-lg font-medium mb-4 flex items-center">
-            <Filter size={18} className="mr-2 text-gray-500" />
+            <Filter size={18} className="mr-2 text-fg-muted" />
             Filtering Criteria
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Demographic filters */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-800 mb-3 flex items-center">
-                <Users size={16} className="mr-2 text-gray-500" />
+            <div className="border border-line rounded-lg p-4">
+              <h4 className="font-medium text-fg mb-3 flex items-center">
+                <Users size={16} className="mr-2 text-fg-muted" />
                 Demographics
               </h4>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="fsc-gender" className="block text-sm font-medium text-fg mb-1">
                   Gender
                 </label>
                 <select
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  id="fsc-gender"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={filters.gender}
                   onChange={(e) => handleFilterChange("gender", e.target.value)}
                 >
@@ -449,19 +450,20 @@ const FilteredSubsetCreator = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <p className="block text-sm font-medium text-fg mb-1">
                   Age Range
-                </label>
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">
+                    <label htmlFor="fsc-age-min" className="block text-xs text-fg-muted mb-1">
                       Min Age
                     </label>
                     <input
+                      id="fsc-age-min"
                       type="number"
                       min="0"
                       max="120"
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                       value={filters.ageRange.min}
                       onChange={(e) =>
                         handleFilterChange("ageRange.min", e.target.value)
@@ -470,14 +472,15 @@ const FilteredSubsetCreator = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">
+                    <label htmlFor="fsc-age-max" className="block text-xs text-fg-muted mb-1">
                       Max Age
                     </label>
                     <input
+                      id="fsc-age-max"
                       type="number"
                       min="0"
                       max="120"
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                       value={filters.ageRange.max}
                       onChange={(e) =>
                         handleFilterChange("ageRange.max", e.target.value)
@@ -490,20 +493,21 @@ const FilteredSubsetCreator = ({
             </div>
 
             {/* Time range filters */}
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-800 mb-3 flex items-center">
-                <Calendar size={16} className="mr-2 text-gray-500" />
+            <div className="border border-line rounded-lg p-4">
+              <h4 className="font-medium text-fg mb-3 flex items-center">
+                <Calendar size={16} className="mr-2 text-fg-muted" />
                 Time Period
               </h4>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="fsc-date-start" className="block text-sm font-medium text-fg mb-1">
                     Start Date
                   </label>
                   <input
+                    id="fsc-date-start"
                     type="date"
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     value={filters.timeRange.start}
                     onChange={(e) =>
                       handleFilterChange("timeRange.start", e.target.value)
@@ -521,12 +525,13 @@ const FilteredSubsetCreator = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="fsc-date-end" className="block text-sm font-medium text-fg mb-1">
                     End Date
                   </label>
                   <input
+                    id="fsc-date-end"
                     type="date"
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     value={filters.timeRange.end}
                     onChange={(e) =>
                       handleFilterChange("timeRange.end", e.target.value)
@@ -547,12 +552,12 @@ const FilteredSubsetCreator = ({
 
               {/* Quick select buttons */}
               <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <p className="block text-sm font-medium text-fg mb-1">
                   Quick Select
-                </label>
+                </p>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                    className="px-2 py-1 text-xs border border-line rounded hover:bg-surface"
                     onClick={() => {
                       // Get dates for previous 12 months
                       const end = new Date();
@@ -572,7 +577,7 @@ const FilteredSubsetCreator = ({
                     Last 12 Months
                   </button>
                   <button
-                    className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                    className="px-2 py-1 text-xs border border-line rounded hover:bg-surface"
                     onClick={() => {
                       // Get dates for years 2020-2022
                       handleFilterChange("timeRange.start", "2020-01-01");
@@ -582,7 +587,7 @@ const FilteredSubsetCreator = ({
                     2020-2022
                   </button>
                   <button
-                    className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                    className="px-2 py-1 text-xs border border-line rounded hover:bg-surface"
                     onClick={() => {
                       // Clear time range filters
                       handleFilterChange("timeRange.start", "");
@@ -601,20 +606,20 @@ const FilteredSubsetCreator = ({
             <details className="group">
               <summary className="flex items-center cursor-pointer py-2">
                 <ChevronDown
-                  className="mr-2 text-gray-500 transition-transform group-open:rotate-180"
+                  className="mr-2 text-fg-muted transition-transform group-open:rotate-180"
                   size={16}
                 />
-                <span className="font-medium text-gray-700">
+                <span className="font-medium text-fg">
                   Advanced Filters
                 </span>
               </summary>
 
-              <div className="mt-3 pl-6 border-l-2 border-gray-200">
+              <div className="mt-3 pl-6 border-l-2 border-line">
                 {/* Conditions */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <p className="block text-sm font-medium text-fg mb-2">
                     Conditions/Diagnoses
-                  </label>
+                  </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {datasetInfo?.conditions?.slice(0, 6).map((condition) => (
                       <label
@@ -623,7 +628,7 @@ const FilteredSubsetCreator = ({
                       >
                         <input
                           type="checkbox"
-                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
+                          className="rounded border-line text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
                           checked={filters.conditions.includes(condition.id)}
                           onChange={() =>
                             handleFilterChange("conditions", condition.id)
@@ -637,9 +642,9 @@ const FilteredSubsetCreator = ({
 
                 {/* Record Types */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <p className="block text-sm font-medium text-fg mb-2">
                     Record Types
-                  </label>
+                  </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {datasetInfo?.recordTypes?.slice(0, 6).map((type) => (
                       <label
@@ -648,7 +653,7 @@ const FilteredSubsetCreator = ({
                       >
                         <input
                           type="checkbox"
-                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
+                          className="rounded border-line text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 mr-2"
                           checked={filters.recordTypes.includes(type.id)}
                           onChange={() =>
                             handleFilterChange("recordTypes", type.id)
@@ -668,7 +673,7 @@ const FilteredSubsetCreator = ({
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
             <h3 className="text-lg font-medium flex items-center">
-              <DollarSign size={18} className="mr-2 text-gray-500" />
+              <DollarSign size={18} className="mr-2 text-fg-muted" />
               Subset Preview & Pricing
             </h3>
 
@@ -701,21 +706,21 @@ const FilteredSubsetCreator = ({
 
           {/* Preview results */}
           {previewResults && (
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+            <div className="bg-surface rounded-lg border border-line p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium text-gray-800 mb-2">
+                  <h4 className="font-medium text-fg mb-2">
                     Subset Statistics
                   </h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Records:</span>
+                      <span className="text-fg-muted">Records:</span>
                       <span className="font-medium">
                         {previewResults.recordCount.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">% of Full Dataset:</span>
+                      <span className="text-fg-muted">% of Full Dataset:</span>
                       <span className="font-medium">
                         {Math.round(
                           (previewResults.recordCount /
@@ -726,7 +731,7 @@ const FilteredSubsetCreator = ({
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Unique Patients:</span>
+                      <span className="text-fg-muted">Unique Patients:</span>
                       <span className="font-medium">
                         {previewResults.patientCount?.toLocaleString() || "N/A"}
                       </span>
@@ -735,29 +740,29 @@ const FilteredSubsetCreator = ({
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-gray-800 mb-2">Pricing</h4>
+                  <h4 className="font-medium text-fg mb-2">Pricing</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Base Price:</span>
+                      <span className="text-fg-muted">Base Price:</span>
                       <span className="font-medium">{basePrice} ETH</span>
                     </div>
 
-                    <div className="flex justify-between text-sm text-gray-500">
+                    <div className="flex justify-between text-sm text-fg-muted">
                       <span>Record Ratio Factor:</span>
                       <span>x{priceFactors.recordCount.toFixed(2)}</span>
                     </div>
 
-                    <div className="flex justify-between text-sm text-gray-500">
+                    <div className="flex justify-between text-sm text-fg-muted">
                       <span>Time Specificity Factor:</span>
                       <span>x{priceFactors.timeRange.toFixed(2)}</span>
                     </div>
 
-                    <div className="flex justify-between text-sm text-gray-500">
+                    <div className="flex justify-between text-sm text-fg-muted">
                       <span>Demographic Filter Factor:</span>
                       <span>x{priceFactors.demographic.toFixed(2)}</span>
                     </div>
 
-                    <div className="border-t border-gray-200 pt-2 mt-2"></div>
+                    <div className="border-t border-line pt-2 mt-2"></div>
 
                     <div className="flex justify-between font-bold text-blue-700">
                       <span>Final Price:</span>
@@ -774,18 +779,19 @@ const FilteredSubsetCreator = ({
         {previewResults && (
           <div>
             <h3 className="text-lg font-medium mb-3 flex items-center">
-              <Save size={18} className="mr-2 text-gray-500" />
+              <Save size={18} className="mr-2 text-fg-muted" />
               Save & Purchase
             </h3>
 
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+            <div className="bg-surface rounded-lg border border-line p-4">
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="fsc-subset-name" className="block text-sm font-medium text-fg mb-1">
                   Subset Name
                 </label>
                 <input
+                  id="fsc-subset-name"
                   type="text"
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   value={subsetName}
                   onChange={(e) => setSubsetName(e.target.value)}
                   placeholder="Enter a name for your filtered subset"
@@ -796,7 +802,7 @@ const FilteredSubsetCreator = ({
               <div className="flex flex-col md:flex-row gap-3 justify-end">
                 <button
                   onClick={onCancel}
-                  className={`px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 ${purchaseInProgress ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`px-4 py-2 border border-line text-fg rounded-md hover:bg-surface ${purchaseInProgress ? "opacity-50 cursor-not-allowed" : ""}`}
                   disabled={purchaseInProgress} // Disable during purchase
                 >
                   Cancel

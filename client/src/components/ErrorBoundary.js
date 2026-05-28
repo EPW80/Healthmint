@@ -26,12 +26,12 @@ class ErrorBoundary extends React.Component {
           <h2 className="text-xl font-bold text-red-700 mb-3">
             Something went wrong
           </h2>
-          <div className="bg-white p-4 rounded-md mb-4 overflow-auto max-h-60">
+          <div className="bg-surface p-4 rounded-md mb-4 overflow-auto max-h-60">
             <p className="text-red-600 font-medium">
               {this.state.error?.toString()}
             </p>
             {this.state.errorInfo && (
-              <pre className="mt-2 text-xs text-gray-700 whitespace-pre-wrap">
+              <pre className="mt-2 text-xs text-fg whitespace-pre-wrap">
                 {this.state.errorInfo.componentStack}
               </pre>
             )}

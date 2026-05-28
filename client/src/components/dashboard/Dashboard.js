@@ -451,7 +451,7 @@ const Dashboard = ({ onNavigate }) => {
       case "publication":
         return <BookOpen className="w-5 h-5 text-indigo-500" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-500" />;
+        return <Clock className="w-5 h-5 text-fg-muted" />;
     }
   };
 
@@ -579,9 +579,7 @@ const Dashboard = ({ onNavigate }) => {
         <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 mb-8 flex items-start gap-3">
           <Shield className="text-accent flex-shrink-0 mt-1" size={24} />
           <div>
-            <h3 className="font-medium text-accent">
-              Your Data is Protected
-            </h3>
+            <h3 className="font-medium text-accent">Your Data is Protected</h3>
             <p className="text-sm text-fg-muted">
               Your health information is securely stored and protected in
               accordance with HIPAA regulations. You control who can access your
@@ -720,9 +718,7 @@ const Dashboard = ({ onNavigate }) => {
 
                       {/* Diagnoses */}
                       <div className="bg-surface p-3 rounded border border-line">
-                        <h5 className="font-medium text-fg mb-2">
-                          Diagnoses
-                        </h5>
+                        <h5 className="font-medium text-fg mb-2">Diagnoses</h5>
                         <ul className="list-disc pl-5 space-y-1 text-sm">
                           <li>Type 2 Diabetes Mellitus (E11.9)</li>
                           <li>Essential Hypertension (I10)</li>
@@ -1002,9 +998,7 @@ const Dashboard = ({ onNavigate }) => {
                     </div>
                   </div>
                   {activity.status && (
-                    <span
-                      className={getActivityStatusColor(activity.status)}
-                    >
+                    <span className={getActivityStatusColor(activity.status)}>
                       {activity.status.charAt(0).toUpperCase() +
                         activity.status.slice(1)}
                     </span>
@@ -1169,9 +1163,7 @@ const Dashboard = ({ onNavigate }) => {
       <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 mb-8 flex items-start gap-3">
         <Briefcase className="text-accent flex-shrink-0 mt-1" size={24} />
         <div>
-          <h3 className="font-medium text-accent">
-            Research Ethics Reminder
-          </h3>
+          <h3 className="font-medium text-accent">Research Ethics Reminder</h3>
           <p className="text-sm text-fg-muted">
             All data access is HIPAA-compliant and ethically sourced. Remember
             to include proper attribution when publishing findings based on
@@ -1236,9 +1228,7 @@ const Dashboard = ({ onNavigate }) => {
                   </div>
 
                   <div>
-                    <h5 className="font-semibold text-fg mb-2">
-                      Description
-                    </h5>
+                    <h5 className="font-semibold text-fg mb-2">Description</h5>
                     <p className="text-fg">
                       {datasetDetails.description ||
                         "No description available."}
@@ -1247,9 +1237,7 @@ const Dashboard = ({ onNavigate }) => {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-surface-raised p-4 rounded-lg">
-                      <h5 className="font-medium text-fg mb-1">
-                        Records
-                      </h5>
+                      <h5 className="font-medium text-fg mb-1">Records</h5>
                       <p className="text-lg font-semibold">
                         {datasetDetails.recordCount || "Unknown"}
                       </p>
@@ -1261,9 +1249,7 @@ const Dashboard = ({ onNavigate }) => {
                       </p>
                     </div>
                     <div className="bg-surface-raised p-4 rounded-lg">
-                      <h5 className="font-medium text-fg mb-1">
-                        Data Type
-                      </h5>
+                      <h5 className="font-medium text-fg mb-1">Data Type</h5>
                       <p className="text-lg font-semibold">
                         {datasetDetails.anonymized
                           ? "Anonymized"
@@ -1316,9 +1302,7 @@ const Dashboard = ({ onNavigate }) => {
       <div className="bg-surface border border-line rounded-token-lg shadow-soft-md mb-8">
         <div className="p-6 border-b border-line">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-fg">
-              Recent Datasets
-            </h2>
+            <h2 className="text-2xl font-semibold text-fg">Recent Datasets</h2>
             <button
               onClick={() => handleNavigateTo("/browse")}
               className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2"
@@ -1494,9 +1478,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
             <div className="relative pl-10 pb-3">
               <div className="absolute left-2 w-4 h-4 rounded-full bg-purple-300"></div>
-              <h3 className="font-medium text-fg">
-                Analysis In Progress
-              </h3>
+              <h3 className="font-medium text-fg">Analysis In Progress</h3>
               <p className="text-sm text-fg-muted">
                 {activeStudies} active studies
               </p>
@@ -1537,9 +1519,7 @@ const Dashboard = ({ onNavigate }) => {
                   </div>
                 </div>
                 {activity.status && (
-                  <span
-                    className={getActivityStatusColor(activity.status)}
-                  >
+                  <span className={getActivityStatusColor(activity.status)}>
                     {activity.status.charAt(0).toUpperCase() +
                       activity.status.slice(1)}
                   </span>

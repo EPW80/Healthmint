@@ -689,16 +689,16 @@ const ProfileManager = () => {
   if (initialLoading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold text-center mb-8 text-fg">
           Profile Settings
         </h1>
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-8 border border-white/30 shadow-lg flex flex-col items-center justify-center min-h-[400px]">
+        <div className="bg-surface border border-line rounded-token-lg p-8 shadow-soft-lg flex flex-col items-center justify-center min-h-[400px]">
           <LoadingSpinner
             size="large"
             label="Loading your profile..."
             showLabel={true}
           />
-          <p className="text-gray-500 mt-4">
+          <p className="text-fg-muted mt-4">
             Please wait while we retrieve your information
           </p>
         </div>
@@ -708,24 +708,24 @@ const ProfileManager = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+      <h1 className="text-3xl font-bold text-center mb-8 text-fg">
         Profile Settings
       </h1>
 
       {/* HIPAA Compliance Banner */}
       <div
-        className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-start gap-3"
+        className="bg-info-soft border border-info/30 rounded-token p-4 mb-6 flex items-start gap-3"
         role="region"
         aria-label="HIPAA compliance information"
       >
         <Shield
-          className="text-blue-500 flex-shrink-0 mt-1"
+          className="text-info flex-shrink-0 mt-1"
           size={20}
           aria-hidden="true"
         />
         <div>
-          <h3 className="font-medium text-blue-700">HIPAA Compliance Notice</h3>
-          <p className="text-sm text-blue-600">
+          <h3 className="font-medium text-fg">HIPAA Compliance Notice</h3>
+          <p className="text-sm text-fg-muted">
             Your profile information is protected in accordance with HIPAA
             regulations. All changes to your profile settings are logged and
             protected with industry-standard security measures.
@@ -735,20 +735,20 @@ const ProfileManager = () => {
 
       {/* Data Processing Notice */}
       <div
-        className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 flex items-start gap-3"
+        className="bg-surface border border-line rounded-token p-4 mb-6 flex items-start gap-3"
         role="region"
         aria-label="Data processing information"
       >
         <Info
-          className="text-gray-500 flex-shrink-0 mt-1"
+          className="text-fg-muted flex-shrink-0 mt-1"
           size={20}
           aria-hidden="true"
         />
         <div>
-          <h3 className="font-medium text-gray-700">
+          <h3 className="font-medium text-fg">
             Data Processing Information
           </h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-fg-muted">
             All profile data is sanitized before transmission in accordance with
             HIPAA guidelines.
             {userRole === "patient" &&
@@ -770,18 +770,18 @@ const ProfileManager = () => {
       {/* Success Alert */}
       {success && (
         <div
-          className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2"
+          className="mb-6 bg-success-soft border border-success/30 text-success px-4 py-3 rounded-token flex items-center gap-2"
           role="alert"
           aria-live="polite"
         >
           <CheckCircle
             size={20}
-            className="text-green-500 flex-shrink-0"
+            className="text-success flex-shrink-0"
             aria-hidden="true"
           />
           <span className="flex-1">Profile updated successfully!</span>
           <button
-            className="text-green-500 hover:text-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 rounded-full"
+            className="text-success hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-full"
             onClick={() => setSuccess(false)}
             aria-label="Dismiss success message"
           >
@@ -791,7 +791,7 @@ const ProfileManager = () => {
       )}
 
       {/* Profile header with image uploader */}
-      <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 mb-8 border border-white/30 shadow-lg">
+      <div className="bg-surface border border-line rounded-token-lg p-6 mb-8 shadow-soft-md">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-4">
             <ProfileImageUploader
@@ -811,12 +811,12 @@ const ProfileManager = () => {
           </div>
 
           <div className="md:col-span-8">
-            <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
+            <h2 className="text-xl font-semibold mb-4 text-fg">Basic Information</h2>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Name
                 </label>
@@ -826,8 +826,8 @@ const ProfileManager = () => {
                   type="text"
                   value={formState.name || ""}
                   onChange={handleChange}
-                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.name ? "border-red-300" : ""
+                  className={`w-full rounded-token border-line shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                    errors.name ? "border-danger" : ""
                   }`}
                   required
                   aria-required="true"
@@ -835,7 +835,7 @@ const ProfileManager = () => {
                   aria-describedby={errors.name ? "name-error" : undefined}
                 />
                 {errors.name && (
-                  <p id="name-error" className="mt-1 text-sm text-red-600">
+                  <p id="name-error" className="mt-1 text-sm text-danger">
                     {errors.name}
                   </p>
                 )}
@@ -843,7 +843,7 @@ const ProfileManager = () => {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Email
                 </label>
@@ -853,20 +853,20 @@ const ProfileManager = () => {
                   type="email"
                   value={formState.email || ""}
                   onChange={handleChange}
-                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.email ? "border-red-300" : ""
+                  className={`w-full rounded-token border-line shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                    errors.email ? "border-danger" : ""
                   }`}
                   aria-label="Email address"
                   aria-invalid={!!errors.email}
                   aria-describedby={errors.email ? "email-error" : undefined}
                 />
                 {errors.email && (
-                  <p id="email-error" className="mt-1 text-sm text-red-600">
+                  <p id="email-error" className="mt-1 text-sm text-danger">
                     {errors.email}
                   </p>
                 )}
                 {userRole === "patient" && (
-                  <p id="email-hint" className="mt-1 text-xs text-gray-500">
+                  <p id="email-hint" className="mt-1 text-xs text-fg-muted">
                     Your email will be masked unless you enable direct contact
                     in Privacy settings
                   </p>
@@ -876,7 +876,7 @@ const ProfileManager = () => {
                 <div>
                   <label
                     htmlFor="age"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-fg mb-1"
                   >
                     Age
                   </label>
@@ -903,14 +903,14 @@ const ProfileManager = () => {
                         });
                       }
                     }}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full rounded-token border-line shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     aria-label="Age"
                     aria-describedby={
                       userRole === "patient" ? "age-hint" : undefined
                     }
                   />
                   {userRole === "patient" && (
-                    <p id="age-hint" className="mt-1 text-xs text-gray-500">
+                    <p id="age-hint" className="mt-1 text-xs text-fg-muted">
                       Only shared if anonymous sharing is enabled
                     </p>
                   )}
@@ -919,8 +919,8 @@ const ProfileManager = () => {
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                       userRole === "patient"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-purple-100 text-purple-800"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-info-soft text-info"
                     }`}
                     role="status"
                   >
@@ -947,19 +947,19 @@ const ProfileManager = () => {
       </div>
 
       {/* Tabbed section with enhanced accessibility */}
-      <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg border border-white/30">
-        <div className="border-b border-gray-200">
-          <nav
+      <div className="bg-surface border border-line rounded-token-lg shadow-soft-md">
+        <div className="border-b border-line">
+          <div
             className="flex overflow-x-auto"
             aria-label="Profile settings tabs"
             role="tablist"
           >
             <button
               onClick={() => handleTabChange(0)}
-              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                 tabValue === 0
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-accent text-accent"
+                  : "border-transparent text-fg-muted hover:text-fg hover:border-line"
               }`}
               id="profile-tab-0"
               aria-controls="profile-tabpanel-0"
@@ -972,10 +972,10 @@ const ProfileManager = () => {
             </button>
             <button
               onClick={() => handleTabChange(1)}
-              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                 tabValue === 1
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-accent text-accent"
+                  : "border-transparent text-fg-muted hover:text-fg hover:border-line"
               }`}
               id="profile-tab-1"
               aria-controls="profile-tabpanel-1"
@@ -988,10 +988,10 @@ const ProfileManager = () => {
             </button>
             <button
               onClick={() => handleTabChange(2)}
-              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                 tabValue === 2
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-accent text-accent"
+                  : "border-transparent text-fg-muted hover:text-fg hover:border-line"
               }`}
               id="profile-tab-2"
               aria-controls="profile-tabpanel-2"
@@ -1004,10 +1004,10 @@ const ProfileManager = () => {
             </button>
             <button
               onClick={() => handleTabChange(3)}
-              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+              className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                 tabValue === 3
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-accent text-accent"
+                  : "border-transparent text-fg-muted hover:text-fg hover:border-line"
               }`}
               id="profile-tab-3"
               aria-controls="profile-tabpanel-3"
@@ -1021,10 +1021,10 @@ const ProfileManager = () => {
             {userRole === "researcher" && (
               <button
                 onClick={() => handleTabChange(4)}
-                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap ${
+                className={`py-3 px-4 text-sm font-medium border-b-2 flex items-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                   tabValue === 4
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-accent text-accent"
+                    : "border-transparent text-fg-muted hover:text-fg hover:border-line"
                 }`}
                 id="profile-tab-4"
                 aria-controls="profile-tabpanel-4"
@@ -1036,7 +1036,7 @@ const ProfileManager = () => {
                 Credentials
               </button>
             )}
-          </nav>
+          </div>
         </div>
 
         <ProfileTabs
@@ -1066,14 +1066,14 @@ const ProfileManager = () => {
       {/* HIPAA processing notification */}
       {userRole === "patient" && (
         <div
-          className="mt-6 p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-sm text-yellow-700"
+          className="mt-6 p-3 bg-warning-soft border border-warning/30 rounded-token text-sm text-warning"
           role="region"
           aria-label="HIPAA data processing notice"
         >
           <div className="flex items-center mb-1">
             <Info
               size={16}
-              className="mr-2 text-yellow-600"
+              className="mr-2 text-warning"
               aria-hidden="true"
             />
             <span className="font-medium">HIPAA Data Processing Notice</span>
@@ -1093,13 +1093,13 @@ const ProfileManager = () => {
           type="button"
           onClick={handleSaveProfile}
           disabled={loading || !isDirty}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
+          className={`flex items-center gap-2 px-6 py-2 rounded-token ${
             loading
-              ? "bg-blue-400 cursor-not-allowed"
+              ? "bg-accent/60 cursor-not-allowed"
               : !isDirty
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-          } text-white font-medium shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+                ? "bg-fg-subtle cursor-not-allowed"
+                : "bg-accent hover:bg-accent-hover"
+          } text-accent-fg font-medium shadow-soft-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring`}
           aria-label="Save profile changes"
           aria-busy={loading}
           aria-disabled={!isDirty}
@@ -1107,7 +1107,7 @@ const ProfileManager = () => {
         >
           {loading ? (
             <>
-              <LoadingSpinner size="small" color="white" />
+              <LoadingSpinner size="small" color="on-accent" />
               <span>Saving...</span>
             </>
           ) : (

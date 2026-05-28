@@ -16,7 +16,7 @@ const NotificationsTab = ({ userRole, formState, handleFormChange }) => {
                 name={`emailNotifications.${key}`}
                 checked={formState.emailNotifications?.[key] || false}
                 onChange={handleFormChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-line text-blue-600 focus:ring-blue-500"
               />
               <span className="ml-2">
                 {key === "dataAccess"
@@ -40,7 +40,7 @@ const NotificationsTab = ({ userRole, formState, handleFormChange }) => {
                 name={`inAppNotifications.${key}`}
                 checked={formState.inAppNotifications?.[key] || false}
                 onChange={handleFormChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-line text-blue-600 focus:ring-blue-500"
               />
               <span className="ml-2">
                 {key === "messages"
@@ -63,7 +63,7 @@ const NotificationsTab = ({ userRole, formState, handleFormChange }) => {
               name="notificationPreferences.accessAlerts"
               checked={formState.notificationPreferences?.accessAlerts || false}
               onChange={handleFormChange}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded border-line text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2">
               {userRole === "patient"
@@ -82,7 +82,7 @@ const NotificationsTab = ({ userRole, formState, handleFormChange }) => {
                 formState.notificationPreferences?.transactionAlerts || false
               }
               onChange={handleFormChange}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded border-line text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2">Transaction alerts</span>
           </label>
@@ -98,7 +98,7 @@ const NotificationsTab = ({ userRole, formState, handleFormChange }) => {
                   formState.notificationPreferences?.researchUpdates || false
                 }
                 onChange={handleFormChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-line text-blue-600 focus:ring-blue-500"
               />
               <span className="ml-2">Research updates using my data</span>
             </label>
@@ -113,7 +113,7 @@ const NotificationsTab = ({ userRole, formState, handleFormChange }) => {
                   formState.notificationPreferences?.newDatasets || false
                 }
                 onChange={handleFormChange}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-line text-blue-600 focus:ring-blue-500"
               />
               <span className="ml-2">
                 Notify me about new relevant datasets

@@ -46,7 +46,7 @@ const CredentialsTab = ({
         <div>
           <label
             htmlFor="institution"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-fg mb-1"
           >
             Institution/Organization
           </label>
@@ -56,7 +56,7 @@ const CredentialsTab = ({
             type="text"
             value={formState.institution}
             onChange={handleFormChange}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="University, Research Institute, or Organization"
             aria-label="Institution or organization"
           />
@@ -65,7 +65,7 @@ const CredentialsTab = ({
         <div>
           <label
             htmlFor="credentials"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-fg mb-1"
           >
             Credentials
           </label>
@@ -75,7 +75,7 @@ const CredentialsTab = ({
             type="text"
             value={formState.credentials}
             onChange={handleFormChange}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Ph.D., M.D., or other relevant qualifications"
             aria-label="Academic or professional credentials"
           />
@@ -84,7 +84,7 @@ const CredentialsTab = ({
         <div>
           <label
             htmlFor="researchFocus"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-fg mb-1"
           >
             Research Focus
           </label>
@@ -94,21 +94,19 @@ const CredentialsTab = ({
             value={formState.researchFocus}
             onChange={handleFormChange}
             rows="2"
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Describe your main research interests and expertise"
             aria-label="Research focus areas"
           ></textarea>
         </div>
 
         <div>
-          <label className="block text-lg font-medium text-gray-700 mb-3">
-            Publications
-          </label>
+          <p className="block text-lg font-medium text-fg mb-3">Publications</p>
 
           {formState.publications?.map((pub) => (
             <div
               key={pub.id}
-              className="p-4 mb-3 border border-gray-200 rounded-lg flex justify-between items-center"
+              className="p-4 mb-3 border border-line rounded-lg flex justify-between items-center"
             >
               <div>
                 <p className="font-medium">{pub.title}</p>
@@ -138,7 +136,7 @@ const CredentialsTab = ({
                 name="title"
                 value={newPublication.title}
                 onChange={handlePublicationFormChange}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="Publication title"
                 aria-label="Publication title"
               />
@@ -149,7 +147,7 @@ const CredentialsTab = ({
                 name="url"
                 value={newPublication.url}
                 onChange={handlePublicationFormChange}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 placeholder="URL to publication"
                 aria-label="Publication URL"
               />

@@ -102,12 +102,13 @@ const FileUploader = () => {
           </label>
         </div>
 
-        <label className="block text-gray-700 mb-2">Select File</label>
+        <label htmlFor="fu-file-input" className="block text-fg mb-2">Select File</label>
         <input
+          id="fu-file-input"
           type="file"
           onChange={handleFileChange}
           disabled={uploading}
-          className="block w-full text-sm text-gray-500
+          className="block w-full text-sm text-fg-muted
             file:mr-4 file:py-2 file:px-4
             file:rounded file:border-0
             file:text-sm file:font-semibold
@@ -121,7 +122,7 @@ const FileUploader = () => {
         disabled={!file || uploading}
         className={`px-4 py-2 rounded ${
           !file || uploading
-            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+            ? "bg-surface-raised text-fg-muted cursor-not-allowed"
             : "bg-blue-600 text-white hover:bg-blue-700"
         } transition duration-200`}
       >
@@ -156,8 +157,8 @@ const FileUploader = () => {
 
       {progress > 0 && progress < 100 && (
         <div className="mt-4">
-          <p className="text-sm text-gray-600">Uploading: {progress}%</p>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <p className="text-sm text-fg-muted">Uploading: {progress}%</p>
+          <div className="w-full bg-surface-raised rounded-full h-2.5">
             <div
               className="bg-blue-600 h-2.5 rounded-full"
               style={{ width: `${progress}%` }}

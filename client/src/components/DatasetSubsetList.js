@@ -30,7 +30,7 @@ const DatasetSubsetList = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md overflow-hidden ${className}`}
+      className={`bg-surface rounded-lg shadow-md overflow-hidden ${className}`}
     >
       <div className="bg-indigo-50 border-b border-indigo-100 p-4">
         <h3 className="text-lg font-semibold text-indigo-800 flex items-center">
@@ -43,15 +43,15 @@ const DatasetSubsetList = ({
         </p>
       </div>
 
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-line">
         {subsets.map((subset) => (
           <div
             key={subset.id}
-            className={`p-4 hover:bg-gray-50 transition-colors ${subset.purchased ? "bg-green-50" : ""}`}
+            className={`p-4 hover:bg-surface transition-colors ${subset.purchased ? "bg-green-50" : ""}`}
           >
             <div className="flex justify-between items-start">
               <div>
-                <h4 className="font-medium text-gray-900 flex items-center">
+                <h4 className="font-medium text-fg flex items-center">
                   {subset.name || "Unnamed Subset"}
                   {subset.purchased && (
                     <CheckCircle size={16} className="ml-2 text-green-500" />
@@ -104,7 +104,7 @@ const DatasetSubsetList = ({
               </div>
 
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1 text-gray-500 text-sm">
+                <div className="flex items-center justify-end gap-1 text-fg-muted text-sm">
                   <Clock size={14} />
                   <span>
                     {new Date(
@@ -121,7 +121,7 @@ const DatasetSubsetList = ({
             <div className="mt-3 flex gap-2 justify-end">
               <button
                 onClick={() => onViewSubset && onViewSubset(subset)}
-                className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors flex items-center"
+                className="px-3 py-1.5 text-sm border border-line text-fg rounded hover:bg-surface transition-colors flex items-center"
               >
                 View Details
               </button>

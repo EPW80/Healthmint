@@ -258,8 +258,8 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
   return (
     <div className="container mx-auto max-w-xl px-4 py-8">
       <div className="mt-4">
-        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border border-white/30 hover:translate-y-[-4px] transition-transform duration-300">
-          <h2 className="flex items-center gap-2 text-2xl font-bold mb-6 text-gray-800">
+        <div className="bg-surface/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border border-line hover:translate-y-[-4px] transition-transform duration-300">
+          <h2 className="flex items-center gap-2 text-2xl font-bold mb-6 text-fg">
             <Upload className="text-blue-500" size={24} />
             Upload Health Data
           </h2>
@@ -304,20 +304,20 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
               </label>
 
               {fileData && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="mt-3 p-3 bg-surface rounded-lg border border-line">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-gray-700 font-medium truncate">
+                      <p className="text-fg font-medium truncate">
                         {fileData.name}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-fg-muted">
                         {(fileData.size / (1024 * 1024)).toFixed(2)} MB
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setFileData(null)}
-                      className="text-gray-400 hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 rounded-full p-1"
+                      className="text-fg-subtle hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 rounded-full p-1"
                       aria-label="Remove file"
                     >
                       <X size={16} />
@@ -330,7 +330,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
             <div className="mb-6">
               <label
                 htmlFor="category"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-fg mb-1"
               >
                 Category
               </label>
@@ -338,7 +338,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 id="category"
                 value={category}
                 onChange={handleCategoryChange}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                className="w-full rounded-lg border-line shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 disabled={loading}
               >
                 <option value="">Select Category</option>
@@ -353,7 +353,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
             <div className="mb-6">
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-fg mb-1"
               >
                 Description
               </label>
@@ -361,7 +361,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 id="description"
                 value={description}
                 onChange={handleDescriptionChange}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                className="w-full rounded-lg border-line shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 rows="3"
                 disabled={loading}
                 placeholder="Describe this health data record"
@@ -371,7 +371,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
             <div className="mb-6">
               <label
                 htmlFor="price"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-fg mb-1"
               >
                 Price (ETH)
               </label>
@@ -380,7 +380,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 type="number"
                 value={price}
                 onChange={handlePriceChange}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                className="w-full rounded-lg border-line shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 step="0.00000001"
                 min="0"
                 max="100000"
@@ -388,7 +388,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 placeholder="Enter price in ETH"
                 aria-describedby="price-description"
               />
-              <p id="price-description" className="mt-1 text-sm text-gray-500">
+              <p id="price-description" className="mt-1 text-sm text-fg-muted">
                 Enter price in ETH (max 8 decimal places)
               </p>
             </div>
@@ -439,7 +439,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
 
             {loading && (
               <div className="mt-4" aria-live="polite" aria-atomic="true">
-                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-surface-raised rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
@@ -452,11 +452,11 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
                 <div className="flex items-center justify-between mt-2">
                   <div className="flex items-center">
                     {getStatusIcon()}
-                    <p className="text-sm text-gray-600 ml-2">
+                    <p className="text-sm text-fg-muted ml-2">
                       {getStatusText()}
                     </p>
                   </div>
-                  <p className="text-right text-sm text-gray-600">
+                  <p className="text-right text-sm text-fg-muted">
                     {uploadProgress}%
                   </p>
                 </div>
@@ -478,7 +478,7 @@ const DataUpload = ({ onUploadSuccess, onUploadError }) => {
               </div>
             )}
 
-            <p className="mt-4 text-xs text-gray-500 text-center">
+            <p className="mt-4 text-xs text-fg-muted text-center">
               Supported files: PDF, DOC, DOCX, TXT, JSON, JPG, PNG (max{" "}
               {MAX_FILE_SIZE / (1024 * 1024)}MB)
             </p>

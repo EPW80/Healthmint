@@ -234,7 +234,7 @@ const WalletStatus = ({
   // Primary component render
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}
+      className={`bg-surface border border-line rounded-lg p-4 ${className}`}
     >
       <div className="flex justify-between items-center">
         <div className="flex items-center">
@@ -244,7 +244,7 @@ const WalletStatus = ({
           <div>
             <h3 className="font-medium">Connected Wallet</h3>
             <div className="flex items-center mt-1">
-              <span className="text-gray-500 text-sm">
+              <span className="text-fg-muted text-sm">
                 {formatAddress(walletAddress)}
               </span>
 
@@ -252,7 +252,7 @@ const WalletStatus = ({
               {showCopy && (
                 <button
                   onClick={copyAddressToClipboard}
-                  className="ml-2 text-gray-400 hover:text-gray-600 p-1"
+                  className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
                   title="Copy address"
                   aria-label="Copy wallet address"
                 >
@@ -270,7 +270,7 @@ const WalletStatus = ({
                   href={getExplorerLink(walletAddress)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-1 text-gray-400 hover:text-gray-600 p-1"
+                  className="ml-1 text-fg-subtle hover:text-fg-muted p-1"
                   title="View on Etherscan"
                   aria-label="View wallet on Etherscan"
                 >
@@ -284,15 +284,15 @@ const WalletStatus = ({
         {/* Balance information */}
         {showBalance && (
           <div className="text-right">
-            <div className="text-xs text-gray-500 mb-1">Balance</div>
+            <div className="text-xs text-fg-muted mb-1">Balance</div>
             {loadingBalance ? (
               <LoadingSpinner size="small" />
             ) : error ? (
               <div className="flex items-center">
-                <span className="text-gray-500 text-sm">--</span>
+                <span className="text-fg-muted text-sm">--</span>
                 <button
                   onClick={fetchBalance}
-                  className="ml-2 text-gray-400 hover:text-gray-600 p-1"
+                  className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
                   title="Retry loading balance"
                   aria-label="Retry loading wallet balance"
                 >
@@ -304,7 +304,7 @@ const WalletStatus = ({
                 <span className="font-medium">{formatBalance(balance)}</span>
                 <button
                   onClick={fetchBalance}
-                  className="ml-2 text-gray-400 hover:text-gray-600 p-1"
+                  className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
                   title="Refresh balance"
                   aria-label="Refresh wallet balance"
                 >
@@ -323,12 +323,12 @@ const WalletStatus = ({
             <div
               className={`w-2 h-2 rounded-full ${network.isSupported ? "bg-green-500" : "bg-yellow-500"} mr-2`}
             ></div>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-fg-muted">
               Network: <span className="font-medium">{network.name}</span>
             </span>
           </div>
 
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-fg-muted">
             Chain ID: {network.chainId}
           </div>
         </div>
@@ -338,8 +338,8 @@ const WalletStatus = ({
       {renderNetworkWarning()}
 
       {/* Disconnect option */}
-      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-        <div className="flex items-center text-xs text-gray-500">
+      <div className="mt-3 pt-3 border-t border-line flex justify-between items-center">
+        <div className="flex items-center text-xs text-fg-muted">
           <Info size={12} className="mr-1" />
           <span>Connected via MetaMask</span>
         </div>

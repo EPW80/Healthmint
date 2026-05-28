@@ -92,9 +92,9 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
             <div className="space-y-4">
               {/* File Upload */}
               <div>
-                <label className="block text-sm font-medium text-fg mb-1">
+                <p className="block text-sm font-medium text-fg mb-1">
                   Upload Health Data Files*
-                </label>
+                </p>
                 <div className="border-2 border-dashed border-line-strong rounded-token p-4 text-center bg-surface">
                   <input
                     type="file"
@@ -137,10 +137,11 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
 
               {/* Additional Notes */}
               <div>
-                <label className="block text-sm font-medium text-fg mb-1">
+                <label htmlFor="dcp-additional-notes" className="block text-sm font-medium text-fg mb-1">
                   Additional Notes
                 </label>
                 <textarea
+                  id="dcp-additional-notes"
                   name="additionalNotes"
                   value={formData.additionalNotes}
                   onChange={handleChange}
@@ -596,11 +597,11 @@ const DataContributionPortal = () => {
           Your Contribution Summary
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <div className="bg-white/10 rounded-lg p-4">
+          <div className="bg-surface/10 rounded-lg p-4">
             <p className="text-white/70 text-sm">Total Contributions</p>
             <p className="text-2xl font-bold">{myContributions.length}</p>
           </div>
-          <div className="bg-white/10 rounded-lg p-4">
+          <div className="bg-surface/10 rounded-lg p-4">
             <p className="text-white/70 text-sm">Total Earnings</p>
             <p className="text-2xl font-bold">
               {myContributions
@@ -609,7 +610,7 @@ const DataContributionPortal = () => {
               ETH
             </p>
           </div>
-          <div className="bg-white/10 rounded-lg p-4">
+          <div className="bg-surface/10 rounded-lg p-4">
             <p className="text-white/70 text-sm">Pending Rewards</p>
             <p className="text-2xl font-bold">
               {myContributions
@@ -663,6 +664,7 @@ const DataContributionPortal = () => {
           <div className="bg-surface border border-line rounded-token shadow-soft-sm">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-line">
+                <caption className="sr-only">Your recent data contributions</caption>
                 <thead className="bg-surface-raised">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">

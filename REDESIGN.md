@@ -69,12 +69,12 @@ In priority order (one PR-sized unit each):
 
 ---
 
-### Phase 6 — A11y Polish `[Sonnet]` + `[Haiku]` for mechanical
+### Phase 6 — A11y Polish `[Sonnet]` + `[Haiku]` for mechanical ✅ COMPLETE
 
-- Audit all pages for `text-gray-500` survivors → remap to `text-fg-muted`/`text-fg-subtle`
-- Add `aria-live` regions on data filters and pagination
-- Add `<caption>` or heading-above-table on all data tables
-- Add `eslint-plugin-jsx-a11y` as dev dep; run and fix violations
+- Audit all pages for `text-gray-500` survivors → remap to `text-fg-muted`/`text-fg-subtle` ✅
+- Add `aria-live` regions on data filters and pagination ✅
+- Add `<caption>` or heading-above-table on all data tables ✅
+- Add `eslint-plugin-jsx-a11y` as dev dep; run and fix violations ✅ (0 violations)
 - Optional: `@axe-core/react` in dev mode only
 
 ---

@@ -85,7 +85,7 @@ const PopulationStudies = () => {
       <div className="flex items-center mb-6">
         <button
           onClick={() => navigate("/dashboard")}
-          className="mr-4 p-2 rounded-full hover:bg-gray-100"
+          className="mr-4 p-2 rounded-full hover:bg-surface-raised"
           aria-label="Back to dashboard"
         >
           <ArrowLeft size={20} />
@@ -100,7 +100,7 @@ const PopulationStudies = () => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {/* Dataset Selection */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">
               Select Population Dataset
             </h2>
@@ -108,7 +108,7 @@ const PopulationStudies = () => {
             {availableDatasets.length === 0 ? (
               <div className="text-center py-6 bg-blue-50 rounded-lg">
                 <FileSpreadsheet className="w-12 h-12 text-blue-400 mx-auto mb-2" />
-                <p className="text-gray-600 mb-4">
+                <p className="text-fg-muted mb-4">
                   No population datasets available
                 </p>
                 <button
@@ -121,12 +121,13 @@ const PopulationStudies = () => {
             ) : (
               <div className="space-y-3">
                 {availableDatasets.map((dataset) => (
-                  <div
+                  <button
                     key={dataset.id}
-                    className={`border rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors ${
+                    type="button"
+                    className={`w-full text-left border rounded-lg p-4 cursor-pointer hover:bg-blue-50 transition-colors ${
                       selectedDataset === dataset.id
                         ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200"
+                        : "border-line"
                     }`}
                     onClick={() => setSelectedDataset(dataset.id)}
                   >
@@ -134,7 +135,7 @@ const PopulationStudies = () => {
                       <div>
                         <h3 className="font-medium">{dataset.name}</h3>
                         <div className="flex items-center mt-1">
-                          <p className="text-sm text-gray-600 mr-3">
+                          <p className="text-sm text-fg-muted mr-3">
                             {dataset.recordCount.toLocaleString()} records
                           </p>
                           {dataset.demographic && (
@@ -162,25 +163,29 @@ const PopulationStudies = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
 
           {/* Population Filters */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Population Filters</h2>
 
             <div
               className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${!selectedDataset ? "opacity-50 pointer-events-none" : ""}`}
             >
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="age-min"
+                  className="block text-sm font-medium text-fg mb-2"
+                >
                   Age Range
                 </label>
                 <div className="flex items-center gap-4">
                   <input
+                    id="age-min"
                     type="number"
                     min="0"
                     max="120"
@@ -191,7 +196,7 @@ const PopulationStudies = () => {
                         populationFilters.ageRange[1],
                       ])
                     }
-                    className="w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-20 rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   <span>to</span>
                   <input
@@ -205,17 +210,21 @@ const PopulationStudies = () => {
                         parseInt(e.target.value),
                       ])
                     }
-                    className="w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-20 rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
 
-                <label className="block text-sm font-medium text-gray-700 mt-4 mb-2">
+                <label
+                  htmlFor="gender-select"
+                  className="block text-sm font-medium text-fg mt-4 mb-2"
+                >
                   Gender
                 </label>
                 <select
+                  id="gender-select"
                   value={populationFilters.gender}
                   onChange={(e) => handleFilterChange("gender", e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Genders</option>
                   <option value="male">Male</option>
@@ -225,13 +234,17 @@ const PopulationStudies = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="region-select"
+                  className="block text-sm font-medium text-fg mb-2"
+                >
                   Region
                 </label>
                 <select
+                  id="region-select"
                   value={populationFilters.region}
                   onChange={(e) => handleFilterChange("region", e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Regions</option>
                   <option value="north_america">North America</option>
@@ -242,15 +255,19 @@ const PopulationStudies = () => {
                   <option value="oceania">Oceania</option>
                 </select>
 
-                <label className="block text-sm font-medium text-gray-700 mt-4 mb-2">
+                <label
+                  htmlFor="diagnosis-select"
+                  className="block text-sm font-medium text-fg mt-4 mb-2"
+                >
                   Diagnosis/Condition
                 </label>
                 <select
+                  id="diagnosis-select"
                   value={populationFilters.diagnosis}
                   onChange={(e) =>
                     handleFilterChange("diagnosis", e.target.value)
                   }
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Conditions</option>
                   <option value="diabetes">Diabetes</option>
@@ -265,7 +282,7 @@ const PopulationStudies = () => {
           </div>
 
           {/* Study Types */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="bg-surface rounded-xl shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">Study Types</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -276,7 +293,7 @@ const PopulationStudies = () => {
                 <h3 className="font-medium text-center">
                   Demographic Analysis
                 </h3>
-                <p className="text-sm text-gray-600 mt-2 text-center">
+                <p className="text-sm text-fg-muted mt-2 text-center">
                   Analyze distribution across population segments
                 </p>
               </div>
@@ -288,7 +305,7 @@ const PopulationStudies = () => {
                 <h3 className="font-medium text-center">
                   Geographic Distribution
                 </h3>
-                <p className="text-sm text-gray-600 mt-2 text-center">
+                <p className="text-sm text-fg-muted mt-2 text-center">
                   Map prevalence across regions
                 </p>
               </div>
@@ -298,7 +315,7 @@ const PopulationStudies = () => {
               >
                 <Share2 className="w-12 h-12 text-purple-500 mx-auto mb-3" />
                 <h3 className="font-medium text-center">Comparative Studies</h3>
-                <p className="text-sm text-gray-600 mt-2 text-center">
+                <p className="text-sm text-fg-muted mt-2 text-center">
                   Compare outcomes between populations
                 </p>
               </div>
@@ -310,7 +327,7 @@ const PopulationStudies = () => {
                 className={`px-6 py-2 rounded-lg flex items-center gap-2 ${
                   selectedDataset
                     ? "bg-blue-500 text-white hover:bg-blue-600"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-surface-raised text-fg-muted cursor-not-allowed"
                 }`}
               >
                 Run Population Study

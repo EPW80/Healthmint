@@ -179,7 +179,7 @@ const HealthDataDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+      <h1 className="text-2xl font-bold text-fg mb-6">
         Health Records Dashboard
       </h1>
 
@@ -194,7 +194,7 @@ const HealthDataDashboard = () => {
       )}
 
       {/* Filters section */}
-      <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+      <div className="bg-surface rounded-xl shadow-md p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <Filter className="text-blue-500" size={20} />
           <h2 className="text-lg font-medium">Filter Records</h2>
@@ -204,7 +204,7 @@ const HealthDataDashboard = () => {
           <div>
             <label
               htmlFor="category"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-fg mb-1"
             >
               Category
             </label>
@@ -213,7 +213,7 @@ const HealthDataDashboard = () => {
               name="category"
               value={filters.category}
               onChange={handleFilterChange}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="All">All Categories</option>
               <option value="General Health">General Health</option>
@@ -226,7 +226,7 @@ const HealthDataDashboard = () => {
           <div>
             <label
               htmlFor="sortBy"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-fg mb-1"
             >
               Sort By
             </label>
@@ -235,7 +235,7 @@ const HealthDataDashboard = () => {
               name="sortBy"
               value={filters.sortBy}
               onChange={handleFilterChange}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="date">Date (Newest First)</option>
               <option value="title">Title (A-Z)</option>
@@ -245,7 +245,7 @@ const HealthDataDashboard = () => {
           <div>
             <label
               htmlFor="searchTerm"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-fg mb-1"
             >
               Search
             </label>
@@ -257,10 +257,10 @@ const HealthDataDashboard = () => {
                 value={filters.searchTerm}
                 onChange={handleFilterChange}
                 placeholder="Search records..."
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10"
+                className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10"
               />
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={16} className="text-gray-400" />
+                <Search size={16} className="text-fg-subtle" />
               </div>
             </div>
           </div>
@@ -269,7 +269,7 @@ const HealthDataDashboard = () => {
         <div className="flex justify-end">
           <button
             onClick={resetFilters}
-            className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            className="px-4 py-2 text-sm border border-line text-fg rounded-md hover:bg-surface"
           >
             Reset Filters
           </button>
@@ -290,10 +290,10 @@ const HealthDataDashboard = () => {
       </div>
 
       {/* Records listing */}
-      <div className="bg-white rounded-xl shadow-md mb-6">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-surface rounded-xl shadow-md mb-6">
+        <div className="p-6 border-b border-line">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-fg">
               Your Health Records
             </h2>
             <button
@@ -301,7 +301,7 @@ const HealthDataDashboard = () => {
               disabled={recordsLoading}
               className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
                 recordsLoading
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  ? "bg-surface-raised text-fg-muted cursor-not-allowed"
                   : "bg-blue-500 text-white hover:bg-blue-600"
               }`}
             >
@@ -339,9 +339,9 @@ const HealthDataDashboard = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             </div>
           ) : filteredRecords.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 mb-2">
+            <div className="text-center py-12 bg-surface rounded-lg">
+              <FileText className="w-12 h-12 text-fg-subtle mx-auto mb-3" />
+              <p className="text-fg-muted mb-2">
                 {healthRecords.length === 0
                   ? "You don't have any health records yet"
                   : "No records match your current filters"}
@@ -358,7 +358,7 @@ const HealthDataDashboard = () => {
               {filteredRecords.map((record) => (
                 <div
                   key={record.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-line rounded-lg hover:bg-surface transition-colors"
                 >
                   <div className="mb-3 sm:mb-0">
                     <h3 className="font-medium text-lg">{record.title}</h3>
@@ -366,15 +366,15 @@ const HealthDataDashboard = () => {
                       <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
                         {record.category}
                       </span>
-                      <span className="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs rounded-full">
+                      <span className="px-2 py-0.5 bg-surface-raised text-fg text-xs rounded-full">
                         {record.format}
                       </span>
-                      <span className="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs rounded-full flex items-center">
+                      <span className="px-2 py-0.5 bg-surface-raised text-fg text-xs rounded-full flex items-center">
                         <BarChart size={12} className="mr-1" />
                         {record.recordCount} entries
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       Last updated: {new Date(record.date).toLocaleDateString()}
                     </p>
                   </div>
@@ -388,7 +388,7 @@ const HealthDataDashboard = () => {
                       disabled={downloadLoading}
                       className={`flex items-center gap-1 px-3 py-2 border ${
                         downloadLoading
-                          ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                          ? "border-line text-fg-subtle cursor-not-allowed"
                           : "border-blue-500 text-blue-600 hover:bg-blue-50"
                       } rounded-md`}
                     >

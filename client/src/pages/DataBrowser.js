@@ -43,7 +43,7 @@ const DataBrowser = () => {
                 onChange={() => setShowMockData(!showMockData)}
                 className="form-checkbox h-5 w-5 text-indigo-600"
               />
-              <span className="ml-2 text-sm text-gray-700">
+              <span className="ml-2 text-sm text-fg">
                 Include sample datasets
               </span>
             </label>
@@ -59,21 +59,21 @@ const DataBrowser = () => {
       </div>
 
       {/* Search and filters section */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
+      <div className="bg-surface p-4 rounded-lg shadow mb-6">
         <div className="flex space-x-4">
           <div className="flex-grow relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 text-fg-subtle" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white"
+              className="block w-full pl-10 pr-3 py-2 border border-line rounded-md leading-5 bg-surface"
               placeholder="Search datasets..."
             />
           </div>
 
           <div className="w-48">
-            <select className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+            <select className="block w-full pl-3 pr-10 py-2 text-base border border-line focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
               <option value="all">All Types</option>
               <option value="imaging">Imaging</option>
               <option value="clinical">Clinical</option>
@@ -88,7 +88,7 @@ const DataBrowser = () => {
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
-          <p className="mt-2 text-gray-600">Loading datasets...</p>
+          <p className="mt-2 text-fg-muted">Loading datasets...</p>
         </div>
       ) : error ? (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
@@ -100,18 +100,19 @@ const DataBrowser = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {datasets.map((dataset) => (
-            <div
+            <button
               key={dataset.id}
+              type="button"
               onClick={() => setSelectedDataset(dataset)}
-              className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
+              className={`w-full text-left bg-surface border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                 dataset.isMockData
                   ? "border-amber-200 bg-amber-50"
-                  : "border-gray-200"
+                  : "border-line"
               }`}
             >
               <div className="p-5">
                 <div className="flex items-start justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <h3 className="text-lg font-semibold text-fg flex items-center">
                     {dataset.title}
                     {dataset.isMockData && (
                       <span className="ml-2 px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full">
@@ -121,11 +122,11 @@ const DataBrowser = () => {
                   </h3>
                 </div>
 
-                <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                <p className="mt-2 text-sm text-fg-muted line-clamp-2">
                   {dataset.description}
                 </p>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-500">
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-fg-muted">
                   <div className="flex items-center">
                     <FileText className="h-4 w-4 mr-1" />
                     <span>{dataset.fileCount || "?"} files</span>
@@ -148,14 +149,8 @@ const DataBrowser = () => {
                       </span>
                     ))}
                 </div>
-
-                <div className="mt-4 flex justify-end">
-                  <button className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
-                    View Details
-                  </button>
-                </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

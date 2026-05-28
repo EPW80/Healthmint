@@ -35,7 +35,7 @@ const StoragePage = () => {
             <h1 className="text-3xl font-bold text-indigo-900">
               Health Document Storage
             </h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-fg-muted">
               Securely store and manage your health records
             </p>
           </div>
@@ -61,22 +61,22 @@ const StoragePage = () => {
         </div>
 
         {showUploader ? (
-          <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-indigo-100">
+          <div className="bg-surface rounded-xl shadow-md p-6 mb-8 border border-indigo-100">
             <FileUploader onUploadComplete={() => setShowUploader(false)} />
           </div>
         ) : (
           <>
             {/* Filters and Search */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border border-gray-100">
+            <div className="bg-surface rounded-xl shadow-sm p-4 mb-6 border border-line">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center flex-grow">
                   <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-5 w-5 text-gray-400" />
+                      <Search className="h-5 w-5 text-fg-subtle" />
                     </div>
                     <input
                       type="text"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      className="block w-full pl-10 pr-3 py-2 border border-line rounded-md leading-5 bg-surface placeholder-fg-subtle focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       placeholder="Search documents..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -91,7 +91,7 @@ const StoragePage = () => {
                     </label>
                     <select
                       id="category"
-                      className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      className="block w-full pl-3 pr-10 py-2 text-base border border-line focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
                     >
@@ -103,28 +103,28 @@ const StoragePage = () => {
                     </select>
                   </div>
 
-                  <div className="flex items-center space-x-2 border-gray-200 rounded-md p-1 bg-gray-50">
+                  <div className="flex items-center space-x-2 border-line rounded-md p-1 bg-surface">
                     <button
                       onClick={() => setViewMode("list")}
                       className={`p-1.5 rounded ${
                         viewMode === "list"
-                          ? "bg-white shadow"
-                          : "hover:bg-gray-100"
+                          ? "bg-surface shadow"
+                          : "hover:bg-surface-raised"
                       }`}
                       aria-label="List view"
                     >
-                      <List className="h-5 w-5 text-gray-600" />
+                      <List className="h-5 w-5 text-fg-muted" />
                     </button>
                     <button
                       onClick={() => setViewMode("grid")}
                       className={`p-1.5 rounded ${
                         viewMode === "grid"
-                          ? "bg-white shadow"
-                          : "hover:bg-gray-100"
+                          ? "bg-surface shadow"
+                          : "hover:bg-surface-raised"
                       }`}
                       aria-label="Grid view"
                     >
-                      <Grid className="h-5 w-5 text-gray-600" />
+                      <Grid className="h-5 w-5 text-fg-muted" />
                     </button>
                   </div>
                 </div>
@@ -140,7 +140,7 @@ const StoragePage = () => {
                     className={`px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap ${
                       activeTab === tab
                         ? "bg-indigo-100 text-indigo-700"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        : "text-fg-muted hover:text-fg hover:bg-surface-raised"
                     }`}
                     onClick={() => setActiveTab(tab)}
                   >
@@ -154,7 +154,7 @@ const StoragePage = () => {
             </div>
 
             {/* Files List */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div className="bg-surface rounded-xl shadow-md p-6 border border-line">
               <FilesList
                 viewMode={viewMode}
                 searchTerm={searchTerm}
@@ -167,15 +167,15 @@ const StoragePage = () => {
 
         {/* Storage Statistics */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900">Storage Used</h3>
+          <div className="bg-surface p-4 rounded-lg shadow-sm border border-line">
+            <h3 className="text-lg font-medium text-fg">Storage Used</h3>
             <div className="mt-2 flex items-baseline">
               <span className="text-2xl font-semibold text-indigo-600">
                 24.5 MB
               </span>
-              <span className="ml-2 text-sm text-gray-500">of 1 GB</span>
+              <span className="ml-2 text-sm text-fg-muted">of 1 GB</span>
             </div>
-            <div className="mt-3 w-full bg-gray-200 rounded-full h-2.5">
+            <div className="mt-3 w-full bg-surface-raised rounded-full h-2.5">
               <div
                 className="bg-indigo-600 h-2.5 rounded-full"
                 style={{ width: "2.45%" }}
@@ -183,11 +183,11 @@ const StoragePage = () => {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900">File Count</h3>
+          <div className="bg-surface p-4 rounded-lg shadow-sm border border-line">
+            <h3 className="text-lg font-medium text-fg">File Count</h3>
             <div className="mt-2">
               <span className="text-2xl font-semibold text-indigo-600">7</span>
-              <span className="ml-2 text-sm text-gray-500">total files</span>
+              <span className="ml-2 text-sm text-fg-muted">total files</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
@@ -202,8 +202,8 @@ const StoragePage = () => {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900">
+          <div className="bg-surface p-4 rounded-lg shadow-sm border border-line">
+            <h3 className="text-lg font-medium text-fg">
               Recent Activity
             </h3>
             <div className="mt-2 space-y-2">

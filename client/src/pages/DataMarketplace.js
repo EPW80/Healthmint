@@ -927,7 +927,7 @@ const DataMarketplace = () => {
 
       {/* Search Results Summary */}
       {searchTerm && (
-        <div className="mb-4">
+        <div className="mb-4" aria-live="polite" aria-atomic="true">
           <p className="text-sm text-fg-muted">
             Found {filteredAndSearchedRequests.length} results for "{searchTerm}
             "

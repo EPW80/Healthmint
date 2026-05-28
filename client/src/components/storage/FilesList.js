@@ -129,7 +129,7 @@ const FilesList = ({
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-        <p className="mt-4 text-gray-600">Loading your files...</p>
+        <p className="mt-4 text-fg-muted">Loading your files...</p>
       </div>
     );
   }
@@ -155,12 +155,12 @@ const FilesList = ({
 
   if (filteredFiles.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
-        <FileText className="h-12 w-12 text-gray-400 mx-auto" />
-        <h3 className="mt-4 text-lg font-medium text-gray-900">
+      <div className="text-center py-12 bg-surface rounded-lg">
+        <FileText className="h-12 w-12 text-fg-subtle mx-auto" />
+        <h3 className="mt-4 text-lg font-medium text-fg">
           No files found
         </h3>
-        <p className="mt-1 text-gray-500">
+        <p className="mt-1 text-fg-muted">
           {searchTerm
             ? `No files match your search "${searchTerm}"`
             : "Upload your first health document to get started"}
@@ -181,36 +181,37 @@ const FilesList = ({
     <div>
       {viewMode === "list" ? (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-line">
+            <caption className="sr-only">Uploaded files list</caption>
+            <thead className="bg-surface">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                   File
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                   Properties
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                   Uploaded
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-fg-muted uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-surface divide-y divide-line">
               {filteredFiles.map((file) => (
-                <tr key={file.id} className="hover:bg-gray-50">
+                <tr key={file.id} className="hover:bg-surface">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
                         {getFileIcon(file.mimeType)}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 flex items-center">
+                        <div className="text-sm font-medium text-fg flex items-center">
                           {file.fileName}
                           {file.containsPHI && (
                             <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
@@ -218,7 +219,7 @@ const FilesList = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-500 truncate max-w-xs">
+                        <div className="text-sm text-fg-muted truncate max-w-xs">
                           {file.description || "No description"}
                         </div>
                       </div>
@@ -230,10 +231,10 @@ const FilesList = ({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-fg">
                       {formatFileSize(file.fileSize)}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-fg-muted">
                       {file.sensitivity === "high" ||
                       file.sensitivity === "critical" ? (
                         <span className="flex items-center">
@@ -245,9 +246,9 @@ const FilesList = ({
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-fg-muted">
                     <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1 text-gray-400" />
+                      <Clock className="w-4 h-4 mr-1 text-fg-subtle" />
                       <span title={new Date(file.createdAt).toLocaleString()}>
                         {formatRelativeTime(file.createdAt)}
                       </span>
@@ -257,28 +258,28 @@ const FilesList = ({
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => handleFileAction("view", file)}
-                        className="text-gray-500 hover:text-indigo-600 p-1 rounded-full hover:bg-gray-100"
+                        className="text-fg-muted hover:text-indigo-600 p-1 rounded-full hover:bg-surface-raised"
                         title="View"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleFileAction("download", file)}
-                        className="text-gray-500 hover:text-indigo-600 p-1 rounded-full hover:bg-gray-100"
+                        className="text-fg-muted hover:text-indigo-600 p-1 rounded-full hover:bg-surface-raised"
                         title="Download"
                       >
                         <Download className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleFileAction("share", file)}
-                        className="text-gray-500 hover:text-indigo-600 p-1 rounded-full hover:bg-gray-100"
+                        className="text-fg-muted hover:text-indigo-600 p-1 rounded-full hover:bg-surface-raised"
                         title="Share"
                       >
                         <Share className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleFileAction("delete", file)}
-                        className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
+                        className="text-fg-muted hover:text-red-600 p-1 rounded-full hover:bg-surface-raised"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -295,37 +296,37 @@ const FilesList = ({
           {filteredFiles.map((file) => (
             <div
               key={file.id}
-              className="bg-white overflow-hidden rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+              className="bg-surface overflow-hidden rounded-lg border border-line hover:shadow-md transition-shadow"
             >
-              <div className="p-4 flex items-center justify-center bg-gray-50 h-32">
+              <div className="p-4 flex items-center justify-center bg-surface h-32">
                 {getFileIcon(file.mimeType)}
               </div>
               <div className="p-4">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3
-                      className="text-sm font-medium text-gray-900 truncate"
+                      className="text-sm font-medium text-fg truncate"
                       title={file.fileName}
                     >
                       {file.fileName}
                     </h3>
                     <p
-                      className="text-xs text-gray-500 mt-1 truncate"
+                      className="text-xs text-fg-muted mt-1 truncate"
                       title={file.description}
                     >
                       {file.description || "No description"}
                     </p>
                   </div>
                   <div className="dropdown relative">
-                    <button className="p-1 rounded-full hover:bg-gray-100">
-                      <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                    <button className="p-1 rounded-full hover:bg-surface-raised">
+                      <MoreHorizontal className="w-4 h-4 text-fg-muted" />
                     </button>
                     {/* Dropdown menu would go here */}
                   </div>
                 </div>
 
                 <div className="mt-4 flex justify-between items-center">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-fg-muted">
                     {formatFileSize(file.fileSize)}
                   </span>
                   <span className="px-2 py-1 text-xs rounded bg-indigo-100 text-indigo-800">
@@ -337,37 +338,37 @@ const FilesList = ({
                   {file.tags.slice(0, 3).map((tag, i) => (
                     <span
                       key={i}
-                      className="px-2 py-0.5 text-xs bg-gray-100 rounded"
+                      className="px-2 py-0.5 text-xs bg-surface-raised rounded"
                     >
                       {tag}
                     </span>
                   ))}
                   {file.tags.length > 3 && (
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 rounded">
+                    <span className="px-2 py-0.5 text-xs bg-surface-raised rounded">
                       +{file.tags.length - 3}
                     </span>
                   )}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
-                  <div className="text-xs text-gray-500 flex items-center">
+                <div className="mt-4 pt-4 border-t border-line flex justify-between">
+                  <div className="text-xs text-fg-muted flex items-center">
                     <Clock className="w-3 h-3 mr-1" />
                     {formatRelativeTime(file.createdAt)}
                   </div>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleFileAction("view", file)}
-                      className="p-1 rounded-full hover:bg-gray-100"
+                      className="p-1 rounded-full hover:bg-surface-raised"
                       title="View"
                     >
-                      <Eye className="w-4 h-4 text-gray-500 hover:text-indigo-600" />
+                      <Eye className="w-4 h-4 text-fg-muted hover:text-indigo-600" />
                     </button>
                     <button
                       onClick={() => handleFileAction("download", file)}
-                      className="p-1 rounded-full hover:bg-gray-100"
+                      className="p-1 rounded-full hover:bg-surface-raised"
                       title="Download"
                     >
-                      <Download className="w-4 h-4 text-gray-500 hover:text-indigo-600" />
+                      <Download className="w-4 h-4 text-fg-muted hover:text-indigo-600" />
                     </button>
                   </div>
                 </div>

@@ -292,7 +292,7 @@ const ProfileImageUploader = ({
       {/* Upload progress indicator */}
       {uploadProgress > 0 && uploadProgress < 100 && (
         <div className="w-full mt-4" aria-live="polite">
-          <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-surface-raised rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-600 rounded-full transition-all duration-300"
               style={{ width: `${uploadProgress}%` }}
@@ -302,18 +302,18 @@ const ProfileImageUploader = ({
               aria-valuemax="100"
             ></div>
           </div>
-          <p className="mt-2 text-sm text-gray-600 text-center">
+          <p className="mt-2 text-sm text-fg-muted text-center">
             Uploading: {uploadProgress}%
           </p>
         </div>
       )}
 
       {/* Help text */}
-      <p className="mt-4 text-xs text-gray-500">
+      <p className="mt-4 text-xs text-fg-muted">
         Supported formats: JPG, PNG, GIF (max {MAX_FILE_SIZE / (1024 * 1024)}MB)
       </p>
       {storageReference && (
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-xs text-fg-subtle">
           Storage ID: {storageReference.substring(0, 10)}...
         </p>
       )}

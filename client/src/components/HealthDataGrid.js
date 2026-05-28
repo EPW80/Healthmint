@@ -54,14 +54,14 @@ const HealthDataGrid = () => {
       <h2 className="text-2xl font-bold mb-6">Health Data Records</h2>
 
       {/* Filters and Controls */}
-      <div className="flex flex-wrap justify-between items-center bg-gray-50 p-4 rounded-lg mb-6">
+      <div className="flex flex-wrap justify-between items-center bg-surface p-4 rounded-lg mb-6">
         <div className="flex items-center space-x-2 mb-2 md:mb-0">
-          <Filter className="h-5 w-5 text-gray-500" />
-          <span className="text-gray-700">Filter:</span>
+          <Filter className="h-5 w-5 text-fg-muted" />
+          <span className="text-fg">Filter:</span>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
+            className="border border-line rounded px-2 py-1 text-sm"
           >
             <option value="all">All Records</option>
             <option value="verified">Verified Only</option>
@@ -70,12 +70,12 @@ const HealthDataGrid = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <ArrowUpDown className="h-5 w-5 text-gray-500" />
-          <span className="text-gray-700">Sort by:</span>
+          <ArrowUpDown className="h-5 w-5 text-fg-muted" />
+          <span className="text-fg">Sort by:</span>
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
+            className="border border-line rounded px-2 py-1 text-sm"
           >
             <option value="date">Date (newest first)</option>
             <option value="category">Category</option>
@@ -110,7 +110,7 @@ const HealthDataGrid = () => {
         {sortedRecords.map((record) => (
           <div
             key={record.id}
-            className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+            className="bg-surface border rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
           >
             <div className="p-4">
               <div className="flex justify-between items-start mb-2">
@@ -130,24 +130,24 @@ const HealthDataGrid = () => {
                 )}
               </div>
 
-              <div className="text-sm text-gray-500 mb-2">
+              <div className="text-sm text-fg-muted mb-2">
                 <span className="inline-block px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium mr-2">
                   {record.category}
                 </span>
-                <span className="text-gray-500">
+                <span className="text-fg-muted">
                   {formatDate(record.uploadDate)}
                 </span>
               </div>
 
-              <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+              <p className="text-fg-muted text-sm line-clamp-2 mb-4">
                 {record.description}
               </p>
 
-              <div className="text-xs text-gray-500 flex flex-wrap gap-2">
-                <span className="bg-gray-100 px-2 py-1 rounded">
+              <div className="text-xs text-fg-muted flex flex-wrap gap-2">
+                <span className="bg-surface-raised px-2 py-1 rounded">
                   Format: {record.format}
                 </span>
-                <span className="bg-gray-100 px-2 py-1 rounded">
+                <span className="bg-surface-raised px-2 py-1 rounded">
                   Records: {record.recordCount.toLocaleString()}
                 </span>
                 {record.anonymized && (
@@ -158,7 +158,7 @@ const HealthDataGrid = () => {
               </div>
             </div>
 
-            <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex justify-between">
+            <div className="border-t border-line px-4 py-3 bg-surface flex justify-between">
               <span className="text-sm font-medium text-blue-600">
                 ${record.price.toFixed(2)}
               </span>
@@ -172,12 +172,12 @@ const HealthDataGrid = () => {
 
       {/* Empty state */}
       {sortedRecords.length === 0 && (
-        <div className="bg-gray-50 p-8 rounded-lg text-center">
-          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-gray-700 mb-1">
+        <div className="bg-surface p-8 rounded-lg text-center">
+          <AlertCircle className="h-12 w-12 text-fg-subtle mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-fg mb-1">
             No records found
           </h3>
-          <p className="text-gray-500">
+          <p className="text-fg-muted">
             {filter !== "all"
               ? `No ${filter} records match your criteria.`
               : "No health records available."}

@@ -84,7 +84,7 @@ const TransactionHistory = ({
       case "failed":
         return `${baseClasses} bg-red-100 text-red-800`;
       default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
+        return `${baseClasses} bg-surface-raised text-fg`;
     }
   };
 
@@ -100,7 +100,7 @@ const TransactionHistory = ({
       case "share":
         return <ExternalLink className="text-purple-500" size={18} />;
       default:
-        return <Clock className="text-gray-500" size={18} />;
+        return <Clock className="text-fg-muted" size={18} />;
     }
   };
 
@@ -327,7 +327,7 @@ const TransactionHistory = ({
       <div className="mb-4">
         <button
           onClick={() => setFiltersOpen(!filtersOpen)}
-          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm mb-3"
+          className="flex items-center gap-2 px-3 py-2 bg-surface-raised hover:bg-surface-raised rounded-lg text-fg text-sm mb-3"
         >
           <Filter size={16} />
           <span>Filters</span>
@@ -338,12 +338,12 @@ const TransactionHistory = ({
         </button>
 
         {filtersOpen && (
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+          <div className="p-4 bg-surface rounded-lg border border-line mb-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label
                   htmlFor="tx-type-filter"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Transaction Type
                 </label>
@@ -351,7 +351,7 @@ const TransactionHistory = ({
                   id="tx-type-filter"
                   value={filters.type}
                   onChange={(e) => updateFilter("type", e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Types</option>
                   <option value="purchase">Purchases</option>
@@ -364,7 +364,7 @@ const TransactionHistory = ({
               <div>
                 <label
                   htmlFor="date-range-filter"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Date Range
                 </label>
@@ -372,7 +372,7 @@ const TransactionHistory = ({
                   id="date-range-filter"
                   value={filters.dateRange}
                   onChange={(e) => updateFilter("dateRange", e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Time</option>
                   <option value="today">Today</option>
@@ -384,7 +384,7 @@ const TransactionHistory = ({
               <div>
                 <label
                   htmlFor="status-filter"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Status
                 </label>
@@ -392,7 +392,7 @@ const TransactionHistory = ({
                   id="status-filter"
                   value={filters.status}
                   onChange={(e) => updateFilter("status", e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-line shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="all">All Statuses</option>
                   <option value="success">Successful</option>
@@ -405,7 +405,7 @@ const TransactionHistory = ({
             <div className="flex justify-end mt-4">
               <button
                 onClick={resetFilters}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                className="px-3 py-1 text-sm text-fg-muted hover:text-fg"
               >
                 Reset Filters
               </button>
@@ -425,7 +425,7 @@ const TransactionHistory = ({
 
   // Render a compact list view
   const renderCompactView = () => (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y divide-line">
       {transactions.map((tx, index) => (
         <div
           key={tx.internalKey || `tx_compact_${index}_${Date.now()}`}
@@ -438,7 +438,7 @@ const TransactionHistory = ({
                 {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}:{" "}
                 {tx.description || `Transaction ${tx.id.substring(0, 8)}`}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-fg-muted">
                 {formatDate(tx.timestamp)}
               </p>
             </div>
@@ -457,48 +457,49 @@ const TransactionHistory = ({
   // Render a detailed table view
   const renderDetailedView = () => (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+      <table className="min-w-full divide-y divide-line">
+        <caption className="sr-only">Transaction history</caption>
+        <thead className="bg-surface">
           <tr>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider"
             >
               Transaction
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider"
             >
               Type
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider"
             >
               Date
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider"
             >
               Amount
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider"
             >
               Status
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-right text-xs font-medium text-fg-muted uppercase tracking-wider"
             >
               Actions
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-surface divide-y divide-line">
           {transactions.map((tx, index) => {
             // Generate a unique key for each transaction row
             const rowKey = tx.internalKey || `tx_${index}_${Date.now()}`;
@@ -507,18 +508,18 @@ const TransactionHistory = ({
 
             return (
               <React.Fragment key={rowKey}>
-                <tr className="hover:bg-gray-50">
+                <tr className="hover:bg-surface">
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-gray-100">
+                      <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-surface-raised">
                         {getTransactionIcon(tx.type)}
                       </div>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900 truncate max-w-xs">
+                        <div className="text-sm font-medium text-fg truncate max-w-xs">
                           {tx.description ||
                             `Transaction ${tx.id.substring(0, 8)}...`}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-fg-muted">
                           ID: {tx.id.substring(0, 8)}...
                           {tx.id.substring(tx.id.length - 4)}
                         </div>
@@ -526,20 +527,20 @@ const TransactionHistory = ({
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 capitalize">
+                    <div className="text-sm text-fg capitalize">
                       {tx.type}
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-fg">
                       {formatDate(tx.timestamp)}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-fg-muted">
                       {new Date(tx.timestamp).toLocaleTimeString()}
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-fg">
                       {formatEth(tx.amount)}
                     </div>
                   </td>
@@ -563,30 +564,30 @@ const TransactionHistory = ({
                   </td>
                 </tr>
                 {expandedTransaction === tx.id && (
-                  <tr key={expandedRowKey} className="bg-gray-50">
+                  <tr key={expandedRowKey} className="bg-surface">
                     <td colSpan="6" className="px-4 py-3">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-fg">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h4 className="font-medium mb-2">
                               Transaction Details
                             </h4>
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-xs text-fg-muted mb-1">
                               <span className="font-medium">
                                 Transaction ID:
                               </span>{" "}
                               {tx.id}
                             </p>
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-xs text-fg-muted mb-1">
                               <span className="font-medium">Block Number:</span>{" "}
                               {tx.blockNumber || "Pending"}
                             </p>
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-xs text-fg-muted mb-1">
                               <span className="font-medium">Gas Used:</span>{" "}
                               {tx.gasUsed || "N/A"}
                             </p>
                             {tx.hash && (
-                              <p className="text-xs text-gray-500 mb-1">
+                              <p className="text-xs text-fg-muted mb-1">
                                 <span className="font-medium">
                                   Transaction Hash:
                                 </span>{" "}
@@ -609,15 +610,15 @@ const TransactionHistory = ({
                             <h4 className="font-medium mb-2">
                               Additional Information
                             </h4>
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-xs text-fg-muted mb-1">
                               <span className="font-medium">Dataset ID:</span>{" "}
                               {tx.dataRef || "N/A"}
                             </p>
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-xs text-fg-muted mb-1">
                               <span className="font-medium">Timestamp:</span>{" "}
                               {new Date(tx.timestamp).toLocaleString()}
                             </p>
-                            <p className="text-xs text-gray-500 mb-1">
+                            <p className="text-xs text-fg-muted mb-1">
                               <span className="font-medium">
                                 Payment Amount:
                               </span>{" "}
@@ -694,19 +695,19 @@ const TransactionHistory = ({
     <div className={className}>
       {/* Wallet Balance Display */}
       {currentBalance !== null && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex justify-between items-center">
+        <div className="mb-4 p-3 bg-info-soft border border-info/30 rounded-token flex justify-between items-center">
           <div className="flex items-center">
-            <DollarSign className="text-blue-600 mr-2" size={18} />
+            <DollarSign className="text-info mr-2" size={18} />
             <div>
-              <p className="text-sm text-blue-700">
+              <p className="text-sm text-fg-muted">
                 Current Estimated Earnings
               </p>
-              <p className="text-lg font-semibold text-blue-800">
+              <p className="text-lg font-semibold text-fg">
                 {currentBalance} ETH
               </p>
             </div>
           </div>
-          <div className="text-xs text-blue-600">
+          <div className="text-xs text-fg-muted">
             Transactions: {transactions.length}
           </div>
         </div>
@@ -716,22 +717,22 @@ const TransactionHistory = ({
 
       {/* If no transactions, show empty state */}
       {transactions.length === 0 ? (
-        <div className={`bg-gray-50 rounded-lg p-6 text-center ${className}`}>
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-gray-900 mb-1">
+        <div className={`bg-surface rounded-lg p-6 text-center ${className}`} aria-live="polite">
+          <Calendar className="w-12 h-12 text-fg-subtle mx-auto mb-3" />
+          <h3 className="text-lg font-medium text-fg mb-1">
             No Transactions Found
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-fg-muted mb-4">
             You don't have any transactions in your history yet.
           </p>
           {showFilters && filtersOpen && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-fg-muted">
               Try changing your filter settings to see more results.
             </p>
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-surface rounded-lg border border-line" aria-live="polite" aria-atomic="false">
           {compact ? renderCompactView() : renderDetailedView()}
         </div>
       )}

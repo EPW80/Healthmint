@@ -89,17 +89,18 @@ const DataTierSelector = ({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-4 ${className}`}>
+    <div className={`bg-surface rounded-lg shadow-md p-4 ${className}`}>
       <h3 className="text-lg font-medium mb-4">Select Data Tier</h3>
 
       <div className="space-y-3">
         {tiers.map((tier) => (
-          <div
+          <button
             key={tier.id}
-            className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+            type="button"
+            className={`w-full text-left border rounded-token p-3 transition-colors ${
               selectedTier === tier.id
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-blue-200 hover:bg-blue-50/30"
+                ? "border-accent bg-accent/10"
+                : "border-line hover:bg-surface-raised"
             }`}
             onClick={() => handleTierSelect(tier.id)}
           >
@@ -107,8 +108,8 @@ const DataTierSelector = ({
               <div
                 className={`w-5 h-5 rounded-full mr-3 flex items-center justify-center ${
                   selectedTier === tier.id
-                    ? "bg-blue-500"
-                    : "border border-gray-300"
+                    ? "bg-accent"
+                    : "border border-line"
                 }`}
               >
                 {selectedTier === tier.id && (
@@ -119,22 +120,22 @@ const DataTierSelector = ({
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{tier.name}</span>
-                  <span className="font-bold text-blue-600">
+                  <span className="font-bold text-accent">
                     {tier.price} {currencySymbol}
                   </span>
                 </div>
 
                 <div className="mt-1 flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
+                  <span className="text-fg-muted">
                     {tier.recordCount.toLocaleString()} records (
                     {tier.percentage}%)
                   </span>
                 </div>
 
-                <p className="text-xs text-gray-500 mt-1">{tier.description}</p>
+                <p className="text-xs text-fg-muted mt-1">{tier.description}</p>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -142,8 +143,8 @@ const DataTierSelector = ({
         <button
           className={`w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center ${
             isWalletConnected
-              ? "bg-blue-500 hover:bg-blue-600 text-white"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              ? "bg-accent hover:bg-accent-hover text-accent-fg"
+              : "bg-surface-raised text-fg-muted cursor-not-allowed"
           }`}
           disabled={!isWalletConnected}
           onClick={() => {
@@ -169,7 +170,7 @@ const DataTierSelector = ({
       </div>
 
       {!isWalletConnected && (
-        <p className="text-xs text-center text-gray-500 mt-2">
+        <p className="text-xs text-center text-fg-muted mt-2">
           You need to connect your wallet to purchase data.
         </p>
       )}

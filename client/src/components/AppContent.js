@@ -310,7 +310,7 @@ const AppContent = () => {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <LoadingSpinner size="large" />
-        <p className="text-gray-600 mt-4">Initializing Healthmint...</p>
+        <p className="text-fg-muted mt-4">Initializing Healthmint...</p>
       </div>
     );
   }

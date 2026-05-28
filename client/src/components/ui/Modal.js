@@ -34,19 +34,21 @@ const Modal = ({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 bg-fg/50 backdrop-blur-sm flex items-center justify-center z-50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby={title ? titleId : undefined}
-      aria-label={!title ? ariaLabel || undefined : undefined}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <button
+        type="button"
+        className="absolute inset-0 bg-fg/50 backdrop-blur-sm"
+        onClick={onClose}
+        aria-label="Close dialog"
+        tabIndex={-1}
+      />
       <FocusTrap active={isOpen} onEscapeKey={onClose}>
         <div
-          className={`bg-surface-raised border border-line rounded-token-lg shadow-soft-lg w-full m-4 ${SIZE_CLASSES[size] ?? ""} ${className}`.trim()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
+          aria-label={!title ? ariaLabel || undefined : undefined}
+          className={`relative bg-surface-raised border border-line rounded-token-lg shadow-soft-lg w-full m-4 ${SIZE_CLASSES[size] ?? ""} ${className}`.trim()}
         >
           {title && (
             <div className="flex items-center justify-between px-6 py-4 border-b border-line">

@@ -37,7 +37,7 @@ const Storage = () => {
             {userRecords.map((record) => (
               <div key={record.id} className="border rounded-lg p-4">
                 <h3 className="font-medium">{record.title}</h3>
-                <p className="text-sm text-gray-600">{record.description}</p>
+                <p className="text-sm text-fg-muted">{record.description}</p>
                 {/* Add other record details */}
               </div>
             ))}

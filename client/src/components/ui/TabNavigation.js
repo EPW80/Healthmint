@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 // tabs: [{ id: string, label: string, icon?: ReactNode }]
 export const TabNavigation = memo(
   ({ tabs, activeTab, onChange, ariaLabel }) => (
-    <nav className="flex overflow-x-auto" role="tablist" aria-label={ariaLabel}>
+    <div className="flex overflow-x-auto" role="tablist" aria-label={ariaLabel}>
       {tabs.map((tab, index) => (
         <button
           key={tab.id}
@@ -30,7 +30,7 @@ export const TabNavigation = memo(
           {tab.label}
         </button>
       ))}
-    </nav>
+    </div>
   )
 );
 
