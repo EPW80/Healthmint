@@ -1,12 +1,11 @@
 // src/components/TransactionModal.js
 import React from "react";
 import PropTypes from "prop-types";
-import { XCircle, Loader, CheckCircle, AlertCircle } from "lucide-react"; // Assuming lucide-react for icons
+import { Loader, CheckCircle, AlertCircle } from "lucide-react";
+import Modal from "./ui/Modal.js";
 
 // TransactionModal: A modal component to display transaction status and details
 const TransactionModal = ({ isOpen, onClose, step = "idle", details = {} }) => {
-  if (!isOpen) return null;
-
   // Format ETH with appropriate precision (assuming amount is in wei)
   const formatEth = (amount) => {
     if (!amount) return "0.00";
@@ -18,13 +17,13 @@ const TransactionModal = ({ isOpen, onClose, step = "idle", details = {} }) => {
   const getStepIcon = () => {
     switch (step) {
       case "processing":
-        return <Loader className="animate-spin text-blue-500" size={24} />;
+        return <Loader className="animate-spin text-info" size={24} />;
       case "confirming":
-        return <Loader className="animate-spin text-yellow-500" size={24} />;
+        return <Loader className="animate-spin text-warning" size={24} />;
       case "complete":
-        return <CheckCircle className="text-green-500" size={24} />;
+        return <CheckCircle className="text-success" size={24} />;
       case "error":
-        return <AlertCircle className="text-red-500" size={24} />;
+        return <AlertCircle className="text-danger" size={24} />;
       default:
         return null;
     }
@@ -65,44 +64,36 @@ const TransactionModal = ({ isOpen, onClose, step = "idle", details = {} }) => {
   // Helper function to show transaction details if available
   const renderDetail = (label, value) => (
     <div className="flex justify-between text-sm mb-2">
-      <span className="text-gray-600">{label}:</span>
+      <span className="text-fg-muted">{label}:</span>
       <span className="font-medium">{value}</span>
     </div>
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-          aria-label="Close modal"
-        >
-          <XCircle size={24} />
-        </button>
+    <Modal isOpen={isOpen} onClose={onClose} title={getStepTitle()} size="md">
+      <div className="p-6">
         <div className="flex items-center justify-center mb-4">
           {getStepIcon()}
-          <h2 className="text-xl font-bold ml-2">{getStepTitle()}</h2>
         </div>
-        <p className="text-center text-gray-600 mb-4">{getStepMessage()}</p>
-        <div className="bg-gray-50 rounded-lg p-4 text-left">
+        <p className="text-center text-fg-muted mb-4">{getStepMessage()}</p>
+        <div className="bg-surface-raised rounded-lg p-4 text-left">
           {details.datasetId && renderDetail("Dataset ID", details.datasetId)}
           {details.tier && (
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600">Data Tier:</span>
+              <span className="text-fg-muted">Data Tier:</span>
               <span className="font-medium capitalize">
                 {details.tier === "basic" && (
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  <span className="px-2 py-0.5 bg-info/10 text-info text-xs rounded-full">
                     Basic (25%)
                   </span>
                 )}
                 {details.tier === "standard" && (
-                  <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs rounded-full">
+                  <span className="px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-full">
                     Standard (50%)
                   </span>
                 )}
                 {details.tier === "complete" && (
-                  <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                  <span className="px-2 py-0.5 bg-success/10 text-success text-xs rounded-full">
                     Complete (100%)
                   </span>
                 )}
@@ -125,7 +116,7 @@ const TransactionModal = ({ isOpen, onClose, step = "idle", details = {} }) => {
             )}
           {details.transactionHash && (
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600">Transaction:</span>
+              <span className="text-fg-muted">Transaction:</span>
               <span className="font-medium font-mono text-xs">
                 {details.transactionHash.substring(0, 6)}...
                 {details.transactionHash.substring(
@@ -135,14 +126,14 @@ const TransactionModal = ({ isOpen, onClose, step = "idle", details = {} }) => {
             </div>
           )}
           {details.error && details.errorMessage && (
-            <div className="mt-3 text-sm text-red-600">
+            <div className="mt-3 text-sm text-danger">
               <span className="font-medium">Error: </span>
               <span>{details.errorMessage}</span>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

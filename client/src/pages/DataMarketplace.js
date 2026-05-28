@@ -1,6 +1,7 @@
 // src/pages/DataMarketplace.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { statusBadgeClass } from "../theme/statusColors";
 import WalletStatus from "../components/WalletStatus";
 import { addNotification } from "../redux/slices/notificationSlice";
 import {
@@ -103,51 +104,43 @@ const fallbackMockService = {
 // Request Card Component
 const DataRequestCard = React.memo(({ request, onRespond, onViewDetails }) => {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
+    <div className="bg-surface border border-line rounded-token shadow-soft-sm hover:shadow-soft-md transition-shadow overflow-hidden">
       <div className="p-5">
         {/* Request Status Badge */}
         <div className="flex justify-between items-start mb-2">
-          <span
-            className={`text-xs font-medium px-2.5 py-0.5 rounded ${
-              request.status === "open"
-                ? "bg-green-100 text-green-800"
-                : request.status === "pending"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-blue-100 text-blue-800"
-            }`}
-          >
+          <span className={statusBadgeClass(request.status)}>
             {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
           </span>
-          <span className="text-xs text-gray-500">{request.createdAt}</span>
+          <span className="text-xs text-fg-muted">{request.createdAt}</span>
         </div>
 
         {/* Request Title */}
-        <h3 className="text-lg font-semibold text-gray-800 mb-1">
+        <h3 className="text-lg font-semibold text-fg mb-1">
           {request.title}
         </h3>
 
         {/* Request Description */}
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+        <p className="text-fg-muted text-sm mb-3 line-clamp-2">
           {request.description}
         </p>
 
         {/* Request Details */}
         <div className="grid grid-cols-2 gap-2 text-sm mb-4">
           <div className="flex items-center">
-            <Database size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Type: {request.dataType}</span>
+            <Database size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Type: {request.dataType}</span>
           </div>
           <div className="flex items-center">
-            <FileText size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Format: {request.format}</span>
+            <FileText size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Format: {request.format}</span>
           </div>
           <div className="flex items-center">
-            <Clock size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Timeline: {request.timeline}</span>
+            <Clock size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Timeline: {request.timeline}</span>
           </div>
           <div className="flex items-center">
-            <Award size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Reward: {request.reward} ETH</span>
+            <Award size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Reward: {request.reward} ETH</span>
           </div>
         </div>
 
@@ -156,7 +149,7 @@ const DataRequestCard = React.memo(({ request, onRespond, onViewDetails }) => {
           {request.tags.map((tag, index) => (
             <span
               key={index}
-              className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded"
+              className="bg-info-soft text-info text-xs px-2 py-1 rounded-token-sm"
             >
               {tag}
             </span>
@@ -167,7 +160,7 @@ const DataRequestCard = React.memo(({ request, onRespond, onViewDetails }) => {
         <div className="flex justify-between mt-4">
           <button
             onClick={() => onViewDetails(request.id)}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="text-accent hover:text-accent-hover text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
             aria-label={`View details for ${request.title}`}
           >
             View Details
@@ -175,7 +168,7 @@ const DataRequestCard = React.memo(({ request, onRespond, onViewDetails }) => {
           {request.status === "open" && (
             <button
               onClick={() => onRespond(request.id)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm font-medium transition-colors"
+              className="bg-accent hover:bg-accent-hover text-accent-fg px-4 py-1 rounded-token text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               aria-label={`Respond to request: ${request.title}`}
             >
               Respond to Request
@@ -280,20 +273,20 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-fg/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-raised border border-line rounded-token-lg shadow-soft-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 id="modal-title" className="text-xl font-bold text-gray-800">
+            <h2 id="modal-title" className="text-xl font-bold text-fg">
               Create Data Request
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
               aria-label="Close modal"
             >
               &times;
@@ -306,7 +299,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
               <div>
                 <label
                   htmlFor="title"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Request Title*
                 </label>
@@ -316,14 +309,14 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border ${formErrors.title ? "border-red-500" : "border-gray-300"} rounded-md`}
+                  className={`w-full px-3 py-2 border ${formErrors.title ? "border-danger" : "border-line-strong"} rounded-token bg-surface text-fg`}
                   placeholder="e.g., Diabetes Patient Data for Research Study"
                   required
                   aria-required="true"
                   aria-invalid={!!formErrors.title}
                 />
                 {formErrors.title && (
-                  <p className="text-red-500 text-xs mt-1">
+                  <p className="text-danger text-xs mt-1">
                     {formErrors.title}
                   </p>
                 )}
@@ -333,7 +326,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
               <div>
                 <label
                   htmlFor="description"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Description*
                 </label>
@@ -342,7 +335,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border ${formErrors.description ? "border-red-500" : "border-gray-300"} rounded-md`}
+                  className={`w-full px-3 py-2 border ${formErrors.description ? "border-danger" : "border-line-strong"} rounded-token bg-surface text-fg`}
                   rows="4"
                   placeholder="Describe the data you need and how it will be used..."
                   required
@@ -350,7 +343,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                   aria-invalid={!!formErrors.description}
                 ></textarea>
                 {formErrors.description && (
-                  <p className="text-red-500 text-xs mt-1">
+                  <p className="text-danger text-xs mt-1">
                     {formErrors.description}
                   </p>
                 )}
@@ -361,7 +354,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                 <div>
                   <label
                     htmlFor="dataType"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-fg mb-1"
                   >
                     Data Type
                   </label>
@@ -370,7 +363,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     name="dataType"
                     value={formData.dataType}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-line-strong rounded-token bg-surface text-fg"
                     aria-label="Select data type"
                   >
                     <option value="Clinical">Clinical</option>
@@ -385,7 +378,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                 <div>
                   <label
                     htmlFor="format"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-fg mb-1"
                   >
                     Preferred Format
                   </label>
@@ -394,7 +387,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     name="format"
                     value={formData.format}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-line-strong rounded-token bg-surface text-fg"
                     aria-label="Select preferred format"
                   >
                     <option value="CSV">CSV</option>
@@ -412,7 +405,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                 <div>
                   <label
                     htmlFor="timeline"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-fg mb-1"
                   >
                     Timeline
                   </label>
@@ -421,7 +414,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     name="timeline"
                     value={formData.timeline}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-line-strong rounded-token bg-surface text-fg"
                     aria-label="Select timeline"
                   >
                     <option value="ASAP">As soon as possible</option>
@@ -435,7 +428,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                 <div>
                   <label
                     htmlFor="reward"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-fg mb-1"
                   >
                     Reward (ETH)
                   </label>
@@ -445,7 +438,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     name="reward"
                     value={formData.reward}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2 border ${formErrors.reward ? "border-red-500" : "border-gray-300"} rounded-md`}
+                    className={`w-full px-3 py-2 border ${formErrors.reward ? "border-danger" : "border-line-strong"} rounded-token bg-surface text-fg`}
                     min="0.001"
                     step="0.001"
                     placeholder="0.05"
@@ -454,7 +447,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     aria-invalid={!!formErrors.reward}
                   />
                   {formErrors.reward && (
-                    <p className="text-red-500 text-xs mt-1">
+                    <p className="text-danger text-xs mt-1">
                       {formErrors.reward}
                     </p>
                   )}
@@ -465,7 +458,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
               <div>
                 <label
                   htmlFor="tagInput"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-fg mb-1"
                 >
                   Tags
                 </label>
@@ -475,7 +468,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     id="tagInput"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md"
+                    className="flex-1 px-3 py-2 border border-line-strong rounded-l-token bg-surface text-fg"
                     placeholder="Add a tag (e.g., diabetes, cardiology)"
                     onKeyPress={(e) =>
                       e.key === "Enter" && (e.preventDefault(), handleAddTag())
@@ -485,7 +478,7 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                   <button
                     type="button"
                     onClick={handleAddTag}
-                    className="px-4 py-2 bg-gray-200 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-300"
+                    className="px-4 py-2 bg-surface-raised border border-line-strong border-l-0 rounded-r-token text-fg hover:bg-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     aria-label="Add tag"
                   >
                     Add
@@ -496,13 +489,13 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                     {formData.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded flex items-center"
+                        className="bg-info-soft text-info text-xs px-2 py-1 rounded-token-sm flex items-center"
                       >
                         {tag}
                         <button
                           type="button"
                           onClick={() => handleRemoveTag(tag)}
-                          className="ml-1 text-blue-400 hover:text-blue-600"
+                          className="ml-1 text-info/70 hover:text-info focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring rounded"
                           aria-label={`Remove tag ${tag}`}
                         >
                           &times;
@@ -518,13 +511,13 @@ const NewRequestModal = ({ isOpen, onClose, onSubmit }) => {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2 hover:bg-gray-50"
+                  className="px-4 py-2 border border-line-strong rounded-token text-fg mr-2 hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
                   Create Request
                 </button>
@@ -792,7 +785,7 @@ const DataMarketplace = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-fg">
             Data Request Portal
           </h1>
           <div className="w-64">
@@ -801,8 +794,8 @@ const DataMarketplace = () => {
         </div>
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600">Loading data requests...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent mb-4"></div>
+            <p className="text-fg-muted">Loading data requests...</p>
           </div>
         </div>
       </div>
@@ -814,19 +807,19 @@ const DataMarketplace = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-fg">
             Data Request Portal
           </h1>
           <div className="w-64">
             <WalletStatus minimal={false} showBalance={true} />
           </div>
         </div>
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-danger-soft border border-danger/30 text-danger px-4 py-3 rounded-token">
           <h3 className="font-medium">Error Loading Data</h3>
           <p>{error}</p>
           <button
             onClick={handleRefresh}
-            className="mt-2 text-red-700 underline hover:no-underline"
+            className="mt-2 text-danger underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
           >
             Try Again
           </button>
@@ -840,14 +833,14 @@ const DataMarketplace = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-fg">
             Data Request Portal
           </h1>
           <div className="w-64">
             <WalletStatus minimal={false} showBalance={true} />
           </div>
         </div>
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+        <div className="bg-warning-soft border border-warning/30 text-warning px-4 py-3 rounded-token">
           <h3 className="font-medium">Researcher Access Only</h3>
           <p>
             You need researcher privileges to access the data request portal.
@@ -861,10 +854,10 @@ const DataMarketplace = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-fg">
             Data Request Portal
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-fg-muted mt-2">
             Create requests for specific health data or respond to existing
             requests from other researchers.
           </p>
@@ -881,7 +874,7 @@ const DataMarketplace = () => {
         <div className="flex flex-col sm:flex-row gap-4">
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+            className="bg-accent hover:bg-accent-hover text-accent-fg px-4 py-2 rounded-token flex items-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             aria-label="Create new data request"
           >
             <PlusCircle size={18} className="mr-2" />
@@ -890,7 +883,7 @@ const DataMarketplace = () => {
 
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-line-strong rounded-token text-fg hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             aria-label="Refresh data requests"
             disabled={loading}
           >
@@ -902,25 +895,25 @@ const DataMarketplace = () => {
           {/* Search Input */}
           <div className="relative w-full sm:w-64">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search size={18} className="text-gray-400" />
+              <Search size={18} className="text-fg-subtle" />
             </span>
             <input
               type="text"
               value={searchTerm}
               onChange={handleSearchChange}
               placeholder="Search requests..."
-              className="pl-10 pr-3 py-2 w-full rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-3 py-2 w-full rounded-token border border-line-strong bg-surface text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               aria-label="Search requests"
             />
           </div>
 
           {/* Filter Dropdown */}
-          <div className="flex items-center bg-white px-3 py-2 rounded-lg shadow-sm border border-gray-200">
-            <Filter size={18} className="text-gray-400 mr-2" />
+          <div className="flex items-center bg-surface px-3 py-2 rounded-token shadow-soft-sm border border-line">
+            <Filter size={18} className="text-fg-subtle mr-2" />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-transparent text-gray-700 pr-8 focus:outline-none"
+              className="bg-transparent text-fg pr-8 focus:outline-none"
               aria-label="Filter by status"
             >
               <option value="all">All Requests</option>
@@ -935,7 +928,7 @@ const DataMarketplace = () => {
       {/* Search Results Summary */}
       {searchTerm && (
         <div className="mb-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-fg-muted">
             Found {filteredAndSearchedRequests.length} results for "{searchTerm}
             "
           </p>
@@ -945,8 +938,8 @@ const DataMarketplace = () => {
       {/* Loading Indicator for refreshes */}
       {loading && requests.length > 0 && (
         <div className="mb-4 flex items-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
-          <span className="text-sm text-gray-600">Refreshing...</span>
+          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-accent mr-2"></div>
+          <span className="text-sm text-fg-muted">Refreshing...</span>
         </div>
       )}
 
@@ -963,8 +956,8 @@ const DataMarketplace = () => {
       </div>
 
       {filteredAndSearchedRequests.length === 0 && (
-        <div className="text-center p-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">
+        <div className="text-center p-12 bg-surface-raised rounded-token">
+          <p className="text-fg-muted">
             {searchTerm
               ? `No results found for "${searchTerm}". Try different keywords.`
               : filterStatus === "all"
@@ -980,22 +973,22 @@ const DataMarketplace = () => {
           <nav className="flex items-center" aria-label="Pagination">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
-              className="px-3 py-1 border border-gray-300 rounded-l-md text-gray-700 hover:bg-gray-50"
+              className="px-3 py-1 border border-line-strong rounded-l-token text-fg hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60"
               disabled={currentPage === 1}
               aria-label="Previous page"
             >
               &lsaquo;
             </button>
 
-            <div className="px-4 py-1 border-t border-b border-gray-300 bg-white">
-              <span className="text-sm text-gray-700">
+            <div className="px-4 py-1 border-t border-b border-line-strong bg-surface">
+              <span className="text-sm text-fg">
                 Page {currentPage} of {totalPages}
               </span>
             </div>
 
             <button
               onClick={() => handlePageChange(currentPage + 1)}
-              className="px-3 py-1 border border-gray-300 rounded-r-md text-gray-700 hover:bg-gray-50"
+              className="px-3 py-1 border border-line-strong rounded-r-token text-fg hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60"
               disabled={currentPage === totalPages}
               aria-label="Next page"
             >

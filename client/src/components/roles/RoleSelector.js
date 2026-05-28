@@ -29,9 +29,6 @@ const RoleSelector = () => {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   // Guard: redirect to login if wallet disconnects while on this page.
-  // AppContent's route already blocks entry when !isConnected, but the wallet
-  // can disconnect mid-session. We use Redux state (same source as AppContent)
-  // to avoid a redirect loop caused by stale localStorage keys.
   useEffect(() => {
     if (isLogoutInProgress()) {
       console.log("RoleSelector: Logout in progress, redirecting to login");
@@ -185,52 +182,55 @@ const RoleSelector = () => {
   );
 
   // Render role card
-  const renderRoleCard = (role, icon, color, description) => (
-    <div
-      className={`w-full md:w-1/2 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
-        selectedRole === role ? `ring-2 ring-${color}-500` : ""
-      } ${isLoading ? "opacity-75 pointer-events-none" : ""}`}
-      onClick={() => !isLoading && handleRoleSelect(role)}
-    >
-      <div className="p-8 flex flex-col items-center gap-4 h-full">
-        <div className={`bg-${color}-50 p-4 rounded-full`}>{icon}</div>
-        <h2 className="text-2xl font-semibold text-gray-800">
-          {role === "patient" ? "Patient" : "Researcher"}
-        </h2>
-        <p className="text-sm text-gray-600 text-center leading-relaxed flex-grow">
-          {description}
-        </p>
-        <button
-          className={`w-full bg-${color}-500 hover:bg-${color}-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-2 flex items-center justify-center ${
-            isLoading ? "opacity-75 cursor-not-allowed" : ""
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            !isLoading && handleRoleSelect(role);
-          }}
-          disabled={isLoading}
-          aria-label={`Select ${role} Role`}
-        >
-          {isLoading && selectedRole === role ? (
-            <>
-              <Loader className="w-4 h-4 mr-2 animate-spin" />
-              Setting {role === "patient" ? "Patient" : "Researcher"} Role...
-            </>
-          ) : (
-            `Select ${role === "patient" ? "Patient" : "Researcher"} Role`
-          )}
-        </button>
+  const renderRoleCard = (role, Icon, description) => {
+    const isSelected = selectedRole === role;
+    const label = role === "patient" ? "Patient" : "Researcher";
+    return (
+      <div
+        className={`w-full md:w-1/2 bg-surface rounded-token-lg border transition-colors ${
+          isSelected
+            ? "border-accent ring-2 ring-accent shadow-soft-md"
+            : "border-line shadow-soft-sm hover:border-line-strong hover:shadow-soft-md"
+        } ${isLoading ? "opacity-75 pointer-events-none" : ""}`}
+      >
+        <div className="p-8 flex flex-col items-center gap-4 h-full">
+          <div className="bg-accent/10 text-accent p-4 rounded-full">
+            <Icon className="w-10 h-10" aria-hidden="true" />
+          </div>
+          <h2 className="text-xl font-semibold text-fg">{label}</h2>
+          <p className="text-sm text-fg-muted text-center leading-relaxed flex-grow">
+            {description}
+          </p>
+          <button
+            className="w-full bg-accent hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed text-accent-fg font-medium py-2.5 px-4 rounded-token transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-page"
+            onClick={() => !isLoading && handleRoleSelect(role)}
+            disabled={isLoading}
+            aria-label={`Select ${label} Role`}
+          >
+            {isLoading && selectedRole === role ? (
+              <>
+                <Loader
+                  className="w-4 h-4 animate-spin"
+                  aria-hidden="true"
+                />
+                Setting {label} Role...
+              </>
+            ) : (
+              `Select ${label} Role`
+            )}
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-page p-6">
       <div className="absolute top-4 right-4">
         <LogoutButton
           variant="text"
           size="sm"
-          className="text-gray-600 hover:text-gray-800"
+          className="text-fg-muted hover:text-fg"
         />
       </div>
       {error?.includes("Wallet address not found") && (
@@ -243,22 +243,20 @@ const RoleSelector = () => {
       )}
       <div className="max-w-4xl w-full">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Choose Your Role</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-fg mb-2">Choose Your Role</h1>
+          <p className="text-fg-muted text-sm">
             Select how you want to use the Healthmint platform
           </p>
         </div>
         <div className="flex flex-col md:flex-row gap-6 justify-center items-stretch">
           {renderRoleCard(
             "patient",
-            <User className="w-12 h-12 text-blue-500" />,
-            "blue",
+            User,
             "Share and manage your health data securely on the blockchain. Control access to your records and potentially earn rewards for contributing to medical research."
           )}
           {renderRoleCard(
             "researcher",
-            <Microscope className="w-12 h-12 text-purple-500" />,
-            "purple",
+            Microscope,
             "Access and analyze anonymized health data for research purposes. Discover patterns, conduct studies, and contribute to medical advancements with blockchain-verified data integrity."
           )}
         </div>

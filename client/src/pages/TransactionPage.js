@@ -14,6 +14,7 @@ import {
   Calendar,
 } from "lucide-react";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
+import HashDisplay from "../components/ui/HashDisplay";
 import WalletStatus from "../components/WalletStatus";
 import { addNotification } from "../redux/slices/notificationSlice";
 
@@ -122,13 +123,13 @@ const TransactionsPage = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case "completed":
-        return <CheckCircle size={18} className="text-green-500" />;
+        return <CheckCircle size={18} className="text-success" />;
       case "pending":
-        return <Clock size={18} className="text-yellow-500" />;
+        return <Clock size={18} className="text-warning" />;
       case "failed":
-        return <AlertCircle size={18} className="text-red-500" />;
+        return <AlertCircle size={18} className="text-danger" />;
       default:
-        return <Clock size={18} className="text-gray-500" />;
+        return <Clock size={18} className="text-fg-subtle" />;
     }
   };
 
@@ -136,15 +137,15 @@ const TransactionsPage = () => {
   const getTypeIcon = (type) => {
     switch (type) {
       case "purchase":
-        return <Download size={18} className="text-blue-500" />;
+        return <Download size={18} className="text-info" />;
       case "share":
-        return <Upload size={18} className="text-purple-500" />;
+        return <Upload size={18} className="text-accent" />;
       case "consent":
-        return <CheckCircle size={18} className="text-green-500" />;
+        return <CheckCircle size={18} className="text-success" />;
       case "upload":
-        return <Upload size={18} className="text-indigo-500" />;
+        return <Upload size={18} className="text-accent" />;
       default:
-        return <FileText size={18} className="text-gray-500" />;
+        return <FileText size={18} className="text-fg-subtle" />;
     }
   };
 
@@ -205,15 +206,15 @@ const TransactionsPage = () => {
       <div className="mt-2">
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div>
-            <span className="text-gray-500">Data Type:</span>
+            <span className="text-fg-muted">Data Type:</span>
             <p className="font-medium">{tx.dataType || "Unknown"}</p>
           </div>
           <div>
-            <span className="text-gray-500">File Size:</span>
+            <span className="text-fg-muted">File Size:</span>
             <p className="font-medium">{tx.fileSize || "Unknown"}</p>
           </div>
           <div>
-            <span className="text-gray-500">Records:</span>
+            <span className="text-fg-muted">Records:</span>
             <p className="font-medium">{tx.recordCount || "N/A"}</p>
           </div>
         </div>
@@ -221,7 +222,7 @@ const TransactionsPage = () => {
         {tx.dataAvailable && (
           <div className="mt-2">
             <button
-              className="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded-md flex items-center"
+              className="text-sm bg-info-soft hover:bg-info/20 text-info px-3 py-1 rounded-token flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               onClick={() => window.open(tx.downloadUrl || "#", "_blank")}
             >
               <Database size={14} className="mr-1" />
@@ -239,17 +240,17 @@ const TransactionsPage = () => {
       <div className="mt-2">
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div>
-            <span className="text-gray-500">Shared With:</span>
+            <span className="text-fg-muted">Shared With:</span>
             <p className="font-medium truncate">
               {tx.sharedWith || "Anonymous"}
             </p>
           </div>
           <div>
-            <span className="text-gray-500">Permission:</span>
+            <span className="text-fg-muted">Permission:</span>
             <p className="font-medium">{tx.permission || "Read-only"}</p>
           </div>
           <div>
-            <span className="text-gray-500">Expiration:</span>
+            <span className="text-fg-muted">Expiration:</span>
             <p className="font-medium">
               {tx.expiration ? formatTimestamp(tx.expiration) : "Never"}
             </p>
@@ -259,7 +260,7 @@ const TransactionsPage = () => {
         {tx.type === "share" && tx.canRevoke && (
           <div className="mt-2">
             <button
-              className="text-sm bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1 rounded-md flex items-center"
+              className="text-sm bg-danger-soft hover:bg-danger/20 text-danger px-3 py-1 rounded-token flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               onClick={() => {
                 // Placeholder for revoke functionality
                 alert("Revoke access functionality would be implemented here");
@@ -278,12 +279,12 @@ const TransactionsPage = () => {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold mb-2">
+          <h1 className="text-2xl font-bold text-fg mb-2">
             {userRole === "researcher"
               ? "Data Purchase History"
               : "Data Sharing Transactions"}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-fg-muted">
             {userRole === "researcher"
               ? "View your history of purchased health data records"
               : "Track who has access to your health data and manage sharing permissions"}
@@ -296,17 +297,17 @@ const TransactionsPage = () => {
       </div>
 
       {/* Filters and search */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="bg-surface border border-line rounded-token shadow-soft-sm p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="w-full md:w-auto">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={18} className="text-gray-400" />
+                <Search size={18} className="text-fg-subtle" />
               </div>
               <input
                 type="text"
                 placeholder="Search transactions..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full md:w-64"
+                className="pl-10 pr-4 py-2 border border-line-strong rounded-token bg-surface text-fg w-full md:w-64 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -314,10 +315,10 @@ const TransactionsPage = () => {
           </div>
 
           <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-            <div className="flex items-center bg-gray-100 rounded-md p-1">
-              <Filter size={16} className="text-gray-500 mr-1 ml-2" />
+            <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+              <Filter size={16} className="text-fg-subtle mr-1 ml-2" />
               <select
-                className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                 value={filters.status}
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value })
@@ -330,10 +331,10 @@ const TransactionsPage = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-gray-100 rounded-md p-1">
-              <FileText size={16} className="text-gray-500 mr-1 ml-2" />
+            <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+              <FileText size={16} className="text-fg-subtle mr-1 ml-2" />
               <select
-                className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                 value={filters.type}
                 onChange={(e) =>
                   setFilters({ ...filters, type: e.target.value })
@@ -352,10 +353,10 @@ const TransactionsPage = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-gray-100 rounded-md p-1">
-              <Calendar size={16} className="text-gray-500 mr-1 ml-2" />
+            <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+              <Calendar size={16} className="text-fg-subtle mr-1 ml-2" />
               <select
-                className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                 value={filters.timeframe}
                 onChange={(e) =>
                   setFilters({ ...filters, timeframe: e.target.value })
@@ -377,7 +378,7 @@ const TransactionsPage = () => {
                 });
                 setSearchTerm("");
               }}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-accent hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
             >
               Reset
             </button>
@@ -386,33 +387,33 @@ const TransactionsPage = () => {
       </div>
 
       {/* Transaction list */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-surface border border-line rounded-token shadow-soft-md overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center p-12">
             <LoadingSpinner size="large" />
-            <span className="ml-3 text-gray-600">Loading transactions...</span>
+            <span className="ml-3 text-fg-muted">Loading transactions...</span>
           </div>
         ) : error ? (
           <div className="p-6 text-center">
-            <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <AlertCircle size={48} className="text-danger mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-fg mb-2">
               Failed to load transactions
             </h3>
-            <p className="text-gray-600">{error}</p>
+            <p className="text-fg-muted">{error}</p>
             <button
               onClick={loadTransactions}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="mt-4 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               Try Again
             </button>
           </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="p-12 text-center">
-            <Clock size={48} className="text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Clock size={48} className="text-fg-subtle mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-fg mb-2">
               No transactions found
             </h3>
-            <p className="text-gray-600">
+            <p className="text-fg-muted">
               {searchTerm
                 ? "Try adjusting your search or filters"
                 : userRole === "researcher"
@@ -422,36 +423,36 @@ const TransactionsPage = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-line">
+              <thead className="bg-surface-raised">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Transaction
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     {userRole === "researcher" ? "Dataset" : "Data"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     {userRole === "researcher" ? "Cost" : "Reward"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-line">
                 {filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-gray-50">
+                  <tr key={tx.id} className="hover:bg-surface-raised">
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-gray-100 rounded-lg">
+                        <div className="p-2 bg-surface-raised rounded-token">
                           {getTypeIcon(tx.type)}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">
+                          <div className="font-medium text-fg">
                             {tx.type === "purchase"
                               ? "Data Purchase"
                               : tx.type === "share"
@@ -462,14 +463,14 @@ const TransactionsPage = () => {
                                     ? "Data Upload"
                                     : "Transaction"}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-fg-muted">
                             {tx.description || "No description"}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-fg">
                         {tx.dataName || tx.dataId || "Unknown"}
                       </div>
                       {userRole === "researcher"
@@ -477,19 +478,23 @@ const TransactionsPage = () => {
                         : renderPatientTransactionDetails(tx)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-fg">
                         {formatTimestamp(tx.timestamp)}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        Tx: {tx.hash ? `${tx.hash.substr(0, 8)}...` : "N/A"}
+                      <div className="text-xs text-fg-muted font-mono">
+                        {tx.hash ? (
+                          <HashDisplay value={tx.hash} startChars={8} endChars={4} />
+                        ) : (
+                          "N/A"
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-fg">
                         {formatAmount(tx.amount)}
                       </div>
                       {tx.gasUsed && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-fg-muted">
                           Gas: {formatAmount(tx.gasUsed)}
                         </div>
                       )}
@@ -497,7 +502,7 @@ const TransactionsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {getStatusIcon(tx.status)}
-                        <span className="ml-2 text-sm text-gray-900 capitalize">
+                        <span className="ml-2 text-sm text-fg capitalize">
                           {tx.status || "Unknown"}
                         </span>
                       </div>

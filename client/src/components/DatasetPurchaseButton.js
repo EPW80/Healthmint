@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import PropTypes from "prop-types";
 import mockPaymentService from "../services/mockPaymentService.js";
+import { Button } from "./ui/index.js";
 const DatasetPurchaseButton = ({
   dataset,
   selectedTier = "complete",
@@ -190,20 +191,12 @@ const DatasetPurchaseButton = ({
     }
   };
 
-  // Style based on state
-  const buttonStyle = () => {
+  const stateToVariant = () => {
     switch (purchaseState) {
-      case "processing":
-        return "bg-blue-500 cursor-not-allowed";
-      case "confirming":
-        return "bg-purple-500 cursor-not-allowed";
-      case "success":
-        return "bg-green-500 hover:bg-green-600";
-      case "error":
-        return "bg-red-500 hover:bg-red-600";
-      case "ready":
-      default:
-        return "bg-blue-500 hover:bg-blue-600";
+      case "confirming": return "secondary";
+      case "success":    return "secondary";
+      case "error":      return "danger";
+      default:           return "primary";
     }
   };
 
@@ -345,33 +338,31 @@ const DatasetPurchaseButton = ({
 
   return (
     <div>
-      <button
+      <Button
+        variant={stateToVariant()}
+        disabled={purchaseState === "processing" || purchaseState === "confirming"}
         onClick={handleClick}
-        disabled={
-          purchaseState === "processing" || purchaseState === "confirming"
-        }
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className={`relative overflow-hidden flex items-center justify-center px-4 py-2 rounded-lg text-white transition-colors ${buttonStyle()} ${className}`}
+        className={`relative overflow-hidden w-full ${className}`}
         title={error || `Purchase dataset for ${dataset.price} ETH`}
       >
         {/* Background pulse animation when hovered */}
         {purchaseState === "ready" && (
-          <div
-            className={`absolute inset-0 bg-blue-400 transition-opacity duration-700 ${
-              hovered ? "opacity-30" : "opacity-0"
+          <span
+            className={`absolute inset-0 bg-white/20 transition-opacity duration-700 pointer-events-none ${
+              hovered ? "opacity-100" : "opacity-0"
             }`}
-            style={{
-              animation: hovered ? "pulse 1.5s infinite" : "none",
-            }}
-          ></div>
+            style={{ animation: hovered ? "pulse 1.5s infinite" : "none" }}
+            aria-hidden="true"
+          />
         )}
 
         {/* Button content */}
-        <div className="relative z-10 flex items-center justify-center">
+        <span className="relative z-10 flex items-center justify-center">
           {renderButtonContent()}
-        </div>
-      </button>
+        </span>
+      </Button>
 
       {/* Transaction progress indicator */}
       {renderProgressIndicator()}

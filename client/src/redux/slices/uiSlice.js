@@ -1,10 +1,24 @@
 // src/redux/slices/uiSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
+export const THEME_STORAGE_KEY = "healthmint_theme";
+
+const readStoredTheme = () => {
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "light" || stored === "dark" || stored === "system") {
+      return stored;
+    }
+  } catch (_e) {
+    // localStorage unavailable (e.g. SSR, private mode) — fall through
+  }
+  return "system";
+};
+
 const initialState = {
   loading: false,
   error: null,
-  theme: "light",
+  theme: readStoredTheme(),
   modal: {
     isOpen: false,
     type: null,
@@ -130,6 +144,16 @@ export const clearNotifications = () => (dispatch) => {
 export const selectLoading = (state) => state.ui.loading;
 export const selectError = (state) => state.ui.error;
 export const selectTheme = (state) => state.ui.theme;
+export const selectEffectiveTheme = (state) => {
+  const pref = state.ui.theme;
+  if (pref === "light" || pref === "dark") return pref;
+  if (typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return "light";
+};
 export const selectModal = (state) => state.ui.modal;
 export const selectSearchQuery = (state) => state.ui.searchQuery;
 export const selectSortBy = (state) => state.ui.sortBy;

@@ -202,6 +202,7 @@ const ProfileManager = () => {
     isDirty,
     validateForm,
     getChangedFields,
+    getChangedFieldsByPrefix,
     initialFormState,
     setInitialFormState,
     setFormState,
@@ -589,6 +590,77 @@ const ProfileManager = () => {
           })
         : formState;
 
+      const imageChanged =
+        previewUrl !== (userProfile?.profileImage ?? null) ||
+        storageReference !== (userProfile?.profileImageHash ?? null);
+
+      const basicsChanged =
+        getChangedFieldsByPrefix("name") ||
+        getChangedFieldsByPrefix("email") ||
+        getChangedFieldsByPrefix("age") ||
+        getChangedFieldsByPrefix("bio") ||
+        imageChanged;
+
+      // Sequential fan-out: bail on first failure (executeAsync surfaces the error).
+      if (basicsChanged) {
+        await userService.updateProfile({
+          name: sanitizedData.name,
+          email: sanitizedData.email,
+          age: sanitizedData.age,
+          bio: sanitizedData.bio,
+          address: walletAddress,
+          profileImage: previewUrl,
+          profileImageHash: storageReference,
+          lastUpdated: new Date().toISOString(),
+        });
+      }
+
+      if (
+        getChangedFieldsByPrefix("sharingPreferences") ||
+        getChangedFieldsByPrefix("privacyPreferences")
+      ) {
+        await userService.updatePrivacySettings({
+          sharingPreferences: sanitizedData.sharingPreferences,
+          privacyPreferences: sanitizedData.privacyPreferences,
+        });
+      }
+
+      if (
+        getChangedFieldsByPrefix("emailNotifications") ||
+        getChangedFieldsByPrefix("inAppNotifications") ||
+        getChangedFieldsByPrefix("notificationPreferences")
+      ) {
+        await userService.updateNotificationSettings({
+          emailNotifications: sanitizedData.emailNotifications,
+          inAppNotifications: sanitizedData.inAppNotifications,
+          notificationPreferences: sanitizedData.notificationPreferences,
+        });
+      }
+
+      if (
+        userRole === "researcher" &&
+        (getChangedFieldsByPrefix("institution") ||
+          getChangedFieldsByPrefix("credentials") ||
+          getChangedFieldsByPrefix("researchFocus") ||
+          getChangedFieldsByPrefix("ethicsStatement") ||
+          getChangedFieldsByPrefix("ethicsAgreement"))
+      ) {
+        await userService.updateResearcherCredentials({
+          institution: sanitizedData.institution,
+          credentials: sanitizedData.credentials,
+          researchFocus: sanitizedData.researchFocus,
+          ethicsStatement: sanitizedData.ethicsStatement,
+          ethicsAgreement: sanitizedData.ethicsAgreement,
+        });
+      }
+
+      if (
+        userRole === "researcher" &&
+        getChangedFieldsByPrefix("publications")
+      ) {
+        await userService.updatePublications(sanitizedData.publications);
+      }
+
       const updatedProfile = {
         ...userProfile,
         ...sanitizedData,
@@ -598,10 +670,7 @@ const ProfileManager = () => {
         lastUpdated: new Date().toISOString(),
       };
 
-      // Update profile with user service
-      await userService.updateProfile(updatedProfile);
-
-      // Update profile in Redux store using sanitized data
+      // Single Redux dispatch after all calls succeed (preserves prior behavior).
       dispatch(updateUserProfile(sanitizedData));
 
       // Success notification

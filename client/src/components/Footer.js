@@ -16,7 +16,6 @@ const Footer = ({
     window.location.href = `mailto:${contactEmail}`;
   };
 
-  // Footer link component for consistency
   const FooterLink = ({ href, label, icon: Icon, onClick, external }) => (
     <a
       href={href}
@@ -24,30 +23,31 @@ const Footer = ({
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
       aria-label={label}
-      className="text-gray-600 hover:text-blue-500 transition-colors text-sm flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 rounded px-2 py-1"
+      className="text-fg-muted hover:text-fg transition-colors text-sm flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded px-2 py-1"
     >
-      {Icon && <Icon size={16} className="opacity-75" />}
+      {Icon && <Icon size={14} className="opacity-75" aria-hidden="true" />}
       <span>{label}</span>
-      {external && <ExternalLink size={12} className="opacity-75" />}
+      {external && (
+        <ExternalLink size={11} className="opacity-60" aria-hidden="true" />
+      )}
     </a>
   );
 
-  // Social media icon component
   const SocialIcon = ({ href, label, icon: Icon }) => (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all duration-200 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+      className="p-2 text-fg-muted hover:text-accent rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
     >
-      <Icon size={20} />
+      <Icon size={18} aria-hidden="true" />
     </a>
   );
 
   return (
     <footer
-      className="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-white/30 py-3 shadow-[0_-10px_15px_rgba(0,0,0,0.05)] z-10 transition-all duration-300 hover:bg-white/60 hover:backdrop-blur-none group"
+      className="fixed bottom-0 w-full bg-surface border-t border-line py-3 z-10"
       role="contentinfo"
       aria-label="Site footer"
     >
@@ -55,14 +55,14 @@ const Footer = ({
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
           {/* Company info */}
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full"></div>
-            <p className="text-sm text-gray-600 font-medium group-hover:text-gray-800">
+            <div className="h-5 w-5 bg-accent rounded-full flex-shrink-0" />
+            <p className="text-sm text-fg-muted font-medium">
               © {currentYear} {companyName}
             </p>
           </div>
 
           {/* Links */}
-          <div className="flex items-center gap-4 flex-wrap justify-center">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
             <FooterLink
               href={`${githubUrl}/blob/main/LICENSE`}
               label="Privacy Policy"
@@ -81,8 +81,8 @@ const Footer = ({
             />
           </div>
 
-          {/* Social media */}
-          <div className="flex gap-1 justify-center">
+          {/* Social */}
+          <div className="flex gap-0.5">
             <SocialIcon
               href={githubUrl}
               label="Visit our GitHub repository"

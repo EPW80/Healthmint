@@ -4,66 +4,60 @@ import PropTypes from "prop-types";
 
 const LoadingSpinner = ({
   size = "medium",
-  color = "blue",
+  color = "accent",
   label = "Loading...",
   showLabel = false,
   className = "",
   fullScreen = false,
   spinnerStyle = {},
 }) => {
-  // Size mappings (using Tailwind classes)
   const sizeClasses = {
-    small: "h-4 w-4 border-2",
-    medium: "h-8 w-8 border-3",
-    large: "h-12 w-12 border-4",
+    small:  "h-4 w-4 border-2",
+    medium: "h-8 w-8 border-[3px]",
+    large:  "h-12 w-12 border-4",
   };
 
-  // Color mappings (using Tailwind classes)
+  // Token-driven colors. Legacy names are aliases so existing callers don't break.
   const colorClasses = {
-    blue: "border-blue-500 border-t-transparent",
-    green: "border-green-500 border-t-transparent",
-    purple: "border-purple-500 border-t-transparent",
-    gray: "border-gray-500 border-t-transparent",
-    white: "border-white border-t-transparent",
+    accent:       "border-accent border-t-transparent",
+    success:      "border-success border-t-transparent",
+    current:      "border-current border-t-transparent",
+    "on-accent":  "border-accent-fg border-t-transparent",
+    muted:        "border-fg-muted border-t-transparent",
+    // Legacy aliases
+    blue:         "border-accent border-t-transparent",
+    green:        "border-success border-t-transparent",
+    purple:       "border-accent border-t-transparent",
+    gray:         "border-fg-muted border-t-transparent",
+    white:        "border-accent-fg border-t-transparent",
   };
 
-  // Consolidated spinner classes
-  const spinnerClasses = `animate-spin ${sizeClasses[size] || sizeClasses.medium} ${colorClasses[color] || colorClasses.blue} rounded-full`;
+  const spinnerClasses = `animate-spin rounded-full ${sizeClasses[size] || sizeClasses.medium} ${colorClasses[color] || colorClasses.accent}`;
 
-  // Full-screen spinner
   if (fullScreen) {
     return (
       <div
-        className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-fg/20 flex items-center justify-center z-50"
         role="status"
         aria-live="polite"
       >
-        <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-          <div
-            className={spinnerClasses}
-            style={spinnerStyle}
-            aria-hidden="true"
-          ></div>
-          <span className="mt-3 text-gray-700">{label}</span>
+        <div className="bg-surface-raised border border-line shadow-soft-lg p-6 rounded-token flex flex-col items-center">
+          <div className={spinnerClasses} style={spinnerStyle} aria-hidden="true" />
+          <span className="mt-3 text-fg text-sm">{label}</span>
         </div>
       </div>
     );
   }
 
-  // Inline spinner
   return (
     <div
       className={`flex items-center justify-center ${className}`}
       role="status"
       aria-live="polite"
     >
-      <div
-        className={spinnerClasses}
-        style={spinnerStyle}
-        aria-hidden="true"
-      ></div>
+      <div className={spinnerClasses} style={spinnerStyle} aria-hidden="true" />
       {showLabel && (
-        <span className="ml-3 text-sm font-medium text-gray-700">{label}</span>
+        <span className="ml-3 text-sm font-medium text-fg-muted">{label}</span>
       )}
       {!showLabel && <span className="sr-only">{label}</span>}
     </div>
@@ -72,12 +66,15 @@ const LoadingSpinner = ({
 
 LoadingSpinner.propTypes = {
   size: PropTypes.oneOf(["small", "medium", "large"]),
-  color: PropTypes.oneOf(["blue", "green", "purple", "gray", "white"]),
+  color: PropTypes.oneOf([
+    "accent", "success", "current", "on-accent", "muted",
+    "blue", "green", "purple", "gray", "white",
+  ]),
   label: PropTypes.string,
   showLabel: PropTypes.bool,
   className: PropTypes.string,
   fullScreen: PropTypes.bool,
-  spinnerStyle: PropTypes.object, // For custom inline styles
+  spinnerStyle: PropTypes.object,
 };
 
 export default memo(LoadingSpinner);

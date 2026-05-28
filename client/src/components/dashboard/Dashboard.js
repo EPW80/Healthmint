@@ -42,6 +42,7 @@ import useAsyncOperation from "../../hooks/useAsyncOperation.js";
 import useAnalyticsNavigation from "../../hooks/useAnalyticsNavigation.js";
 import ErrorDisplay from "../ui/ErrorDisplay.js";
 import LoadingSpinner from "../ui/LoadingSpinner.js";
+import { statusBadgeClass } from "../../theme/statusColors.js";
 
 const Dashboard = ({ onNavigate }) => {
   const dispatch = useDispatch();
@@ -454,31 +455,21 @@ const Dashboard = ({ onNavigate }) => {
     }
   };
 
-  const getActivityStatusColor = (status) => {
-    switch (status) {
-      case "success":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "error":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const getActivityStatusColor = (status) => statusBadgeClass(status);
 
   // Loading state
   if (isLoading && !uiError) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">Dashboard</h1>
-        <div className="bg-white rounded-xl shadow-md p-8 flex flex-col items-center justify-center min-h-[400px]">
+        <h1 className="text-2xl font-bold text-fg mb-8">Dashboard</h1>
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-8 flex flex-col items-center justify-center min-h-[400px]">
           <LoadingSpinner
             size="large"
+            color="accent"
             label={`Loading ${userRole === "patient" ? "patient" : "researcher"} dashboard...`}
             showLabel={true}
           />
-          <p className="text-gray-500 mt-4">
+          <p className="text-fg-muted mt-4">
             Please wait while we retrieve your information
           </p>
         </div>
@@ -506,51 +497,51 @@ const Dashboard = ({ onNavigate }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* User welcome - Patient */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-fg">
             Welcome, {userProfile?.name || "Patient"}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-fg-muted">
             Manage your health data securely with Healthmint
           </p>
         </div>
 
         {/* Stats Grid - Patient */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
+          <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center gap-4">
-              <FileText className="text-blue-500 w-8 h-8" />
+              <FileText className="text-accent w-8 h-8" />
               <div>
-                <p className="text-gray-600 text-sm">My Health Records</p>
+                <p className="text-fg-muted text-sm">My Health Records</p>
                 <p className="text-2xl font-semibold">{totalRecords}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
+          <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center gap-4">
-              <Share2 className="text-green-500 w-8 h-8" />
+              <Share2 className="text-success w-8 h-8" />
               <div>
-                <p className="text-gray-600 text-sm">Shared Records</p>
+                <p className="text-fg-muted text-sm">Shared Records</p>
                 <p className="text-2xl font-semibold">{sharedRecords}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
+          <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center gap-4">
-              <Bell className="text-purple-500 w-8 h-8" />
+              <Bell className="text-accent w-8 h-8" />
               <div>
-                <p className="text-gray-600 text-sm">Access Requests</p>
+                <p className="text-fg-muted text-sm">Access Requests</p>
                 <p className="text-2xl font-semibold">{pendingRequests}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
+          <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:transform hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center gap-4">
-              <Shield className="text-indigo-500 w-8 h-8" />
+              <Shield className="text-accent w-8 h-8" />
               <div>
-                <p className="text-gray-600 text-sm">Privacy Score</p>
+                <p className="text-fg-muted text-sm">Privacy Score</p>
                 <p className="text-2xl font-semibold">{securityScore}%</p>
               </div>
             </div>
@@ -561,7 +552,7 @@ const Dashboard = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <button
             onClick={() => handleNavigateTo("/storage")}
-            className="p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 font-medium"
+            className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
           >
             <Upload className="w-5 h-5" />
             Upload Health Record
@@ -569,7 +560,7 @@ const Dashboard = ({ onNavigate }) => {
 
           <button
             onClick={() => handleNavigateTo("/profile")}
-            className="p-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 font-medium"
+            className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
           >
             <Settings className="w-5 h-5" />
             Privacy Settings
@@ -577,7 +568,7 @@ const Dashboard = ({ onNavigate }) => {
 
           <button
             onClick={() => handleNavigateTo("/history")}
-            className="p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 font-medium"
+            className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
           >
             <Clock className="w-5 h-5" />
             Access History
@@ -585,13 +576,13 @@ const Dashboard = ({ onNavigate }) => {
         </div>
 
         {/* HIPAA Compliance Banner - Patient */}
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 flex items-start gap-3">
-          <Shield className="text-blue-500 flex-shrink-0 mt-1" size={24} />
+        <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 mb-8 flex items-start gap-3">
+          <Shield className="text-accent flex-shrink-0 mt-1" size={24} />
           <div>
-            <h3 className="font-medium text-blue-700">
+            <h3 className="font-medium text-accent">
               Your Data is Protected
             </h3>
-            <p className="text-sm text-blue-600">
+            <p className="text-sm text-fg-muted">
               Your health information is securely stored and protected in
               accordance with HIPAA regulations. You control who can access your
               data and all access is logged for your security.
@@ -600,20 +591,20 @@ const Dashboard = ({ onNavigate }) => {
         </div>
 
         {/* Health Records Section - Patient */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6">Your Health Records</h2>
 
           {/* Record viewer modal */}
           {viewingRecord && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <div className="bg-surface border border-line rounded-token-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <div className="p-4 border-b border-line flex justify-between items-center">
                   <h3 className="text-xl font-semibold">
                     Health Record Details
                   </h3>
                   <button
                     onClick={closeViewer}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-fg-muted hover:text-fg"
                     aria-label="Close details"
                   >
                     <svg
@@ -637,31 +628,31 @@ const Dashboard = ({ onNavigate }) => {
                   style={{ maxHeight: "calc(90vh - 120px)" }}
                 >
                   {/* Record details would be displayed here */}
-                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <div className="bg-accent/10 border border-accent/20 p-4 rounded-lg mb-4">
                     <div className="flex items-center gap-2">
-                      <Shield className="text-blue-500" size={20} />
-                      <h4 className="font-medium text-blue-700">
+                      <Shield className="text-accent" size={20} />
+                      <h4 className="font-medium text-accent">
                         HIPAA Compliant Viewing
                       </h4>
                     </div>
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       This access is logged and monitored in compliance with
                       HIPAA regulations.
                     </p>
                   </div>
 
                   {/* Record content */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="border-b border-gray-200 pb-3 mb-4">
+                  <div className="bg-surface-raised p-4 rounded-lg">
+                    <div className="border-b border-line pb-3 mb-4">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-lg font-semibold text-gray-800">
+                        <h4 className="text-lg font-semibold text-fg">
                           Patient Record
                         </h4>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                        <span className="px-2 py-1 bg-accent/10 text-accent text-xs rounded-full">
                           Last updated: {new Date().toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-fg-muted">
                         Record ID:{" "}
                         {viewingRecord?.substring(0, 8) || "REC-12345-XYZ"} •
                         HIPAA-compliant viewing session • Access logged
@@ -670,44 +661,44 @@ const Dashboard = ({ onNavigate }) => {
 
                     <div className="space-y-6">
                       {/* Vital Signs */}
-                      <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">
+                      <div className="bg-surface p-3 rounded border border-line">
+                        <h5 className="font-medium text-fg mb-2">
                           Vital Signs
                         </h5>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                          <div className="bg-blue-50 p-2 rounded">
-                            <p className="text-gray-500">Blood Pressure</p>
+                          <div className="bg-accent/10 p-2 rounded">
+                            <p className="text-fg-subtle">Blood Pressure</p>
                             <p className="font-semibold">120/80 mmHg</p>
                           </div>
-                          <div className="bg-blue-50 p-2 rounded">
-                            <p className="text-gray-500">Heart Rate</p>
+                          <div className="bg-accent/10 p-2 rounded">
+                            <p className="text-fg-subtle">Heart Rate</p>
                             <p className="font-semibold">72 bpm</p>
                           </div>
-                          <div className="bg-blue-50 p-2 rounded">
-                            <p className="text-gray-500">Temperature</p>
+                          <div className="bg-accent/10 p-2 rounded">
+                            <p className="text-fg-subtle">Temperature</p>
                             <p className="font-semibold">98.6 °F</p>
                           </div>
-                          <div className="bg-blue-50 p-2 rounded">
-                            <p className="text-gray-500">SpO2</p>
+                          <div className="bg-accent/10 p-2 rounded">
+                            <p className="text-fg-subtle">SpO2</p>
                             <p className="font-semibold">98%</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Medications */}
-                      <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">
+                      <div className="bg-surface p-3 rounded border border-line">
+                        <h5 className="font-medium text-fg mb-2">
                           Current Medications
                         </h5>
                         <table className="min-w-full text-sm">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-surface-raised">
                             <tr>
                               <th className="text-left p-2">Medication</th>
                               <th className="text-left p-2">Dosage</th>
                               <th className="text-left p-2">Frequency</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200">
+                          <tbody className="divide-y divide-line">
                             <tr>
                               <td className="p-2">Lisinopril</td>
                               <td className="p-2">10mg</td>
@@ -728,8 +719,8 @@ const Dashboard = ({ onNavigate }) => {
                       </div>
 
                       {/* Diagnoses */}
-                      <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">
+                      <div className="bg-surface p-3 rounded border border-line">
+                        <h5 className="font-medium text-fg mb-2">
                           Diagnoses
                         </h5>
                         <ul className="list-disc pl-5 space-y-1 text-sm">
@@ -740,11 +731,11 @@ const Dashboard = ({ onNavigate }) => {
                       </div>
 
                       {/* Doctor's Notes */}
-                      <div className="bg-white p-3 rounded border border-gray-200">
-                        <h5 className="font-medium text-gray-900 mb-2">
+                      <div className="bg-surface p-3 rounded border border-line">
+                        <h5 className="font-medium text-fg mb-2">
                           Clinical Notes
                         </h5>
-                        <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-sm">
+                        <div className="text-sm text-fg bg-surface-raised p-3 rounded-sm">
                           <p>
                             Patient is showing good management of glucose levels
                             with current medication regimen. Blood pressure is
@@ -756,14 +747,14 @@ const Dashboard = ({ onNavigate }) => {
                             Follow-up appointment scheduled in 3 months. Patient
                             expressed understanding of care plan.
                           </p>
-                          <p className="mt-2 text-xs text-gray-500">
+                          <p className="mt-2 text-xs text-fg-subtle">
                             Dr. Johnson • Primary Care • 03/15/2025
                           </p>
                         </div>
                       </div>
 
                       {/* HIPAA Compliance Footer */}
-                      <div className="mt-4 pt-3 border-t border-gray-200 text-xs text-gray-500">
+                      <div className="mt-4 pt-3 border-t border-line text-xs text-fg-subtle">
                         <p>
                           This medical record is protected under HIPAA Privacy
                           Rule (45 CFR Parts 160 and 164). Unauthorized access,
@@ -779,14 +770,14 @@ const Dashboard = ({ onNavigate }) => {
           )}
 
           {!userRecords || userRecords.length === 0 ? (
-            <div className="text-center py-8 bg-blue-50 rounded-lg">
-              <FileText className="w-12 h-12 text-blue-300 mx-auto mb-3" />
-              <p className="text-blue-700 mb-2">
+            <div className="text-center py-8 bg-accent/10 rounded-lg">
+              <FileText className="w-12 h-12 text-accent/50 mx-auto mb-3" />
+              <p className="text-accent mb-2">
                 You don't have any health records yet
               </p>
               <button
                 onClick={() => handleNavigateTo("/storage")}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-4 py-2 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors"
               >
                 Upload Your First Record
               </button>
@@ -796,29 +787,29 @@ const Dashboard = ({ onNavigate }) => {
               {userRecords.slice(0, 6).map((record) => (
                 <div
                   key={record.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  className="border border-line rounded-lg p-4 hover:bg-surface-raised transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center">
-                      <FileText size={16} className="text-blue-500 mr-2" />
+                      <FileText size={16} className="text-accent mr-2" />
                       <h4 className="font-medium">
                         {record.title || `Health Record ${record.id.slice(-4)}`}
                       </h4>
                     </div>
                     {record.verified && (
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center">
+                      <span className="bg-success-soft text-success text-xs px-2 py-1 rounded-full flex items-center">
                         <CheckCircle size={12} className="mr-1" />
                         Verified
                       </span>
                     )}
                   </div>
 
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  <p className="text-sm text-fg-muted mb-2 line-clamp-2">
                     {record.description ||
                       `${record.category || "Health"} data record`}
                   </p>
 
-                  <div className="flex items-center text-xs text-gray-500 mb-3">
+                  <div className="flex items-center text-xs text-fg-muted mb-3">
                     <div className="flex items-center mr-3">
                       {record.anonymized ? (
                         <Lock size={12} className="mr-1" />
@@ -839,22 +830,22 @@ const Dashboard = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                  <div className="flex justify-between items-center text-xs text-fg-muted mb-3">
                     <span>
                       Updated:{" "}
                       {new Date(
                         record.uploadDate || Date.now()
                       ).toLocaleDateString()}
                     </span>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                    <span className="px-2 py-1 bg-accent/10 text-accent rounded-full">
                       {record.format || "JSON"}
                     </span>
                   </div>
 
-                  <div className="flex border-t border-gray-100 pt-3 gap-2">
+                  <div className="flex border-t border-line pt-3 gap-2">
                     <button
                       onClick={() => handleViewRecord(record.id)}
-                      className="flex-1 flex items-center justify-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                      className="flex-1 flex items-center justify-center gap-1 text-xs text-accent hover:text-accent-hover"
                     >
                       <Eye size={14} />
                       <span>View</span>
@@ -862,13 +853,13 @@ const Dashboard = ({ onNavigate }) => {
 
                     <button
                       onClick={() => handleDownloadRecord(record.id)}
-                      className="flex-1 flex items-center justify-center gap-1 text-xs text-green-600 hover:text-green-800"
+                      className="flex-1 flex items-center justify-center gap-1 text-xs text-success"
                       disabled={
                         downloadLoading && downloadingRecordId === record.id
                       }
                     >
                       {downloadLoading && downloadingRecordId === record.id ? (
-                        <LoadingSpinner size="small" color="green" />
+                        <LoadingSpinner size="small" color="success" />
                       ) : (
                         <Download size={14} />
                       )}
@@ -893,7 +884,7 @@ const Dashboard = ({ onNavigate }) => {
             <div className="mt-6 text-center">
               <button
                 onClick={() => handleNavigateTo("/records")}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                className="px-4 py-2 border border-line rounded-lg text-fg hover:bg-surface-raised transition-colors inline-flex items-center gap-2"
               >
                 View All Records
                 <svg
@@ -916,22 +907,22 @@ const Dashboard = ({ onNavigate }) => {
         </div>
 
         {/* Data Controls Section - Patient */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6">Data Controls</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border border-gray-200 rounded-lg p-5">
+            <div className="border border-line rounded-lg p-5">
               <div className="flex items-center mb-4">
-                <Lock className="text-blue-500 w-6 h-6 mr-3" />
+                <Lock className="text-accent w-6 h-6 mr-3" />
                 <h3 className="text-lg font-medium">Privacy Settings</h3>
               </div>
-              <p className="text-gray-600 mb-4">
+              <p className="text-fg-muted mb-4">
                 Control who can access your health data and how it's used for
                 research.
               </p>
               <button
                 onClick={() => handleNavigateTo("/profile")}
-                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors inline-flex items-center gap-2"
+                className="px-4 py-2 bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors inline-flex items-center gap-2"
               >
                 Manage Privacy
                 <svg
@@ -951,12 +942,12 @@ const Dashboard = ({ onNavigate }) => {
               </button>
             </div>
 
-            <div className="border border-gray-200 rounded-lg p-5">
+            <div className="border border-line rounded-lg p-5">
               <div className="flex items-center mb-4">
                 <Database className="text-purple-500 w-6 h-6 mr-3" />
                 <h3 className="text-lg font-medium">Data Sharing</h3>
               </div>
-              <p className="text-gray-600 mb-4">
+              <p className="text-fg-muted mb-4">
                 Manage research access to your anonymized health data and track
                 usage.
               </p>
@@ -985,7 +976,7 @@ const Dashboard = ({ onNavigate }) => {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6">Recent Activity</h2>
           {dashboardData.recentActivity &&
           dashboardData.recentActivity.length > 0 ? (
@@ -993,7 +984,7 @@ const Dashboard = ({ onNavigate }) => {
               {dashboardData.recentActivity.map((activity, index) => (
                 <div
                   key={activity.id || index}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                  className="flex items-center gap-4 p-4 hover:bg-surface-raised rounded-lg transition-colors border border-line"
                 >
                   <div className="flex-shrink-0">
                     {getActivityIcon(activity.type)}
@@ -1001,18 +992,18 @@ const Dashboard = ({ onNavigate }) => {
                   <div className="flex-1">
                     <p className="font-medium">{activity.message}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-fg-muted">
                         {activity.timestamp}
                       </p>
-                      <span className="text-gray-300">•</span>
-                      <p className="text-sm text-gray-600">
+                      <span className="text-fg-subtle">•</span>
+                      <p className="text-sm text-fg-muted">
                         {activity.category}
                       </p>
                     </div>
                   </div>
                   {activity.status && (
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getActivityStatusColor(activity.status)}`}
+                      className={getActivityStatusColor(activity.status)}
                     >
                       {activity.status.charAt(0).toUpperCase() +
                         activity.status.slice(1)}
@@ -1022,55 +1013,55 @@ const Dashboard = ({ onNavigate }) => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-fg-muted">
               No recent activity to display
             </div>
           )}
         </div>
 
         {/* Educational Resources - Patient */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">Health Resources</h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-fg-muted mb-6">
             Learn more about managing your health data and privacy.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
-              <HelpCircle className="text-blue-500 w-8 h-8 mb-3" />
+            <div className="border border-line rounded-lg p-4 hover:shadow-md transition-all">
+              <HelpCircle className="text-accent w-8 h-8 mb-3" />
               <h3 className="font-medium mb-2">HIPAA Rights Guide</h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-fg-muted mb-3">
                 Understand your rights under HIPAA and how your data is
                 protected.
               </p>
               {/* Fix for anchor href warning */}
               <button
                 onClick={() => handleNavigateTo("/resources/hipaa-guide")}
-                className="text-blue-600 text-sm hover:underline"
+                className="text-accent text-sm hover:underline"
               >
                 Learn more →
               </button>
             </div>
 
-            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
-              <Layers className="text-green-500 w-8 h-8 mb-3" />
+            <div className="border border-line rounded-lg p-4 hover:shadow-md transition-all">
+              <Layers className="text-success w-8 h-8 mb-3" />
               <h3 className="font-medium mb-2">Data Sharing Benefits</h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-fg-muted mb-3">
                 How sharing your health data can contribute to medical advances.
               </p>
               {/* Fix for anchor href warning */}
               <button
                 onClick={() => handleNavigateTo("/resources/sharing-benefits")}
-                className="text-green-600 text-sm hover:underline"
+                className="text-success text-sm hover:underline"
               >
                 Learn more →
               </button>
             </div>
 
-            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
+            <div className="border border-line rounded-lg p-4 hover:shadow-md transition-all">
               <Shield className="text-purple-500 w-8 h-8 mb-3" />
               <h3 className="font-medium mb-2">Privacy Best Practices</h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-fg-muted mb-3">
                 Tips for maintaining privacy while sharing health information.
               </p>
               {/* Fix for anchor href warning */}
@@ -1092,21 +1083,21 @@ const Dashboard = ({ onNavigate }) => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* User welcome - Researcher */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-fg">
           Welcome, {userProfile?.name || "Researcher"}
         </h1>
-        <p className="text-gray-600">
+        <p className="text-fg-muted">
           Discover and analyze health datasets for your research
         </p>
       </div>
 
       {/* Stats Grid - Researcher */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center gap-4">
             <Database className="text-purple-500 w-8 h-8" />
             <div>
-              <p className="text-gray-600 text-sm">Available Datasets</p>
+              <p className="text-fg-muted text-sm">Available Datasets</p>
               <p className="text-2xl font-semibold">
                 {healthData?.length || 0}
               </p>
@@ -1114,31 +1105,31 @@ const Dashboard = ({ onNavigate }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center gap-4">
-            <Microscope className="text-indigo-500 w-8 h-8" />
+            <Microscope className="text-purple-500 w-8 h-8" />
             <div>
-              <p className="text-gray-600 text-sm">Active Studies</p>
+              <p className="text-fg-muted text-sm">Active Studies</p>
               <p className="text-2xl font-semibold">{activeStudies}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center gap-4">
-            <Clipboard className="text-blue-500 w-8 h-8" />
+            <Clipboard className="text-accent w-8 h-8" />
             <div>
-              <p className="text-gray-600 text-sm">Data Requests</p>
+              <p className="text-fg-muted text-sm">Data Requests</p>
               <p className="text-2xl font-semibold">{pendingRequests}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center gap-4">
-            <Award className="text-green-500 w-8 h-8" />
+            <Award className="text-success w-8 h-8" />
             <div>
-              <p className="text-gray-600 text-sm">Published Findings</p>
+              <p className="text-fg-muted text-sm">Published Findings</p>
               <p className="text-2xl font-semibold">
                 {userProfile?.publications?.length || 0}
               </p>
@@ -1151,7 +1142,7 @@ const Dashboard = ({ onNavigate }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <button
           onClick={() => handleNavigateTo("/browse")}
-          className="p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 font-medium"
+          className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
         >
           <Search className="w-5 h-5" />
           Explore Datasets
@@ -1159,7 +1150,7 @@ const Dashboard = ({ onNavigate }) => {
 
         <button
           onClick={() => handleNavigateTo("/studies")}
-          className="p-4 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2 font-medium"
+          className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
         >
           <Microscope className="w-5 h-5" />
           Manage Studies
@@ -1167,7 +1158,7 @@ const Dashboard = ({ onNavigate }) => {
 
         <button
           onClick={() => handleNavigateTo("/analysis")}
-          className="p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 font-medium"
+          className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
         >
           <FileSpreadsheet className="w-5 h-5" />
           Data Analysis Tools
@@ -1175,13 +1166,13 @@ const Dashboard = ({ onNavigate }) => {
       </div>
 
       {/* Research Ethics Banner - Researcher */}
-      <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 mb-8 flex items-start gap-3">
-        <Briefcase className="text-purple-500 flex-shrink-0 mt-1" size={24} />
+      <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 mb-8 flex items-start gap-3">
+        <Briefcase className="text-accent flex-shrink-0 mt-1" size={24} />
         <div>
-          <h3 className="font-medium text-purple-700">
+          <h3 className="font-medium text-accent">
             Research Ethics Reminder
           </h3>
-          <p className="text-sm text-purple-600">
+          <p className="text-sm text-fg-muted">
             All data access is HIPAA-compliant and ethically sourced. Remember
             to include proper attribution when publishing findings based on
             Healthmint datasets.
@@ -1192,13 +1183,13 @@ const Dashboard = ({ onNavigate }) => {
       {/* Dataset preview modal */}
       {previewOpen && selectedDataset && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-surface border border-line rounded-token-lg shadow-soft-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-line">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-bold">Dataset Preview</h3>
                 <button
                   onClick={handleClosePreview}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-fg-muted hover:text-fg"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1245,32 +1236,32 @@ const Dashboard = ({ onNavigate }) => {
                   </div>
 
                   <div>
-                    <h5 className="font-semibold text-gray-900 mb-2">
+                    <h5 className="font-semibold text-fg mb-2">
                       Description
                     </h5>
-                    <p className="text-gray-700">
+                    <p className="text-fg">
                       {datasetDetails.description ||
                         "No description available."}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h5 className="font-medium text-gray-900 mb-1">
+                    <div className="bg-surface-raised p-4 rounded-lg">
+                      <h5 className="font-medium text-fg mb-1">
                         Records
                       </h5>
                       <p className="text-lg font-semibold">
                         {datasetDetails.recordCount || "Unknown"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h5 className="font-medium text-gray-900 mb-1">Format</h5>
+                    <div className="bg-surface-raised p-4 rounded-lg">
+                      <h5 className="font-medium text-fg mb-1">Format</h5>
                       <p className="text-lg font-semibold">
                         {datasetDetails.format || "Various"}
                       </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h5 className="font-medium text-gray-900 mb-1">
+                    <div className="bg-surface-raised p-4 rounded-lg">
+                      <h5 className="font-medium text-fg mb-1">
                         Data Type
                       </h5>
                       <p className="text-lg font-semibold">
@@ -1285,18 +1276,18 @@ const Dashboard = ({ onNavigate }) => {
                 <div className="text-center py-12">
                   <AlertCircle
                     size={48}
-                    className="mx-auto text-gray-400 mb-4"
+                    className="mx-auto text-fg-subtle mb-4"
                   />
-                  <p className="text-gray-500">Dataset details not available</p>
+                  <p className="text-fg-muted">Dataset details not available</p>
                 </div>
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="p-6 border-t border-line bg-surface-raised">
               <div className="flex justify-end gap-3">
                 <button
                   onClick={handleClosePreview}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-line text-fg font-medium rounded-lg hover:bg-surface-raised"
                 >
                   Close
                 </button>
@@ -1311,7 +1302,7 @@ const Dashboard = ({ onNavigate }) => {
                   Purchase Dataset
                 </button>
 
-                <button className="px-4 py-2 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 flex items-center">
+                <button className="px-4 py-2 bg-success text-white font-medium rounded-lg hover:bg-success flex items-center">
                   <Download size={16} className="mr-2" />
                   Download Sample
                 </button>
@@ -1322,10 +1313,10 @@ const Dashboard = ({ onNavigate }) => {
       )}
 
       {/* Available Datasets Section - Researcher */}
-      <div className="bg-white rounded-xl shadow-md mb-8">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-surface border border-line rounded-token-lg shadow-soft-md mb-8">
+        <div className="p-6 border-b border-line">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-gray-900">
+            <h2 className="text-2xl font-semibold text-fg">
               Recent Datasets
             </h2>
             <button
@@ -1355,7 +1346,7 @@ const Dashboard = ({ onNavigate }) => {
             healthData.slice(0, 3).map((dataset) => (
               <div
                 key={dataset.id}
-                className="border rounded-lg p-6 hover:bg-gray-50 transition-colors"
+                className="border rounded-lg p-6 hover:bg-surface-raised transition-colors"
               >
                 <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
                   <div className="flex-1">
@@ -1364,14 +1355,14 @@ const Dashboard = ({ onNavigate }) => {
                         {dataset.title || dataset.category || "Health Dataset"}
                       </h3>
                       {dataset.verified && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <CheckCircle className="w-4 h-4 text-success" />
                       )}
                     </div>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <p className="text-fg-muted text-sm mt-1">
                       {dataset.recordCount || "Unknown"} records •{" "}
                       {dataset.anonymized ? "Anonymized" : "Identifiable"}
                     </p>
-                    <p className="text-gray-700 mt-2 line-clamp-2">
+                    <p className="text-fg mt-2 line-clamp-2">
                       {dataset.description || "No description available."}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
@@ -1379,7 +1370,7 @@ const Dashboard = ({ onNavigate }) => {
                         {dataset.category || "Health Data"}
                       </span>
                       {dataset.verified && (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-success-soft text-success">
                           Verified
                         </span>
                       )}
@@ -1441,12 +1432,12 @@ const Dashboard = ({ onNavigate }) => {
 
       {/* Research Tools Section - Researcher */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6">
           <div className="flex items-center mb-4">
             <PieChart className="text-indigo-500 w-6 h-6 mr-3" />
             <h2 className="text-xl font-semibold">Analytics Tools</h2>
           </div>
-          <p className="text-gray-600 mb-4">
+          <p className="text-fg-muted mb-4">
             Access powerful tools to analyze health datasets and generate
             insights.
           </p>
@@ -1484,36 +1475,36 @@ const Dashboard = ({ onNavigate }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6">
           <div className="flex items-center mb-4">
             <Zap className="text-purple-500 w-6 h-6 mr-3" />
             <h2 className="text-xl font-semibold">Research Pipeline</h2>
           </div>
-          <p className="text-gray-600 mb-4">
+          <p className="text-fg-muted mb-4">
             Track your research progress from data acquisition to publication.
           </p>
           <div className="relative">
             <div className="absolute left-4 top-6 bottom-0 w-0.5 bg-purple-200"></div>
             <div className="relative pl-10 pb-3">
               <div className="absolute left-2 w-4 h-4 rounded-full bg-purple-500"></div>
-              <h3 className="font-medium text-gray-800">Data Acquisition</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-medium text-fg">Data Acquisition</h3>
+              <p className="text-sm text-fg-muted">
                 {healthData?.length || 0} datasets available
               </p>
             </div>
             <div className="relative pl-10 pb-3">
               <div className="absolute left-2 w-4 h-4 rounded-full bg-purple-300"></div>
-              <h3 className="font-medium text-gray-800">
+              <h3 className="font-medium text-fg">
                 Analysis In Progress
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-fg-muted">
                 {activeStudies} active studies
               </p>
             </div>
             <div className="relative pl-10">
-              <div className="absolute left-2 w-4 h-4 rounded-full bg-gray-300"></div>
-              <h3 className="font-medium text-gray-800">Publication Ready</h3>
-              <p className="text-sm text-gray-600">
+              <div className="absolute left-2 w-4 h-4 rounded-full bg-fg-subtle"></div>
+              <h3 className="font-medium text-fg">Publication Ready</h3>
+              <p className="text-sm text-fg-muted">
                 {userProfile?.publications?.length || 0} publications
               </p>
             </div>
@@ -1522,7 +1513,7 @@ const Dashboard = ({ onNavigate }) => {
       </div>
 
       {/* Recent Activity - Researcher */}
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">Recent Activity</h2>
         {dashboardData.recentActivity &&
         dashboardData.recentActivity.length > 0 ? (
@@ -1530,7 +1521,7 @@ const Dashboard = ({ onNavigate }) => {
             {dashboardData.recentActivity.map((activity, index) => (
               <div
                 key={activity.id || index}
-                className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100"
+                className="flex items-center gap-4 p-4 hover:bg-surface-raised rounded-lg transition-colors border border-line"
               >
                 <div className="flex-shrink-0">
                   {getActivityIcon(activity.type)}
@@ -1538,16 +1529,16 @@ const Dashboard = ({ onNavigate }) => {
                 <div className="flex-1">
                   <p className="font-medium">{activity.message}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-fg-muted">
                       {activity.timestamp}
                     </p>
-                    <span className="text-gray-300">•</span>
-                    <p className="text-sm text-gray-600">{activity.category}</p>
+                    <span className="text-fg-subtle">•</span>
+                    <p className="text-sm text-fg-muted">{activity.category}</p>
                   </div>
                 </div>
                 {activity.status && (
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${getActivityStatusColor(activity.status)}`}
+                    className={getActivityStatusColor(activity.status)}
                   >
                     {activity.status.charAt(0).toUpperCase() +
                       activity.status.slice(1)}
@@ -1557,24 +1548,24 @@ const Dashboard = ({ onNavigate }) => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-fg-muted">
             No recent activity to display
           </div>
         )}
       </div>
 
       {/* Research Resources - Researcher */}
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-6">
         <h2 className="text-2xl font-semibold mb-4">Research Resources</h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-fg-muted mb-6">
           Tools and resources to enhance your research with Healthmint data.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
+          <div className="border border-line rounded-lg p-4 hover:shadow-md transition-all">
             <Award className="text-purple-500 w-8 h-8 mb-3" />
             <h3 className="font-medium mb-2">Citation Guidelines</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-fg-muted mb-3">
               How to properly cite Healthmint datasets in your publications.
             </p>
             {/* Fix for anchor href warning */}
@@ -1586,10 +1577,10 @@ const Dashboard = ({ onNavigate }) => {
             </button>
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
+          <div className="border border-line rounded-lg p-4 hover:shadow-md transition-all">
             <Briefcase className="text-indigo-500 w-8 h-8 mb-3" />
             <h3 className="font-medium mb-2">Research Ethics</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-fg-muted mb-3">
               Guidelines for ethical research using anonymized health data.
             </p>
             {/* Fix for anchor href warning */}
@@ -1601,16 +1592,16 @@ const Dashboard = ({ onNavigate }) => {
             </button>
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
-            <Users className="text-blue-500 w-8 h-8 mb-3" />
+          <div className="border border-line rounded-lg p-4 hover:shadow-md transition-all">
+            <Users className="text-accent w-8 h-8 mb-3" />
             <h3 className="font-medium mb-2">Collaboration Network</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-fg-muted mb-3">
               Connect with other researchers working on similar health topics.
             </p>
             {/* Fix for anchor href warning */}
             <button
               onClick={() => handleNavigateTo("/network/join")}
-              className="text-blue-600 text-sm hover:underline"
+              className="text-accent text-sm hover:underline"
             >
               Join network →
             </button>

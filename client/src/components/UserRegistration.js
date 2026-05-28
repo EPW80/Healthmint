@@ -13,12 +13,15 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Button } from "./ui/index.js";
+import HashDisplay from "./ui/HashDisplay.js";
 import { setRole } from "../redux/slices/roleSlice.js";
 import { addNotification } from "../redux/slices/notificationSlice.js";
 import { updateUserProfile } from "../redux/slices/userSlice.js";
 import hipaaComplianceService from "../services/hipaaComplianceService.js";
 import authService from "../services/authService.js";
 import useAuth from "../hooks/useAuth.js";
+
+const STEP_LABELS = ["Role", "Info", "Consent"];
 
 const UserRegistration = ({ walletAddress, onComplete }) => {
   const dispatch = useDispatch();
@@ -116,15 +119,14 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         true,
         {
           userId: walletAddress,
-          walletAddress: walletAddress, // Explicitly pass wallet address
+          walletAddress: walletAddress,
           timestamp: new Date().toISOString(),
-          ip: "client-collected", // Server will log actual IP
+          ip: "client-collected",
           details: "Initial user registration consent",
-          registrationFlow: true, // Flag this as part of registration
+          registrationFlow: true,
         }
       );
 
-      // Create audit log entry
       await hipaaComplianceService.createAuditLog("REGISTRATION_CONSENT", {
         userId: walletAddress,
         walletAddress: walletAddress,
@@ -148,7 +150,6 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
         setLoading(true);
         setError(null);
 
-        // Validate form
         if (!formState.name.trim()) {
           throw new Error("Name is required");
         }
@@ -165,41 +166,32 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           throw new Error("You must acknowledge the HIPAA consent");
         }
 
-        // Handle HIPAA consent
         const hipaaConsentRecorded = await createHipaaConsent();
         if (!hipaaConsentRecorded) {
           throw new Error("Failed to record HIPAA consent. Please try again.");
         }
 
-        // Complete the user profile with all fields
         const userData = {
           ...formState,
           address: walletAddress,
           registrationDate: new Date().toISOString(),
         };
 
-        // Sanitize data for HIPAA compliance
         const sanitizedData = hipaaComplianceService.sanitizeData(userData, {
           excludeFields: ["agreeToTerms", "agreeToHipaa"],
         });
 
-        // 1. Register the user with auth service
         const registered = await register(sanitizedData);
 
         if (!registered) {
           throw new Error("Registration failed. Please try again.");
         }
 
-        // 2. Mark registration as complete in authService
         authService.completeRegistration(sanitizedData);
 
-        // 3. Set the role in Redux
         dispatch(setRole(formState.role));
-
-        // 4. Update user profile in Redux store
         dispatch(updateUserProfile(sanitizedData));
 
-        // 5. Create audit log for registration
         await hipaaComplianceService.createAuditLog("USER_REGISTRATION", {
           userId: walletAddress,
           walletAddress,
@@ -207,10 +199,8 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           timestamp: new Date().toISOString(),
         });
 
-        // 6. Clear any new user flags
         localStorage.removeItem("healthmint_is_new_user");
 
-        // Success notification
         dispatch(
           addNotification({
             type: "success",
@@ -219,12 +209,10 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
           })
         );
 
-        // Call the onComplete callback
         if (onComplete) {
           onComplete(sanitizedData);
         }
 
-        // Mark registration as successful to trigger redirect
         setRegistrationSuccessful(true);
       } catch (err) {
         console.error("Registration error:", err);
@@ -251,63 +239,60 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
     ]
   );
 
-  // Render different steps
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return renderRoleSelection();
-      case 2:
-        return renderPersonalInfo();
-      case 3:
-        return renderHipaaConsent();
-      default:
-        return renderRoleSelection();
-    }
+  const inputClass =
+    "w-full px-3 py-2 rounded-token border border-line bg-surface text-fg placeholder-fg-subtle shadow-sm transition-colors focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:bg-surface-raised disabled:text-fg-muted disabled:cursor-not-allowed";
+
+  const labelClass = "block text-sm font-medium text-fg mb-1";
+
+  // Role card (shared for patient + researcher)
+  const renderRoleCard = (roleKey, label, Icon, description) => {
+    const isSelected = selectedRole === roleKey;
+    return (
+      <button
+        type="button"
+        onClick={() => handleRoleSelect(roleKey)}
+        aria-pressed={isSelected}
+        className={`text-left bg-surface rounded-token-lg border p-6 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-page ${
+          isSelected
+            ? "border-accent ring-2 ring-accent shadow-soft-md"
+            : "border-line shadow-soft-sm hover:border-line-strong hover:shadow-soft-md"
+        }`}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="bg-accent/10 text-accent p-4 rounded-full mb-4">
+            <Icon size={32} aria-hidden="true" />
+          </div>
+          <h3 className="text-lg font-semibold text-fg mb-2">{label}</h3>
+          <p className="text-fg-muted text-sm">{description}</p>
+        </div>
+      </button>
+    );
   };
 
   // Step 1: Role Selection
   const renderRoleSelection = () => (
     <div className="mb-8">
-      <h2 ref={stepHeadingRef} tabIndex="-1" className="text-2xl font-semibold mb-6">Choose Your Role</h2>
+      <h2
+        ref={stepHeadingRef}
+        tabIndex="-1"
+        className="text-xl font-semibold text-fg mb-6 focus:outline-none"
+      >
+        Choose Your Role
+      </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Patient Role Card */}
-        <div
-          className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg transform hover:scale-[1.02] ${
-            selectedRole === "patient" ? "ring-2 ring-blue-500" : ""
-          }`}
-          onClick={() => handleRoleSelect("patient")}
-        >
-          <div className="flex flex-col items-center">
-            <div className="bg-blue-100 p-4 rounded-full mb-4">
-              <User size={32} className="text-blue-600" />
-            </div>
-            <h3 className="text-xl font-medium mb-2">Patient</h3>
-            <p className="text-gray-600 text-center">
-              Share and manage your health data securely. Control who can access
-              your medical information.
-            </p>
-          </div>
-        </div>
-
-        {/* Researcher Role Card */}
-        <div
-          className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg transform hover:scale-[1.02] ${
-            selectedRole === "researcher" ? "ring-2 ring-purple-500" : ""
-          }`}
-          onClick={() => handleRoleSelect("researcher")}
-        >
-          <div className="flex flex-col items-center">
-            <div className="bg-purple-100 p-4 rounded-full mb-4">
-              <Briefcase size={32} className="text-purple-600" />
-            </div>
-            <h3 className="text-xl font-medium mb-2">Researcher</h3>
-            <p className="text-gray-600 text-center">
-              Access anonymized health data for research with proper consent and
-              HIPAA compliance.
-            </p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {renderRoleCard(
+          "patient",
+          "Patient",
+          User,
+          "Share and manage your health data securely. Control who can access your medical information."
+        )}
+        {renderRoleCard(
+          "researcher",
+          "Researcher",
+          Briefcase,
+          "Access anonymized health data for research with proper consent and HIPAA compliance."
+        )}
       </div>
 
       <div className="mt-8 flex justify-end">
@@ -326,15 +311,18 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   // Step 2: Personal Information
   const renderPersonalInfo = () => (
     <div className="mb-8">
-      <h2 ref={stepHeadingRef} tabIndex="-1" className="text-2xl font-semibold mb-6">Personal Information</h2>
+      <h2
+        ref={stepHeadingRef}
+        tabIndex="-1"
+        className="text-xl font-semibold text-fg mb-6 focus:outline-none"
+      >
+        Personal Information
+      </h2>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
-          <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Full Name *
+          <label htmlFor="name" className={labelClass}>
+            Full Name <span className="text-danger">*</span>
           </label>
           <input
             type="text"
@@ -342,16 +330,13 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             name="name"
             value={formState.name}
             onChange={handleInputChange}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={inputClass}
             required
           />
         </div>
 
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="email" className={labelClass}>
             Email Address
           </label>
           <input
@@ -360,18 +345,15 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             name="email"
             value={formState.email}
             onChange={handleInputChange}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={inputClass}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-fg-subtle">
             Optional but recommended for notifications
           </p>
         </div>
 
         <div>
-          <label
-            htmlFor="age"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="age" className={labelClass}>
             Age
           </label>
           <input
@@ -382,15 +364,12 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             onChange={handleInputChange}
             min="0"
             max="120"
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="address"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="address" className={labelClass}>
             Wallet Address
           </label>
           <input
@@ -399,9 +378,9 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
             name="address"
             value={walletAddress || ""}
             disabled
-            className="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
+            className={`${inputClass} font-mono text-sm`}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-fg-subtle">
             Connected wallet address (non-editable)
           </p>
         </div>
@@ -426,28 +405,34 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
   // Step 3: HIPAA Consent
   const renderHipaaConsent = () => (
     <div className="mb-8">
-      <h2 ref={stepHeadingRef} tabIndex="-1" className="text-2xl font-semibold mb-6">HIPAA Consent</h2>
+      <h2
+        ref={stepHeadingRef}
+        tabIndex="-1"
+        className="text-xl font-semibold text-fg mb-6 focus:outline-none"
+      >
+        HIPAA Consent
+      </h2>
 
-      <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-6">
-        <div className="flex items-start mb-4">
-          <div className="flex-shrink-0 mt-0.5">
-            <AlertCircle size={20} className="text-blue-500" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-lg font-medium text-blue-800">
-              Important: HIPAA Privacy Notice
-            </h3>
-          </div>
+      <div className="bg-info-soft border border-info/30 rounded-token p-5 mb-6">
+        <div className="flex items-start gap-2 mb-3">
+          <AlertCircle
+            size={18}
+            className="text-info flex-shrink-0 mt-0.5"
+            aria-hidden="true"
+          />
+          <h3 className="text-base font-semibold text-info">
+            Important: HIPAA Privacy Notice
+          </h3>
         </div>
 
-        <div className="text-blue-700 text-sm">
-          <p className="mb-4">
+        <div className="text-info text-sm space-y-3">
+          <p>
             HealthMint is committed to protecting your health information in
             accordance with the Health Insurance Portability and Accountability
             Act (HIPAA). By using our platform, you understand that:
           </p>
 
-          <ul className="list-disc pl-5 space-y-2 mb-4">
+          <ul className="list-disc pl-5 space-y-1.5">
             <li>
               Your health information will be stored securely on the blockchain
             </li>
@@ -462,11 +447,11 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
 
           <p>
             For more details, please review our complete{" "}
-            <a href="/privacy" className="text-blue-600 underline">
+            <a href="/privacy" className="underline font-medium">
               Privacy Policy
             </a>{" "}
             and{" "}
-            <a href="/terms" className="text-blue-600 underline">
+            <a href="/terms" className="underline font-medium">
               Terms of Service
             </a>
             .
@@ -475,39 +460,39 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
       </div>
 
       <div className="space-y-4">
-        <label className="flex items-start cursor-pointer">
+        <label className="flex items-start cursor-pointer gap-2">
           <input
             type="checkbox"
             name="agreeToTerms"
             checked={formState.agreeToTerms}
             onChange={handleInputChange}
-            className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="mt-1 rounded border-line text-accent focus:ring-accent focus:ring-offset-0"
           />
-          <span className="ml-2 text-sm text-gray-700">
+          <span className="text-sm text-fg-muted">
             I agree to the HealthMint{" "}
-            <a href="/terms" className="text-blue-600 underline">
+            <a href="/terms" className="text-accent underline">
               Terms of Service
             </a>{" "}
             and{" "}
-            <a href="/privacy" className="text-blue-600 underline">
+            <a href="/privacy" className="text-accent underline">
               Privacy Policy
             </a>
             .
           </span>
         </label>
 
-        <label className="flex items-start cursor-pointer">
+        <label className="flex items-start cursor-pointer gap-2">
           <input
             type="checkbox"
             name="agreeToHipaa"
             checked={formState.agreeToHipaa}
             onChange={handleInputChange}
-            className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="mt-1 rounded border-line text-accent focus:ring-accent focus:ring-offset-0"
           />
-          <span className="ml-2 text-sm text-gray-700">
+          <span className="text-sm text-fg-muted">
             I acknowledge that I have read and understand the HIPAA Privacy
-            Notice, and I consent to the collection and use of my health data as
-            described.
+            Notice, and I consent to the collection and use of my health data
+            as described.
           </span>
         </label>
       </div>
@@ -536,86 +521,124 @@ const UserRegistration = ({ walletAddress, onComplete }) => {
     </div>
   );
 
-  // Show success message when registration is complete
+  const renderStep = () => {
+    switch (step) {
+      case 1:
+        return renderRoleSelection();
+      case 2:
+        return renderPersonalInfo();
+      case 3:
+        return renderHipaaConsent();
+      default:
+        return renderRoleSelection();
+    }
+  };
+
+  // Success state
   if (registrationSuccessful) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
-          <div className="bg-green-100 p-4 rounded-full inline-flex mb-4">
-            <CheckCircle size={48} className="text-green-500" />
+      <div className="min-h-screen flex items-center justify-center bg-page p-6">
+        <div className="max-w-md w-full bg-surface border border-line shadow-soft-md rounded-token-lg p-8 text-center">
+          <div
+            className="bg-success-soft text-success p-4 rounded-full inline-flex mb-4"
+            aria-hidden="true"
+          >
+            <CheckCircle size={40} />
           </div>
-          <h2 className="text-2xl font-bold mb-4">Registration Complete!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-bold text-fg mb-3">
+            Registration Complete!
+          </h2>
+          <p className="text-fg-muted mb-6 text-sm">
             You have successfully registered as a{" "}
             {formState.role === "patient" ? "Patient" : "Researcher"}.
             Redirecting you to the dashboard...
           </p>
-          <div className="animate-pulse flex justify-center">
-            <div className="w-8 h-1 rounded-full bg-blue-500 mx-1"></div>
-            <div className="w-8 h-1 rounded-full bg-blue-500 mx-1"></div>
-            <div className="w-8 h-1 rounded-full bg-blue-500 mx-1"></div>
+          <div className="flex justify-center gap-1" aria-hidden="true">
+            <div className="w-8 h-1 rounded-full bg-accent animate-pulse" />
+            <div className="w-8 h-1 rounded-full bg-accent animate-pulse [animation-delay:150ms]" />
+            <div className="w-8 h-1 rounded-full bg-accent animate-pulse [animation-delay:300ms]" />
           </div>
         </div>
       </div>
     );
   }
 
-  // Render form wrapper
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-page p-6">
       <div className="max-w-3xl w-full">
-        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30">
+        <div className="bg-surface border border-line rounded-token-lg shadow-soft-md p-8">
           <div className="mb-6 text-center">
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-2xl font-bold text-fg mb-2">
               Complete Your Registration
             </h1>
-            <p className="text-gray-600">
+            <p className="text-fg-muted text-sm">
               Set up your account to start using Healthmint
             </p>
+            {walletAddress && (
+              <div className="mt-3 flex justify-center">
+                <span className="inline-flex items-center px-3 py-1 rounded-full bg-surface-raised border border-line">
+                  <HashDisplay
+                    value={walletAddress}
+                    className="text-fg-muted text-xs"
+                  />
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Progress steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              {[1, 2, 3].map((stepNumber) => (
-                <div key={stepNumber} className="flex flex-col items-center">
+              {[1, 2, 3].map((stepNumber) => {
+                const isCurrent = step === stepNumber;
+                const isComplete = step > stepNumber;
+                return (
                   <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                      step === stepNumber
-                        ? "border-blue-500 bg-blue-500 text-white"
-                        : step > stepNumber
-                          ? "border-green-500 bg-green-500 text-white"
-                          : "border-gray-300 text-gray-500"
-                    }`}
+                    key={stepNumber}
+                    className="flex flex-col items-center flex-1"
                   >
-                    {step > stepNumber ? <CheckCircle size={18} /> : stepNumber}
+                    <div
+                      className={`flex items-center justify-center w-9 h-9 rounded-full border-2 text-sm font-semibold transition-colors ${
+                        isCurrent
+                          ? "border-accent bg-accent text-accent-fg"
+                          : isComplete
+                            ? "border-success bg-success text-accent-fg"
+                            : "border-line bg-surface text-fg-muted"
+                      }`}
+                    >
+                      {isComplete ? (
+                        <CheckCircle size={16} aria-hidden="true" />
+                      ) : (
+                        stepNumber
+                      )}
+                    </div>
+                    <div
+                      className={`text-xs mt-1.5 ${
+                        isCurrent ? "text-fg font-medium" : "text-fg-muted"
+                      }`}
+                    >
+                      {STEP_LABELS[stepNumber - 1]}
+                    </div>
                   </div>
-                  <div className="text-xs mt-1">
-                    {stepNumber === 1
-                      ? "Role"
-                      : stepNumber === 2
-                        ? "Info"
-                        : "Consent"}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <div className="relative flex items-center justify-between mt-1">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-200"></div>
+            <div className="relative h-px bg-line mt-2 mx-9">
               <div
-                className="absolute top-0 left-0 h-[2px] bg-blue-500 transition-all duration-300"
-                style={{ width: `${(step - 1) * 50}%` }}
-              ></div>
+                className="absolute top-0 left-0 h-px bg-accent transition-all duration-300"
+                style={{ width: `${((step - 1) / 2) * 100}%` }}
+                aria-hidden="true"
+              />
             </div>
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
-              <AlertCircle
-                size={20}
-                className="text-red-500 mr-2 flex-shrink-0"
-              />
+            <div
+              role="alert"
+              className="mb-6 bg-danger-soft border border-danger/30 text-danger px-4 py-3 rounded-token flex items-center gap-2 text-sm"
+            >
+              <AlertCircle size={18} className="flex-shrink-0" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}

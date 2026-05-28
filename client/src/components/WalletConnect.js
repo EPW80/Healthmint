@@ -8,8 +8,8 @@ import useAuth from "../hooks/useAuth.js";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { addNotification } from "../redux/slices/notificationSlice.js";
+import HashDisplay from "./ui/HashDisplay.js";
 
-// Constants
 const STEPS = ["Connect Wallet", "Registration", "Complete Profile"];
 
 const WalletConnect = ({ onConnect }) => {
@@ -151,7 +151,6 @@ const WalletConnect = ({ onConnect }) => {
     }
   }, [connectWallet, login, dispatch, onConnect]);
 
-  // Handle network switch
   const handleSwitchNetwork = useCallback(
     () => switchNetwork(),
     [switchNetwork]
@@ -160,61 +159,79 @@ const WalletConnect = ({ onConnect }) => {
   // UI Components
   const renderStepIndicator = () => (
     <ol className="flex items-center w-full mb-8">
-      {STEPS.map((step, index) => (
-        <li
-          key={step}
-          className={`flex items-center ${index < STEPS.length - 1 ? "w-full" : ""}`}
-        >
-          <span
-            className={`flex items-center justify-center w-8 h-8 rounded-full border-2 shrink-0 ${
-              index === 0
-                ? "bg-blue-500 text-white border-blue-500"
-                : "bg-gray-100 text-gray-500 border-gray-300"
+      {STEPS.map((step, index) => {
+        const isActive = index === 0;
+        return (
+          <li
+            key={step}
+            className={`flex items-center ${
+              index < STEPS.length - 1 ? "w-full" : ""
             }`}
           >
-            {index + 1}
-          </span>
-          <span className="ml-2 text-sm font-medium truncate">{step}</span>
-          {index < STEPS.length - 1 && (
-            <div className="w-full h-[2px] bg-gray-200 ml-2" />
-          )}
-        </li>
-      ))}
+            <span
+              className={`flex items-center justify-center w-8 h-8 rounded-full border-2 shrink-0 text-sm font-semibold ${
+                isActive
+                  ? "bg-accent text-accent-fg border-accent"
+                  : "bg-surface text-fg-muted border-line"
+              }`}
+            >
+              {index + 1}
+            </span>
+            <span
+              className={`ml-2 text-sm font-medium truncate ${
+                isActive ? "text-fg" : "text-fg-muted"
+              }`}
+            >
+              {step}
+            </span>
+            {index < STEPS.length - 1 && (
+              <div className="w-full h-px bg-line ml-2" aria-hidden="true" />
+            )}
+          </li>
+        );
+      })}
     </ol>
   );
 
   const renderStatusMessages = () => (
     <>
       {isLoading && !combinedError && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-2">
-          <Loader size={20} className="text-blue-500 animate-spin" />
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-6 bg-info-soft border border-info/30 text-info px-4 py-3 rounded-token flex items-center gap-2 text-sm"
+        >
+          <Loader size={18} className="animate-spin" aria-hidden="true" />
           <span>Connecting to your wallet...</span>
         </div>
       )}
       {showNetworkWarning && (
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-2">
-          <AlertTriangle size={20} className="text-yellow-500" />
-          <span>
+        <div className="mb-6 bg-warning-soft border border-warning/30 text-warning px-4 py-3 rounded-token flex items-center gap-2 text-sm">
+          <AlertTriangle size={18} aria-hidden="true" />
+          <span className="flex-1">
             Connected to {network.name}. Please switch to Sepolia Testnet.
           </span>
           <button
             onClick={handleSwitchNetwork}
-            className="ml-2 px-3 py-1 bg-yellow-200 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-300"
+            className="px-3 py-1 bg-warning/20 hover:bg-warning/30 text-warning rounded-token-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             Switch
           </button>
         </div>
       )}
       {combinedError && !isErrorDismissed && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-          <AlertCircle size={20} className="text-red-500" />
-          <span>{combinedError}</span>
+        <div
+          role="alert"
+          className="mb-6 bg-danger-soft border border-danger/30 text-danger px-4 py-3 rounded-token flex items-center gap-2 text-sm"
+        >
+          <AlertCircle size={18} aria-hidden="true" />
+          <span className="flex-1">{combinedError}</span>
           <button
             onClick={() => setIsErrorDismissed(true)}
-            className="text-red-500 hover:text-red-700 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+            className="p-1 rounded text-danger hover:bg-danger/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             aria-label="Dismiss error"
           >
-            <X size={18} />
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -225,20 +242,16 @@ const WalletConnect = ({ onConnect }) => {
     <button
       onClick={handleConnect}
       disabled={isLoading}
-      className={`w-full flex items-center justify-center py-4 px-6 rounded-xl text-white font-bold shadow-md transition-all duration-300 ${
-        isLoading
-          ? "bg-blue-400 cursor-not-allowed"
-          : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg"
-      }`}
+      className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-token bg-accent hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed text-accent-fg font-semibold shadow-soft-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
     >
       {isLoading ? (
         <>
-          <Loader size={20} className="animate-spin mr-3" />
+          <Loader size={18} className="animate-spin" aria-hidden="true" />
           Connecting...
         </>
       ) : (
         <>
-          <WalletIcon className="mr-2" size={20} />
+          <WalletIcon size={18} aria-hidden="true" />
           Connect MetaMask
         </>
       )}
@@ -247,25 +260,24 @@ const WalletConnect = ({ onConnect }) => {
 
   const renderConnectedInfo = () =>
     address && (
-      <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-100 flex flex-col items-center gap-2">
-        <div className="flex items-center">
-          <WalletIcon size={16} className="text-blue-500 mr-2" />
-          <span className="text-blue-600 font-medium text-sm">
-            Connected: {address.slice(0, 6)}...{address.slice(-4)}
-          </span>
+      <div className="mt-6 p-4 rounded-token bg-surface-raised border border-line flex flex-col items-center gap-2">
+        <div className="flex items-center gap-2 text-fg-muted text-sm">
+          <WalletIcon size={14} aria-hidden="true" />
+          <span>Connected:</span>
+          <HashDisplay value={address} className="text-fg" />
         </div>
         {network && (
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
               network.isSupported
-                ? "bg-green-100 text-green-800"
-                : "bg-yellow-100 text-yellow-800"
+                ? "bg-success-soft text-success"
+                : "bg-warning-soft text-warning"
             }`}
           >
             {network.isSupported ? (
-              <CheckCircle size={12} />
+              <CheckCircle size={12} aria-hidden="true" />
             ) : (
-              <AlertTriangle size={12} />
+              <AlertTriangle size={12} aria-hidden="true" />
             )}
             {network.name || "Unknown Network"}
           </span>
@@ -274,24 +286,38 @@ const WalletConnect = ({ onConnect }) => {
     );
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 p-4">
-      <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30 hover:shadow-2xl transition-all duration-300">
-        <h1 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
-          Welcome to Healthmint
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-page p-4">
+      <div className="max-w-md w-full bg-surface border border-line rounded-token-lg shadow-soft-md p-8">
+        <div className="mb-6 flex flex-col items-center gap-2">
+          <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
+            <div className="w-4 h-4 bg-accent-fg rounded-full" />
+          </div>
+          <h1 className="text-2xl font-bold text-center text-fg">
+            Welcome to Healthmint
+          </h1>
+          <p className="text-fg-muted text-sm text-center">
+            Connect your wallet to continue
+          </p>
+        </div>
 
         {renderStepIndicator()}
         {renderStatusMessages()}
         {renderConnectButton()}
         {renderConnectedInfo()}
 
-        <div className="mt-6 text-center text-xs text-gray-500">
+        <div className="mt-6 text-center text-xs text-fg-subtle">
           By connecting your wallet, you agree to our{" "}
-          <a href="/terms" className="text-blue-500 hover:underline">
+          <a
+            href="/terms"
+            className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
+          >
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="/privacy" className="text-blue-500 hover:underline">
+          <a
+            href="/privacy"
+            className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
+          >
             Privacy Policy
           </a>
         </div>

@@ -62,6 +62,7 @@ const ProfileTabs = ({
         label: "Notifications",
         component: (
           <NotificationsTab
+            userRole={userRole}
             formState={formState}
             handleFormChange={handleFormChange}
           />

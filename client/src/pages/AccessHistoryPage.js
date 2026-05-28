@@ -1,6 +1,7 @@
 // client/src/pages/AccessHistoryPage.js
 import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import HashDisplay from "../components/ui/HashDisplay";
 import {
   Clock,
   Search,
@@ -249,19 +250,19 @@ const AccessHistoryPage = () => {
   const getActionTypeIcon = (actionType) => {
     switch (actionType) {
       case "VIEW":
-        return <Eye size={18} className="text-blue-500" />;
+        return <Eye size={18} className="text-info" />;
       case "DOWNLOAD":
-        return <Download size={18} className="text-green-500" />;
+        return <Download size={18} className="text-success" />;
       case "SHARE":
-        return <Share2 size={18} className="text-purple-500" />;
+        return <Share2 size={18} className="text-accent" />;
       case "UPLOAD":
-        return <FileText size={18} className="text-indigo-500" />;
+        return <FileText size={18} className="text-accent" />;
       case "PURCHASE":
-        return <Database size={18} className="text-green-500" />;
+        return <Database size={18} className="text-success" />;
       case "ANALYSIS":
-        return <Activity size={18} className="text-orange-500" />;
+        return <Activity size={18} className="text-warning" />;
       default:
-        return <Eye size={18} className="text-gray-500" />;
+        return <Eye size={18} className="text-fg-subtle" />;
     }
   };
 
@@ -269,15 +270,15 @@ const AccessHistoryPage = () => {
   const getAccessorTypeIcon = (accessorType) => {
     switch (accessorType) {
       case "RESEARCHER":
-        return <User size={18} className="text-purple-500" />;
+        return <User size={18} className="text-accent" />;
       case "INSTITUTION":
-        return <Database size={18} className="text-blue-500" />;
+        return <Database size={18} className="text-info" />;
       case "SYSTEM":
-        return <Shield size={18} className="text-gray-500" />;
+        return <Shield size={18} className="text-fg-subtle" />;
       case "SELF":
-        return <User size={18} className="text-green-500" />;
+        return <User size={18} className="text-success" />;
       default:
-        return <User size={18} className="text-gray-500" />;
+        return <User size={18} className="text-fg-subtle" />;
     }
   };
 
@@ -324,8 +325,8 @@ const AccessHistoryPage = () => {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Access History</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-fg mb-2">Access History</h1>
+          <p className="text-fg-muted">
             Track who has accessed your health data and when
           </p>
         </div>
@@ -336,11 +337,11 @@ const AccessHistoryPage = () => {
       </div>
 
       {/* HIPAA Compliance Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-        <Shield className="text-blue-500 flex-shrink-0 mt-1" size={24} />
+      <div className="bg-info-soft border border-info/30 rounded-token p-4 mb-6 flex items-start gap-3">
+        <Shield className="text-info flex-shrink-0 mt-1" size={24} />
         <div>
-          <h3 className="font-medium text-blue-700">HIPAA Compliance</h3>
-          <p className="text-sm text-blue-600">
+          <h3 className="font-medium text-info">HIPAA Compliance</h3>
+          <p className="text-sm text-info/80">
             In accordance with HIPAA regulations, we maintain detailed logs of
             all access to your health data. This ensures transparency and
             accountability in how your health information is used.
@@ -349,17 +350,17 @@ const AccessHistoryPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="bg-surface border border-line rounded-token shadow-soft-sm p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="w-full md:w-auto">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={18} className="text-gray-400" />
+                <Search size={18} className="text-fg-subtle" />
               </div>
               <input
                 type="text"
                 placeholder="Search access events..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full md:w-64"
+                className="pl-10 pr-4 py-2 border border-line-strong rounded-token bg-surface text-fg w-full md:w-64 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -367,10 +368,10 @@ const AccessHistoryPage = () => {
           </div>
 
           <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-            <div className="flex items-center bg-gray-100 rounded-md p-1">
-              <FileText size={16} className="text-gray-500 mr-1 ml-2" />
+            <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+              <FileText size={16} className="text-fg-subtle mr-1 ml-2" />
               <select
-                className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                 value={filters.recordId}
                 onChange={(e) => updateFilter("recordId", e.target.value)}
               >
@@ -382,10 +383,10 @@ const AccessHistoryPage = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-gray-100 rounded-md p-1">
-              <Eye size={16} className="text-gray-500 mr-1 ml-2" />
+            <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+              <Eye size={16} className="text-fg-subtle mr-1 ml-2" />
               <select
-                className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                 value={filters.actionType}
                 onChange={(e) => updateFilter("actionType", e.target.value)}
               >
@@ -397,10 +398,10 @@ const AccessHistoryPage = () => {
               </select>
             </div>
 
-            <div className="flex items-center bg-gray-100 rounded-md p-1">
-              <User size={16} className="text-gray-500 mr-1 ml-2" />
+            <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+              <User size={16} className="text-fg-subtle mr-1 ml-2" />
               <select
-                className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                 value={filters.accessorType}
                 onChange={(e) => updateFilter("accessorType", e.target.value)}
               >
@@ -413,10 +414,10 @@ const AccessHistoryPage = () => {
             </div>
 
             <div className="relative">
-              <div className="flex items-center bg-gray-100 rounded-md p-1">
-                <Calendar size={16} className="text-gray-500 mr-1 ml-2" />
+              <div className="flex items-center bg-surface-raised border border-line rounded-token p-1">
+                <Calendar size={16} className="text-fg-subtle mr-1 ml-2" />
                 <select
-                  className="bg-transparent border-none text-gray-700 text-sm font-medium focus:outline-none py-1 pr-2"
+                  className="bg-transparent border-none text-fg text-sm font-medium focus:outline-none py-1 pr-2"
                   value={filters.timeframe}
                   onChange={(e) => {
                     updateFilter("timeframe", e.target.value);
@@ -437,15 +438,15 @@ const AccessHistoryPage = () => {
               </div>
 
               {timeframeOpen && (
-                <div className="absolute mt-2 p-3 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                <div className="absolute mt-2 p-3 bg-surface-raised border border-line rounded-token shadow-soft-md z-10">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">
+                      <label className="block text-xs text-fg-muted mb-1">
                         Start Date
                       </label>
                       <input
                         type="date"
-                        className="w-full text-sm border border-gray-300 rounded-md px-2 py-1"
+                        className="w-full text-sm border border-line-strong rounded-token bg-surface text-fg px-2 py-1"
                         value={customDateRange.start}
                         onChange={(e) =>
                           updateDateRange("start", e.target.value)
@@ -453,19 +454,19 @@ const AccessHistoryPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">
+                      <label className="block text-xs text-fg-muted mb-1">
                         End Date
                       </label>
                       <input
                         type="date"
-                        className="w-full text-sm border border-gray-300 rounded-md px-2 py-1"
+                        className="w-full text-sm border border-line-strong rounded-token bg-surface text-fg px-2 py-1"
                         value={customDateRange.end}
                         onChange={(e) => updateDateRange("end", e.target.value)}
                       />
                     </div>
                   </div>
                   <button
-                    className="mt-2 w-full text-sm bg-blue-500 text-white py-1 rounded-md hover:bg-blue-600"
+                    className="mt-2 w-full text-sm bg-accent hover:bg-accent-hover text-accent-fg py-1 rounded-token focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     onClick={() => setTimeframeOpen(false)}
                   >
                     Apply
@@ -476,7 +477,7 @@ const AccessHistoryPage = () => {
 
             <button
               onClick={resetFilters}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-accent hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
             >
               Reset
             </button>
@@ -485,35 +486,35 @@ const AccessHistoryPage = () => {
       </div>
 
       {/* Access History Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-surface border border-line rounded-token shadow-soft-md overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center p-12">
             <LoadingSpinner size="large" />
-            <span className="ml-3 text-gray-600">
+            <span className="ml-3 text-fg-muted">
               Loading access history...
             </span>
           </div>
         ) : error ? (
           <div className="p-6 text-center">
-            <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <AlertCircle size={48} className="text-danger mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-fg mb-2">
               Failed to load access history
             </h3>
-            <p className="text-gray-600">{error}</p>
+            <p className="text-fg-muted">{error}</p>
             <button
               onClick={loadAccessHistory}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="mt-4 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               Try Again
             </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <Clock size={48} className="text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Clock size={48} className="text-fg-subtle mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-fg mb-2">
               No access events found
             </h3>
-            <p className="text-gray-600">
+            <p className="text-fg-muted">
               {searchTerm ||
               filters.recordId !== "all" ||
               filters.actionType !== "all" ||
@@ -529,7 +530,7 @@ const AccessHistoryPage = () => {
               filters.timeframe !== "all") && (
               <button
                 onClick={resetFilters}
-                className="mt-4 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                className="mt-4 px-4 py-2 border border-line-strong text-fg rounded-token hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 Clear Filters
               </button>
@@ -537,42 +538,42 @@ const AccessHistoryPage = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-line">
+              <thead className="bg-surface-raised">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Accessor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Action
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Health Record
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Date & Time
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Purpose
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                     Details
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-line">
                 {filtered.map((event) => (
-                  <tr key={event.id} className="hover:bg-gray-50">
+                  <tr key={event.id} className="hover:bg-surface-raised">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-surface-raised flex items-center justify-center">
                           {getAccessorTypeIcon(event.accessorType)}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-fg">
                             {event.accessorName || "Unknown"}
                           </div>
-                          <div className="text-xs text-gray-500 capitalize">
+                          <div className="text-xs text-fg-subtle capitalize">
                             {event.accessorType?.toLowerCase() || "Unknown"}
                           </div>
                         </div>
@@ -581,39 +582,40 @@ const AccessHistoryPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {getActionTypeIcon(event.actionType)}
-                        <span className="ml-2 text-sm text-gray-900 capitalize">
+                        <span className="ml-2 text-sm text-fg capitalize">
                           {event.actionType?.toLowerCase() || "Unknown"}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                        {event.recordName ||
-                          `Record ${event.recordId?.substring(0, 8)}`}
+                      <div className="text-sm font-medium text-fg line-clamp-1">
+                        {event.recordName || (
+                          <HashDisplay value={event.recordId} startChars={8} endChars={4} />
+                        )}
                       </div>
                       {event.recordCategory && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-fg-subtle">
                           {event.recordCategory}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-fg">
                         {new Date(event.timestamp).toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-fg-subtle">
                         {formatRelativeTime(new Date(event.timestamp))}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 line-clamp-2">
+                      <div className="text-sm text-fg line-clamp-2">
                         {event.purpose || event.description || "Not specified"}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleViewDetails(event)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-accent hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
                       >
                         View Details
                       </button>
@@ -628,16 +630,16 @@ const AccessHistoryPage = () => {
 
       {/* Access Details Modal */}
       {detailsOpen && selectedAccessEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-xl w-full">
-            <div className="p-6 border-b border-gray-200">
+        <div className="fixed inset-0 bg-fg/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-raised border border-line rounded-token-lg shadow-soft-lg max-w-xl w-full">
+            <div className="p-6 border-b border-line">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-fg">
                   Access Details
                 </h3>
                 <button
                   onClick={() => setDetailsOpen(false)}
-                  className="text-gray-400 hover:text-gray-500"
+                  className="text-fg-subtle hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
                 >
                   <svg
                     className="h-6 w-6"
@@ -658,29 +660,29 @@ const AccessHistoryPage = () => {
             <div className="p-6">
               <div className="mb-6">
                 <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                  <div className="h-10 w-10 rounded-full bg-info-soft flex items-center justify-center mr-3">
                     {getActionTypeIcon(selectedAccessEvent.actionType)}
                   </div>
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900 capitalize">
+                    <h4 className="text-lg font-medium text-fg capitalize">
                       {selectedAccessEvent.actionType?.toLowerCase() ||
                         "Unknown"}{" "}
                       Action
                     </h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-fg-muted">
                       {new Date(selectedAccessEvent.timestamp).toLocaleString()}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <div className="bg-info-soft border border-info/30 p-4 rounded-token mb-4">
                   <div className="flex items-center">
-                    <Shield className="text-blue-500 mr-2" size={18} />
-                    <span className="text-blue-700 font-medium">
+                    <Shield className="text-info mr-2" size={18} />
+                    <span className="text-info font-medium">
                       HIPAA Compliant Access Log
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-blue-600">
+                  <p className="mt-1 text-sm text-info/80">
                     This access has been logged in accordance with HIPAA
                     regulations. The details of this access are immutable and
                     securely stored.
@@ -690,18 +692,18 @@ const AccessHistoryPage = () => {
 
               <div className="space-y-4">
                 <div>
-                  <h5 className="text-sm font-medium text-gray-500 mb-1">
+                  <h5 className="text-sm font-medium text-fg-muted mb-1">
                     Who Accessed
                   </h5>
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-surface flex items-center justify-center">
                       {getAccessorTypeIcon(selectedAccessEvent.accessorType)}
                     </div>
                     <div className="ml-3">
-                      <p className="text-gray-900 font-medium">
+                      <p className="text-fg font-medium">
                         {selectedAccessEvent.accessorName || "Unknown"}
                       </p>
-                      <p className="text-sm text-gray-500 capitalize">
+                      <p className="text-sm text-fg-muted capitalize">
                         {selectedAccessEvent.accessorType?.toLowerCase() ||
                           "Unknown"}
                       </p>
@@ -710,34 +712,35 @@ const AccessHistoryPage = () => {
                 </div>
 
                 <div>
-                  <h5 className="text-sm font-medium text-gray-500 mb-1">
+                  <h5 className="text-sm font-medium text-fg-muted mb-1">
                     Health Record
                   </h5>
-                  <p className="text-gray-900">
-                    {selectedAccessEvent.recordName ||
-                      `Record ${selectedAccessEvent.recordId?.substring(0, 8)}`}
+                  <p className="text-fg">
+                    {selectedAccessEvent.recordName || (
+                      <HashDisplay value={selectedAccessEvent.recordId} startChars={8} endChars={4} />
+                    )}
                   </p>
                   {selectedAccessEvent.recordCategory && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-fg-muted">
                       Category: {selectedAccessEvent.recordCategory}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <h5 className="text-sm font-medium text-gray-500 mb-1">
+                  <h5 className="text-sm font-medium text-fg-muted mb-1">
                     Purpose
                   </h5>
-                  <p className="text-gray-900">
+                  <p className="text-fg">
                     {selectedAccessEvent.purpose || "Not specified"}
                   </p>
                 </div>
 
                 <div>
-                  <h5 className="text-sm font-medium text-gray-500 mb-1">
+                  <h5 className="text-sm font-medium text-fg-muted mb-1">
                     Description
                   </h5>
-                  <p className="text-gray-900">
+                  <p className="text-fg">
                     {selectedAccessEvent.description ||
                       "No additional details available"}
                   </p>
@@ -745,10 +748,10 @@ const AccessHistoryPage = () => {
 
                 {selectedAccessEvent.ipAddress && (
                   <div>
-                    <h5 className="text-sm font-medium text-gray-500 mb-1">
+                    <h5 className="text-sm font-medium text-fg-muted mb-1">
                       IP Address
                     </h5>
-                    <p className="text-gray-900">
+                    <p className="text-fg font-mono text-sm">
                       {selectedAccessEvent.ipAddress}
                     </p>
                   </div>
@@ -756,7 +759,7 @@ const AccessHistoryPage = () => {
 
                 {selectedAccessEvent.authorized !== undefined && (
                   <div>
-                    <h5 className="text-sm font-medium text-gray-500 mb-1">
+                    <h5 className="text-sm font-medium text-fg-muted mb-1">
                       Authorization
                     </h5>
                     <div className="flex items-center">
@@ -764,9 +767,9 @@ const AccessHistoryPage = () => {
                         <>
                           <CheckCircle
                             size={16}
-                            className="text-green-500 mr-2"
+                            className="text-success mr-2"
                           />
-                          <span className="text-green-700">
+                          <span className="text-success">
                             Authorized Access
                           </span>
                         </>
@@ -774,9 +777,9 @@ const AccessHistoryPage = () => {
                         <>
                           <AlertCircle
                             size={16}
-                            className="text-red-500 mr-2"
+                            className="text-danger mr-2"
                           />
-                          <span className="text-red-700">
+                          <span className="text-danger">
                             Unauthorized Access
                           </span>
                         </>
@@ -787,27 +790,27 @@ const AccessHistoryPage = () => {
 
                 {selectedAccessEvent.consentReference && (
                   <div>
-                    <h5 className="text-sm font-medium text-gray-500 mb-1">
+                    <h5 className="text-sm font-medium text-fg-muted mb-1">
                       Consent Reference
                     </h5>
-                    <p className="text-gray-900">
+                    <p className="text-fg">
                       {selectedAccessEvent.consentReference}
                     </p>
                   </div>
                 )}
               </div>
             </div>
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+            <div className="bg-surface-raised px-6 py-4 border-t border-line flex justify-end">
               <button
                 onClick={() => setDetailsOpen(false)}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-line-strong rounded-token text-fg hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 Close
               </button>
               {selectedAccessEvent.accessorType !== "SELF" &&
                 selectedAccessEvent.accessorType !== "SYSTEM" && (
                   <button
-                    className="ml-3 px-4 py-2 bg-red-50 border border-red-300 rounded-md text-red-700 hover:bg-red-100"
+                    className="ml-3 px-4 py-2 bg-danger-soft border border-danger/30 rounded-token text-danger hover:bg-danger/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     onClick={() => {
                       dispatch(
                         addNotification({

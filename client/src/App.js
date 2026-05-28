@@ -8,6 +8,8 @@ import ErrorBoundary from "./components/ErrorBoundary.js";
 import { ErrorProvider } from "./contexts/ErrorContext.js";
 import { HipaaComplianceProvider } from "./components/providers/HipaaComplianceProvider.js";
 import NavigationProvider from "./components/providers/NavigationProvider.js";
+import ThemeSync from "./components/providers/ThemeSync.js";
+import SkipLink from "./components/ui/SkipLink.js";
 import hipaaComplianceService from "./services/hipaaComplianceService.js";
 
 const App = () => {
@@ -45,7 +47,9 @@ const App = () => {
 
   return (
     <ErrorBoundary>
+      <SkipLink />
       <Provider store={store}>
+        <ThemeSync />
         <ErrorProvider userIdentifier={userIdentifier}>
           <HipaaComplianceProvider
             options={{
@@ -58,7 +62,7 @@ const App = () => {
               future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
             >
               <NavigationProvider>
-                <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+                <div className="flex flex-col min-h-screen bg-page">
                   <AppContent />
                   <NotificationsContainer />
                 </div>

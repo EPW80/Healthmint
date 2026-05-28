@@ -338,6 +338,16 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
     return changedFields;
   }, [formState, initialFormState]);
 
+  const getChangedFieldsByPrefix = useCallback(
+    (prefix) => {
+      const changed = getChangedFields();
+      return Object.keys(changed).some(
+        (key) => key === prefix || key.startsWith(`${prefix}.`)
+      );
+    },
+    [getChangedFields]
+  );
+
   // Set a new initial form state (memoized to prevent renders)
   const setInitialFormStateImpl = useCallback((newInitialState) => {
     setInitialFormState(newInitialState);
@@ -353,6 +363,7 @@ const useHipaaFormState = (initialState = {}, options = {}) => {
     isDirty,
     validateForm,
     getChangedFields,
+    getChangedFieldsByPrefix,
     accessedFields,
     setFormState,
     initialFormState,

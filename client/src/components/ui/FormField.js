@@ -12,8 +12,10 @@ const FormField = ({
   className,
 }) => {
   const errorId = error ? `${id}-error` : undefined;
-  const hintId = hint ? `${id}-hint` : undefined;
+  const hintId  = hint  ? `${id}-hint`  : undefined;
 
+  // A11y wiring: wire aria-invalid, aria-describedby, and error border class
+  // onto whatever input/select/textarea is passed as children.
   const enhancedChild = React.Children.map(children, (child) => {
     if (!React.isValidElement(child)) return child;
     return React.cloneElement(child, {
@@ -23,7 +25,7 @@ const FormField = ({
         [child.props["aria-describedby"], errorId, hintId]
           .filter(Boolean)
           .join(" ") || undefined,
-      className: [child.props.className, error && "border-red-300"]
+      className: [child.props.className, error && "border-danger"]
         .filter(Boolean)
         .join(" "),
     });
@@ -32,13 +34,10 @@ const FormField = ({
   return (
     <div className={className}>
       {label && (
-        <label
-          htmlFor={id}
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label htmlFor={id} className="block text-sm font-medium text-fg mb-1">
           {label}
           {required && (
-            <span className="text-red-500 ml-1" aria-hidden="true">
+            <span className="text-danger ml-1" aria-hidden="true">
               *
             </span>
           )}
@@ -46,12 +45,12 @@ const FormField = ({
       )}
       {enhancedChild}
       {error && (
-        <p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+        <p id={errorId} className="mt-1 text-sm text-danger" role="alert">
           {error}
         </p>
       )}
       {hint && (
-        <p id={hintId} className="mt-1 text-xs text-gray-500">
+        <p id={hintId} className="mt-1 text-xs text-fg-muted">
           {hint}
         </p>
       )}
@@ -60,12 +59,12 @@ const FormField = ({
 };
 
 FormField.propTypes = {
-  label: PropTypes.string,
-  id: PropTypes.string.isRequired,
-  required: PropTypes.bool,
-  error: PropTypes.string,
-  hint: PropTypes.node,
-  children: PropTypes.node.isRequired,
+  label:     PropTypes.string,
+  id:        PropTypes.string.isRequired,
+  required:  PropTypes.bool,
+  error:     PropTypes.string,
+  hint:      PropTypes.node,
+  children:  PropTypes.node.isRequired,
   className: PropTypes.string,
 };
 

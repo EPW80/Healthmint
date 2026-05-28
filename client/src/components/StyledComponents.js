@@ -1,60 +1,52 @@
 // src/components/StyledComponents.js
 import React from "react";
 import PropTypes from "prop-types";
+import LoadingSpinner from "./ui/LoadingSpinner.js";
 
-// GlassContainer: A flexible container with glassmorphism effect
-export const GlassContainer = ({
+// Card — token-driven surface with optional elevation and padding.
+export const Card = ({
   children,
   className = "",
-  padding = "p-8 sm:p-10",
-  maxWidth = "max-w-lg",
+  elevation = "sm",
+  padding = "none",
   ...props
-}) => (
-  <div
-    className={`bg-white/80 backdrop-blur-md rounded-3xl ${padding} w-full ${maxWidth} mx-auto shadow-xl border border-white/30 transition-all duration-300 hover:translate-y-[-5px] hover:shadow-2xl focus-within:shadow-2xl ${className}`}
-    {...props}
-  >
-    {children}
-  </div>
-);
-
-GlassContainer.propTypes = {
-  children: PropTypes.node,
-  className: PropTypes.string,
-  padding: PropTypes.string,
-  maxWidth: PropTypes.string,
+}) => {
+  const elevationClasses = {
+    none: "",
+    sm:   "shadow-soft-sm",
+    md:   "shadow-soft-md",
+    lg:   "shadow-soft-lg",
+  };
+  const paddingClasses = {
+    none: "",
+    sm:   "p-4",
+    md:   "p-6",
+    lg:   "p-8",
+  };
+  return (
+    <div
+      className={`bg-surface border border-line rounded-token ${elevationClasses[elevation] ?? ""} ${paddingClasses[padding] ?? ""} ${className}`}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 };
 
-// PurchaseButton: A button with gradient background and a hover effect
-export const ConnectButton = ({
-  children,
-  disabled = false,
-  onClick,
-  className = "",
-  ...props
-}) => (
-  <button
-    className={`w-full py-4 px-6 text-lg font-bold text-white rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 hover:scale-[1.02] ${
-      disabled
-        ? "bg-gray-400 cursor-not-allowed"
-        : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-    } ${className}`}
-    disabled={disabled}
-    onClick={onClick}
-    {...props}
-  >
-    {children}
-  </button>
-);
-
-ConnectButton.propTypes = {
-  children: PropTypes.node,
-  disabled: PropTypes.bool,
-  onClick: PropTypes.func,
+Card.propTypes = {
+  children:  PropTypes.node,
   className: PropTypes.string,
+  elevation: PropTypes.oneOf(["none", "sm", "md", "lg"]),
+  padding:   PropTypes.oneOf(["none", "sm", "md", "lg"]),
 };
 
-// FormInput: A flexible input component with enhanced disabled and error states
+const inputBase =
+  "w-full px-3 py-2 rounded-token border bg-surface text-fg placeholder-fg-subtle shadow-sm transition-colors focus:outline-none disabled:bg-surface-raised disabled:text-fg-muted disabled:cursor-not-allowed";
+
+const errorBorder   = "border-danger focus:border-danger focus:ring-1 focus:ring-danger";
+const defaultBorder = "border-line focus:border-accent focus:ring-1 focus:ring-accent";
+
+// FormInput — token-driven text input with label and error state.
 export const FormInput = ({
   label,
   name,
@@ -69,10 +61,7 @@ export const FormInput = ({
 }) => (
   <div className={`mb-4 ${className}`}>
     {label && (
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-1"
-      >
+      <label htmlFor={name} className="block text-sm font-medium text-fg mb-1">
         {label}
       </label>
     )}
@@ -84,34 +73,26 @@ export const FormInput = ({
       onChange={onChange}
       placeholder={placeholder}
       disabled={disabled}
-      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 ${
-        disabled
-          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-          : "bg-white/70 hover:bg-white/80 focus:bg-white/90"
-      } ${
-        error
-          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-      } focus:outline-none focus:ring-2 focus:ring-opacity-50`}
+      className={`${inputBase} ${error ? errorBorder : defaultBorder}`}
       {...props}
     />
-    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    {error && <p className="mt-1 text-sm text-danger">{error}</p>}
   </div>
 );
 
 FormInput.propTypes = {
-  label: PropTypes.string,
-  name: PropTypes.string.isRequired,
-  type: PropTypes.string,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  onChange: PropTypes.func,
+  label:       PropTypes.string,
+  name:        PropTypes.string.isRequired,
+  type:        PropTypes.string,
+  value:       PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  onChange:    PropTypes.func,
   placeholder: PropTypes.string,
-  error: PropTypes.string,
-  disabled: PropTypes.bool,
-  className: PropTypes.string,
+  error:       PropTypes.string,
+  disabled:    PropTypes.bool,
+  className:   PropTypes.string,
 };
 
-// FormSelect: A select component with improved disabled and error states
+// FormSelect — token-driven select with label and error state.
 export const FormSelect = ({
   label,
   name,
@@ -125,10 +106,7 @@ export const FormSelect = ({
 }) => (
   <div className={`mb-4 ${className}`}>
     {label && (
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-gray-700 mb-1"
-      >
+      <label htmlFor={name} className="block text-sm font-medium text-fg mb-1">
         {label}
       </label>
     )}
@@ -138,15 +116,7 @@ export const FormSelect = ({
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 ${
-        disabled
-          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-          : "bg-white/70 hover:bg-white/80 focus:bg-white/90"
-      } ${
-        error
-          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-          : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-      } focus:outline-none focus:ring-2 focus:ring-opacity-50`}
+      className={`${inputBase} ${error ? errorBorder : defaultBorder}`}
       {...props}
     >
       {options.map((option) => (
@@ -155,128 +125,79 @@ export const FormSelect = ({
         </option>
       ))}
     </select>
-    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    {error && <p className="mt-1 text-sm text-danger">{error}</p>}
   </div>
 );
 
 FormSelect.propTypes = {
-  label: PropTypes.string,
-  name: PropTypes.string.isRequired,
-  options: PropTypes.arrayOf(
+  label:     PropTypes.string,
+  name:      PropTypes.string.isRequired,
+  options:   PropTypes.arrayOf(
     PropTypes.shape({
       value: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
     })
   ),
-  value: PropTypes.string,
-  onChange: PropTypes.func,
-  error: PropTypes.string,
-  disabled: PropTypes.bool,
+  value:     PropTypes.string,
+  onChange:  PropTypes.func,
+  error:     PropTypes.string,
+  disabled:  PropTypes.bool,
   className: PropTypes.string,
 };
 
-// Card: A customizable card component with shadow and border options
-export const Card = ({
-  children,
-  className = "",
-  shadow = "shadow-md",
-  border = "border-gray-100",
-  ...props
-}) => (
-  <div
-    className={`bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg ${shadow} border ${border} ${className}`}
-    {...props}
-  >
-    {children}
-  </div>
-);
-
-Card.propTypes = {
-  children: PropTypes.node,
-  className: PropTypes.string,
-  shadow: PropTypes.string,
-  border: PropTypes.string,
-};
-
-// Button: A versatile button component with variant and size options
+// Button — single unified action button. Token-driven variants, no inline spinner.
 export const Button = ({
   children,
-  variant = "primary",
-  size = "medium",
-  type = "button",
-  disabled = false,
-  loading = false,
+  variant   = "primary",
+  size      = "medium",
+  type      = "button",
+  disabled  = false,
+  loading   = false,
+  fullWidth = false,
   onClick,
   className = "",
   ...props
 }) => {
-  const baseClasses =
-    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-opacity-50";
+  const base =
+    "inline-flex items-center justify-center gap-2 rounded-token font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-page disabled:opacity-60 disabled:cursor-not-allowed";
 
-  const sizeClasses = {
-    small: "px-3 py-1 text-sm",
-    medium: "px-4 py-2",
-    large: "px-6 py-3 text-lg",
+  const sizes = {
+    small:  "px-3 py-1.5 text-sm",
+    medium: "px-4 py-2 text-sm",
+    large:  "px-6 py-3 text-base",
   };
 
-  const variantClasses = {
-    primary: "bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-300",
-    secondary:
-      "bg-purple-500 hover:bg-purple-600 text-white focus:ring-purple-300",
-    danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-300",
-    outlined:
-      "border border-blue-500 text-blue-500 hover:bg-blue-50 focus:ring-blue-200",
-    ghost:
-      "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-200",
-    text: "text-blue-500 hover:bg-blue-50 focus:ring-blue-200",
+  const variants = {
+    primary:   "bg-accent hover:bg-accent-hover text-accent-fg shadow-soft-sm",
+    secondary: "bg-surface-raised hover:bg-surface text-fg border border-line-strong",
+    danger:    "bg-danger hover:bg-danger/90 text-accent-fg shadow-soft-sm",
+    outlined:  "border border-accent text-accent hover:bg-accent/10",
+    ghost:     "border border-line text-fg hover:bg-surface",
+    text:      "text-accent hover:bg-accent/10",
   };
-
-  const disabledClasses = {
-    primary: "bg-blue-300 text-white cursor-not-allowed",
-    secondary: "bg-purple-300 text-white cursor-not-allowed",
-    danger: "bg-red-300 text-white cursor-not-allowed",
-    outlined: "border border-blue-200 text-blue-300 cursor-not-allowed",
-    ghost: "border border-gray-200 text-gray-400 cursor-not-allowed",
-    text: "text-blue-300 cursor-not-allowed",
-  };
-
-  const isDisabled = disabled || loading;
 
   return (
     <button
       type={type}
-      className={`${baseClasses} ${sizeClasses[size]} ${
-        isDisabled ? disabledClasses[variant] : variantClasses[variant]
-      } ${className}`}
-      disabled={isDisabled}
+      className={`${base} ${sizes[size] ?? sizes.medium} ${variants[variant] ?? variants.primary}${fullWidth ? " w-full" : ""} ${className}`}
+      disabled={disabled || loading}
       onClick={onClick}
       {...props}
     >
-      {loading && (
-        <div
-          className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"
-          aria-hidden="true"
-        />
-      )}
+      {loading && <LoadingSpinner size="small" color="current" />}
       {children}
     </button>
   );
 };
 
 Button.propTypes = {
-  children: PropTypes.node,
-  variant: PropTypes.oneOf([
-    "primary",
-    "secondary",
-    "danger",
-    "outlined",
-    "ghost",
-    "text",
-  ]),
-  size: PropTypes.oneOf(["small", "medium", "large"]),
-  type: PropTypes.oneOf(["button", "submit", "reset"]),
-  disabled: PropTypes.bool,
-  loading: PropTypes.bool,
-  onClick: PropTypes.func,
+  children:  PropTypes.node,
+  variant:   PropTypes.oneOf(["primary", "secondary", "danger", "outlined", "ghost", "text"]),
+  size:      PropTypes.oneOf(["small", "medium", "large"]),
+  type:      PropTypes.oneOf(["button", "submit", "reset"]),
+  disabled:  PropTypes.bool,
+  loading:   PropTypes.bool,
+  fullWidth: PropTypes.bool,
+  onClick:   PropTypes.func,
   className: PropTypes.string,
 };

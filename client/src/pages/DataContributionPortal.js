@@ -59,30 +59,30 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-fg/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-raised border border-line rounded-token shadow-soft-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">
+            <h2 className="text-xl font-bold text-fg">
               Submit Your Health Data
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-fg-subtle hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
             >
               &times;
             </button>
           </div>
 
           {/* Request details summary */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-6">
-            <h3 className="font-medium text-blue-800">{request?.title}</h3>
-            <p className="text-sm text-blue-600 mt-1">
+          <div className="bg-info-soft border border-info/30 p-4 rounded-token mb-6">
+            <h3 className="font-medium text-info">{request?.title}</h3>
+            <p className="text-sm text-info/80 mt-1">
               {request?.description?.substring(0, 150)}...
             </p>
             <div className="flex items-center mt-2">
-              <Award size={16} className="text-blue-500 mr-1" />
-              <span className="text-sm text-blue-700 font-medium">
+              <Award size={16} className="text-info mr-1" />
+              <span className="text-sm text-info font-medium">
                 Reward: {request?.reward} ETH
               </span>
             </div>
@@ -92,10 +92,10 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
             <div className="space-y-4">
               {/* File Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   Upload Health Data Files*
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <div className="border-2 border-dashed border-line-strong rounded-token p-4 text-center bg-surface">
                   <input
                     type="file"
                     id="file-upload"
@@ -107,11 +107,11 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
                     htmlFor="file-upload"
                     className="cursor-pointer flex flex-col items-center"
                   >
-                    <Upload className="h-10 w-10 text-gray-400" />
-                    <span className="mt-2 text-sm text-gray-500">
+                    <Upload className="h-10 w-10 text-fg-subtle" />
+                    <span className="mt-2 text-sm text-fg-muted">
                       Click to select files or drag and drop
                     </span>
-                    <span className="mt-1 text-xs text-gray-400">
+                    <span className="mt-1 text-xs text-fg-subtle">
                       Supported formats: CSV, JSON, PDF, DICOM, HL7
                     </span>
                   </label>
@@ -120,13 +120,13 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
                 {/* Selected files list */}
                 {fileNames.length > 0 && (
                   <div className="mt-2">
-                    <h4 className="text-sm font-medium text-gray-700">
+                    <h4 className="text-sm font-medium text-fg">
                       Selected Files:
                     </h4>
-                    <ul className="mt-1 text-sm text-gray-500">
+                    <ul className="mt-1 text-sm text-fg-muted">
                       {fileNames.map((name, index) => (
                         <li key={index} className="flex items-center">
-                          <Check size={14} className="text-green-500 mr-1" />
+                          <Check size={14} className="text-success mr-1" />
                           {name}
                         </li>
                       ))}
@@ -137,22 +137,22 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
 
               {/* Additional Notes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   Additional Notes
                 </label>
                 <textarea
                   name="additionalNotes"
                   value={formData.additionalNotes}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-line-strong rounded-token bg-surface text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                   rows="3"
                   placeholder="Add any relevant information about the data you're providing..."
                 ></textarea>
               </div>
 
               {/* Data Privacy Options */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-800 mb-2">
+              <div className="bg-surface p-4 rounded-token border border-line">
+                <h4 className="font-medium text-fg mb-2">
                   Data Privacy Options
                 </h4>
 
@@ -169,11 +169,11 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
                     <div>
                       <label
                         htmlFor="anonymized"
-                        className="font-medium text-gray-700 text-sm"
+                        className="font-medium text-fg text-sm"
                       >
                         Anonymize my data
                       </label>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-fg-muted">
                         Remove personally identifiable information before
                         sharing with the researcher
                       </p>
@@ -192,11 +192,11 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
                     <div>
                       <label
                         htmlFor="customTerms"
-                        className="font-medium text-gray-700 text-sm"
+                        className="font-medium text-fg text-sm"
                       >
                         Set custom usage terms
                       </label>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-fg-muted">
                         Specify how your data can be used beyond this research
                         project
                       </p>
@@ -206,7 +206,7 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
               </div>
 
               {/* Terms and Conditions */}
-              <div className="border-t border-gray-200 pt-4">
+              <div className="border-t border-line pt-4">
                 <div className="flex items-start">
                   <input
                     type="checkbox"
@@ -220,11 +220,11 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
                   <div>
                     <label
                       htmlFor="terms"
-                      className="font-medium text-gray-700 text-sm"
+                      className="font-medium text-fg text-sm"
                     >
                       I agree to the terms of data sharing*
                     </label>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-fg-muted">
                       By submitting data, you confirm that you have the right to
                       share this information and agree to the platform's data
                       sharing policies. Your data will be used according to the
@@ -239,13 +239,13 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2 hover:bg-gray-50"
+                  className="px-4 py-2 border border-line-strong rounded-token text-fg mr-2 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-token disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                   disabled={fileNames.length === 0 || !formData.agreedToTerms}
                 >
                   Submit Data
@@ -262,51 +262,51 @@ const DataSubmissionModal = ({ isOpen, onClose, onSubmit, request }) => {
 // Request Card Component (Patient version)
 const RequestCardPatient = ({ request, onContribute, onViewDetails }) => {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
+    <div className="bg-surface border border-line rounded-token shadow-soft-sm overflow-hidden hover:shadow-soft-md transition-shadow">
       <div className="p-5">
         {/* Request Status Badge */}
         <div className="flex justify-between items-start mb-2">
           <span
             className={`text-xs font-medium px-2.5 py-0.5 rounded ${
               request.status === "open"
-                ? "bg-green-100 text-green-800"
+                ? "bg-success-soft text-success"
                 : request.status === "pending"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-blue-100 text-blue-800"
+                  ? "bg-warning-soft text-warning"
+                  : "bg-info-soft text-info"
             }`}
           >
             {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
           </span>
-          <span className="text-xs text-gray-500">{request.createdAt}</span>
+          <span className="text-xs text-fg-subtle">{request.createdAt}</span>
         </div>
 
         {/* Request Title */}
-        <h3 className="text-lg font-semibold text-gray-800 mb-1">
+        <h3 className="text-lg font-semibold text-fg mb-1">
           {request.title}
         </h3>
 
         {/* Request Description */}
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+        <p className="text-fg-muted text-sm mb-3 line-clamp-2">
           {request.description}
         </p>
 
         {/* Request Details */}
         <div className="grid grid-cols-2 gap-2 text-sm mb-4">
           <div className="flex items-center">
-            <Database size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Type: {request.dataType}</span>
+            <Database size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Type: {request.dataType}</span>
           </div>
           <div className="flex items-center">
-            <FileText size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Format: {request.format}</span>
+            <FileText size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Format: {request.format}</span>
           </div>
           <div className="flex items-center">
-            <Clock size={16} className="text-gray-400 mr-1" />
-            <span className="text-gray-600">Timeline: {request.timeline}</span>
+            <Clock size={16} className="text-fg-subtle mr-1" />
+            <span className="text-fg-muted">Timeline: {request.timeline}</span>
           </div>
           <div className="flex items-center">
-            <Award size={16} className="text-gray-400 mr-1" />
-            <span className="font-medium text-green-600">
+            <Award size={16} className="text-fg-subtle mr-1" />
+            <span className="font-medium text-success">
               Reward: {request.reward} ETH
             </span>
           </div>
@@ -317,7 +317,7 @@ const RequestCardPatient = ({ request, onContribute, onViewDetails }) => {
           {request.tags.map((tag, index) => (
             <span
               key={index}
-              className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded"
+              className="bg-accent/10 text-accent text-xs px-2 py-1 rounded-token"
             >
               {tag}
             </span>
@@ -325,9 +325,9 @@ const RequestCardPatient = ({ request, onContribute, onViewDetails }) => {
         </div>
 
         {/* Privacy Indicator */}
-        <div className="flex items-center mb-4 bg-gray-50 p-2 rounded-md">
-          <Shield size={16} className="text-gray-500 mr-2" />
-          <span className="text-xs text-gray-600">
+        <div className="flex items-center mb-4 bg-surface-raised p-2 rounded-token border border-line">
+          <Shield size={16} className="text-fg-subtle mr-2" />
+          <span className="text-xs text-fg-muted">
             Your data will be{" "}
             {request.anonymized ? "anonymized" : "de-identified"} and protected
             by blockchain verification
@@ -338,14 +338,14 @@ const RequestCardPatient = ({ request, onContribute, onViewDetails }) => {
         <div className="flex justify-between mt-4">
           <button
             onClick={() => onViewDetails(request.id)}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="text-accent hover:text-accent-hover text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
           >
             View Details
           </button>
           {request.status === "open" && (
             <button
               onClick={() => onContribute(request.id)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm font-medium transition-colors flex items-center"
+              className="bg-accent hover:bg-accent-hover text-accent-fg px-4 py-1 rounded-token text-sm font-medium transition-colors flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <Upload size={14} className="mr-1" />
               Contribute Data
@@ -545,7 +545,7 @@ const DataContributionPortal = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
       </div>
     );
   }
@@ -553,7 +553,7 @@ const DataContributionPortal = () => {
   // Render error state
   if (error && requests.length === 0) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+      <div className="bg-danger-soft border border-danger/30 text-danger px-4 py-3 rounded-token">
         {error}
       </div>
     );
@@ -562,7 +562,7 @@ const DataContributionPortal = () => {
   // Only patients can access the data contribution portal
   if (userRole !== "patient") {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+      <div className="bg-warning-soft border border-warning/30 text-warning px-4 py-3 rounded-token">
         <h3 className="font-medium">Patient Access Only</h3>
         <p>
           You need patient privileges to access the data contribution portal.
@@ -575,10 +575,10 @@ const DataContributionPortal = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-fg">
             Data Contribution Portal
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-fg-muted mt-2">
             Share your health data with researchers and earn rewards while
             advancing medical research
           </p>
@@ -591,7 +591,7 @@ const DataContributionPortal = () => {
       </div>
 
       {/* Earnings Summary */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-md p-6 mb-8 text-white">
+      <div className="bg-gradient-to-r from-accent to-purple-600 rounded-token shadow-soft-md p-6 mb-8 text-white">
         <h2 className="text-xl font-semibold mb-2">
           Your Contribution Summary
         </h2>
@@ -628,23 +628,23 @@ const DataContributionPortal = () => {
         <div className="w-full md:w-1/3 relative">
           <Search
             size={18}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fg-subtle"
           />
           <input
             type="text"
             placeholder="Search requests..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="pl-10 pr-4 py-2 border border-line-strong rounded-token bg-surface text-fg w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           />
         </div>
 
-        <div className="flex items-center bg-white px-3 py-2 rounded-lg shadow-sm border border-gray-200">
-          <Filter size={18} className="text-gray-400 mr-2" />
+        <div className="flex items-center bg-surface-raised px-3 py-2 rounded-token border border-line">
+          <Filter size={18} className="text-fg-subtle mr-2" />
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-transparent text-gray-700 pr-8 focus:outline-none"
+            className="bg-transparent text-fg pr-8 focus:outline-none"
           >
             <option value="all">All Requests</option>
             <option value="open">Open Requests</option>
@@ -657,32 +657,32 @@ const DataContributionPortal = () => {
       {/* Your Recent Contributions Section */}
       {myContributions.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">
+          <h2 className="text-xl font-semibold text-fg mb-4">
             Your Recent Contributions
           </h2>
-          <div className="bg-white rounded-lg shadow border border-gray-200">
+          <div className="bg-surface border border-line rounded-token shadow-soft-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-line">
+                <thead className="bg-surface-raised">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                       Request
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                       Date Submitted
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                       Reward
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
                       Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-surface divide-y divide-line">
                   {myContributions.map((contribution, idx) => {
                     // Find the corresponding request
                     const request = requests.find(
@@ -694,42 +694,42 @@ const DataContributionPortal = () => {
 
                     return (
                       <tr key={idx}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-fg">
                           {request.title}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-fg-muted">
                           {contribution.submittedDate}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                               contribution.status === "approved"
-                                ? "bg-green-100 text-green-800"
+                                ? "bg-success-soft text-success"
                                 : contribution.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
+                                  ? "bg-warning-soft text-warning"
                                   : contribution.status === "rejected"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-gray-100 text-gray-800"
+                                    ? "bg-danger-soft text-danger"
+                                    : "bg-surface-raised text-fg"
                             }`}
                           >
                             {contribution.status.charAt(0).toUpperCase() +
                               contribution.status.slice(1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-fg-muted">
                           {contribution.reward} ETH
                           {contribution.paid && (
-                            <span className="ml-1 text-xs text-green-600">
+                            <span className="ml-1 text-xs text-success">
                               (Paid)
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-fg-muted">
                           <button
                             onClick={() =>
                               handleViewDetails(contribution.requestId)
                             }
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-accent hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded"
                           >
                             View Details
                           </button>
@@ -746,7 +746,7 @@ const DataContributionPortal = () => {
 
       {/* Available Requests Section */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Available Data Requests</h2>
+        <h2 className="text-xl font-semibold text-fg mb-4">Available Data Requests</h2>
         {filteredRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRequests.map((request) => (
@@ -759,8 +759,8 @@ const DataContributionPortal = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center p-12 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">
+          <div className="text-center p-12 bg-surface-raised rounded-token">
+            <p className="text-fg-muted">
               {searchTerm
                 ? "No data requests match your search criteria"
                 : filterStatus === "all"

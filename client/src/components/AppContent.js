@@ -89,23 +89,20 @@ const LogoutConfirmationDialog = ({ isOpen, onConfirm, onCancel }) => (
     isOpen={isOpen}
     onClose={onCancel}
     title="Confirm Logout"
-    className="max-w-md"
+    size="md"
   >
     <div className="p-6">
       <div className="flex items-start mb-4">
-        <div className="bg-red-100 p-2 rounded-full mr-3 flex-shrink-0">
-          <LogOut className="text-red-600 w-6 h-6" />
+        <div className="bg-danger/10 p-2 rounded-full mr-3 flex-shrink-0">
+          <LogOut className="text-danger w-6 h-6" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Confirm Logout
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-fg-muted">
             Are you sure you want to log out? This will disconnect your wallet.
           </p>
-          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-100 rounded-md flex items-start">
-            <AlertCircle className="text-yellow-600 w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-yellow-700">
+          <div className="mt-2 p-3 bg-warning/10 border border-warning/20 rounded-md flex items-start">
+            <AlertCircle className="text-warning w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-fg-muted">
               Pending transactions or unsaved changes may be lost.
             </p>
           </div>
@@ -329,7 +326,7 @@ const AppContent = () => {
           onSwitchNetwork={switchNetwork}
         />
       )}
-      <div className="flex-1">
+      <main id="main-content" className="flex-1">
         <Suspense
           fallback={
             <div className="flex justify-center items-center min-h-screen">
@@ -679,7 +676,7 @@ const AppContent = () => {
             />
           </Routes>
         </Suspense>
-      </div>
+      </main>
       <LogoutConfirmationDialog
         isOpen={showLogoutDialog}
         onConfirm={handleLogoutConfirm}
