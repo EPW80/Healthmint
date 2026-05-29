@@ -32,6 +32,7 @@ import {
   Users,
   FileSpreadsheet,
   PieChart,
+  HeartPulse,
 } from "lucide-react";
 import { setLoading, setError } from "../../redux/slices/uiSlice.js";
 import { addNotification } from "../../redux/slices/notificationSlice.js";
@@ -559,11 +560,11 @@ const Dashboard = ({ onNavigate }) => {
           </button>
 
           <button
-            onClick={() => handleNavigateTo("/profile")}
+            onClick={() => handleNavigateTo("/contribute")}
             className="p-4 bg-accent text-accent-fg rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2 font-medium"
           >
-            <Settings className="w-5 h-5" />
-            Privacy Settings
+            <HeartPulse className="w-5 h-5" />
+            Contribute Data
           </button>
 
           <button
