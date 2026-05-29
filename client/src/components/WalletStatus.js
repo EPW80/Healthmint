@@ -236,85 +236,83 @@ const WalletStatus = ({
     <div
       className={`bg-surface border border-line rounded-lg p-4 ${className}`}
     >
-      <div className="flex justify-between items-center gap-4">
-        <div className="flex items-center min-w-0 flex-shrink">
-          <div className="bg-green-100 rounded-full p-2 mr-3">
-            <Wallet className="text-green-600" size={20} />
-          </div>
-          <div>
-            <h3 className="font-medium">Connected Wallet</h3>
-            <div className="flex items-center mt-1">
-              <span className="text-fg-muted text-sm">
-                {formatAddress(walletAddress)}
-              </span>
-
-              {/* Copy button */}
-              {showCopy && (
-                <button
-                  onClick={copyAddressToClipboard}
-                  className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
-                  title="Copy address"
-                  aria-label="Copy wallet address"
-                >
-                  {copied ? (
-                    <CheckCircle size={14} className="text-green-500" />
-                  ) : (
-                    <Copy size={14} />
-                  )}
-                </button>
-              )}
-
-              {/* Explorer link */}
-              {showExplorer && (
-                <a
-                  href={getExplorerLink(walletAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-1 text-fg-subtle hover:text-fg-muted p-1"
-                  title="View on Etherscan"
-                  aria-label="View wallet on Etherscan"
-                >
-                  <ExternalLink size={14} />
-                </a>
-              )}
-            </div>
-          </div>
+      <div className="flex items-center">
+        <div className="bg-green-100 rounded-full p-2 mr-3 flex-shrink-0">
+          <Wallet className="text-green-600" size={20} />
         </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-medium">Connected Wallet</h3>
+          <div className="flex items-center mt-1">
+            <span className="text-fg-muted text-sm truncate">
+              {formatAddress(walletAddress)}
+            </span>
 
-        {/* Balance information */}
-        {showBalance && (
-          <div className="text-right flex-shrink-0">
-            <div className="text-xs text-fg-muted mb-1">Balance</div>
-            {loadingBalance ? (
-              <LoadingSpinner size="small" />
-            ) : error ? (
-              <div className="flex items-center">
-                <span className="text-fg-muted text-sm">--</span>
-                <button
-                  onClick={fetchBalance}
-                  className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
-                  title="Retry loading balance"
-                  aria-label="Retry loading wallet balance"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center">
-                <span className="font-medium">{formatBalance(balance)}</span>
-                <button
-                  onClick={fetchBalance}
-                  className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
-                  title="Refresh balance"
-                  aria-label="Refresh wallet balance"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              </div>
+            {/* Copy button */}
+            {showCopy && (
+              <button
+                onClick={copyAddressToClipboard}
+                className="ml-2 text-fg-subtle hover:text-fg-muted p-1 flex-shrink-0"
+                title="Copy address"
+                aria-label="Copy wallet address"
+              >
+                {copied ? (
+                  <CheckCircle size={14} className="text-green-500" />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </button>
+            )}
+
+            {/* Explorer link */}
+            {showExplorer && (
+              <a
+                href={getExplorerLink(walletAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 text-fg-subtle hover:text-fg-muted p-1 flex-shrink-0"
+                title="View on Etherscan"
+                aria-label="View wallet on Etherscan"
+              >
+                <ExternalLink size={14} />
+              </a>
             )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Balance information */}
+      {showBalance && (
+        <div className="mt-3 pt-3 border-t border-line flex items-center justify-between">
+          <span className="text-xs text-fg-muted">Balance</span>
+          {loadingBalance ? (
+            <LoadingSpinner size="small" />
+          ) : error ? (
+            <div className="flex items-center">
+              <span className="text-fg-muted text-sm">--</span>
+              <button
+                onClick={fetchBalance}
+                className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
+                title="Retry loading balance"
+                aria-label="Retry loading wallet balance"
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <span className="font-medium text-sm">{formatBalance(balance)}</span>
+              <button
+                onClick={fetchBalance}
+                className="ml-2 text-fg-subtle hover:text-fg-muted p-1"
+                title="Refresh balance"
+                aria-label="Refresh wallet balance"
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Network information */}
       {showNetwork && network && (
