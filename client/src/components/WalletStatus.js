@@ -236,8 +236,8 @@ const WalletStatus = ({
     <div
       className={`bg-surface border border-line rounded-lg p-4 ${className}`}
     >
-      <div className="flex justify-between items-center">
-        <div className="flex items-center">
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex items-center min-w-0 flex-shrink">
           <div className="bg-green-100 rounded-full p-2 mr-3">
             <Wallet className="text-green-600" size={20} />
           </div>
@@ -283,8 +283,8 @@ const WalletStatus = ({
 
         {/* Balance information */}
         {showBalance && (
-          <div className="text-right overflow-hidden">
-            <div className="text-xs text-fg-muted mb-1 whitespace-nowrap">Balance</div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-xs text-fg-muted mb-1">Balance</div>
             {loadingBalance ? (
               <LoadingSpinner size="small" />
             ) : error ? (
