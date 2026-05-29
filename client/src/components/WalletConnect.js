@@ -158,36 +158,37 @@ const WalletConnect = ({ onConnect }) => {
 
   // UI Components
   const renderStepIndicator = () => (
-    <ol className="flex items-center w-full mb-8">
+    <ol className="flex items-start w-full mb-8">
       {STEPS.map((step, index) => {
         const isActive = index === 0;
+        const isLast = index === STEPS.length - 1;
         return (
-          <li
-            key={step}
-            className={`flex items-center ${
-              index < STEPS.length - 1 ? "w-full" : ""
-            }`}
-          >
-            <span
-              className={`flex items-center justify-center w-8 h-8 rounded-full border-2 shrink-0 text-sm font-semibold ${
-                isActive
-                  ? "bg-accent text-accent-fg border-accent"
-                  : "bg-surface text-fg-muted border-line"
-              }`}
-            >
-              {index + 1}
-            </span>
-            <span
-              className={`ml-2 text-sm font-medium truncate ${
-                isActive ? "text-fg" : "text-fg-muted"
-              }`}
-            >
-              {step}
-            </span>
-            {index < STEPS.length - 1 && (
-              <div className="w-full h-px bg-line ml-2" aria-hidden="true" />
+          <React.Fragment key={step}>
+            <li className="flex flex-col items-center flex-shrink-0">
+              <span
+                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-semibold ${
+                  isActive
+                    ? "bg-accent text-accent-fg border-accent"
+                    : "bg-surface text-fg-muted border-line"
+                }`}
+              >
+                {index + 1}
+              </span>
+              <span
+                className={`mt-2 text-xs font-medium text-center ${
+                  isActive ? "text-fg" : "text-fg-muted"
+                }`}
+              >
+                {step}
+              </span>
+            </li>
+            {!isLast && (
+              <div
+                className="flex-1 h-px bg-line mt-4 mx-2"
+                aria-hidden="true"
+              />
             )}
-          </li>
+          </React.Fragment>
         );
       })}
     </ol>
