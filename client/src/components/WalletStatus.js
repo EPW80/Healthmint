@@ -283,8 +283,8 @@ const WalletStatus = ({
 
         {/* Balance information */}
         {showBalance && (
-          <div className="text-right">
-            <div className="text-xs text-fg-muted mb-1">Balance</div>
+          <div className="text-right overflow-hidden">
+            <div className="text-xs text-fg-muted mb-1 whitespace-nowrap">Balance</div>
             {loadingBalance ? (
               <LoadingSpinner size="small" />
             ) : error ? (
