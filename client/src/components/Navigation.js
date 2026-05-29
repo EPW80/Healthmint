@@ -106,7 +106,6 @@ const Navigation = ({ account, onLogout, network, onSwitchNetwork }) => {
     const baseItems = [
       { to: "/", label: "Home", icon: Home },
       { to: "/transactions", label: "Transactions", icon: Clock },
-      { to: "/profile", label: "Profile", icon: Settings },
     ];
 
     if (userRole === "patient") {
