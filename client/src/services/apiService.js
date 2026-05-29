@@ -227,6 +227,57 @@ class ApiService {
         };
       }
 
+      // Handle user profile endpoint
+      if (
+        endpoint.includes("/users/profile") ||
+        endpoint.includes("/user/profile")
+      ) {
+        const walletAddress = localStorage.getItem(
+          "healthmint_wallet_address"
+        );
+        const userRole = localStorage.getItem("healthmint_user_role");
+        return {
+          success: true,
+          profile: {
+            address: walletAddress || "",
+            name: "",
+            email: "",
+            age: "",
+            role: userRole || "patient",
+            bio: "",
+            specialization: "",
+            institution: "",
+            profileImage: null,
+            profileImageHash: null,
+            publications: [],
+            sharingPreferences: {
+              shareAnonymizedData: false,
+              allowResearchUse: false,
+              allowCommercialUse: false,
+            },
+            notificationPreferences: {
+              emailNotifications: true,
+              inAppNotifications: true,
+              marketingEmails: false,
+            },
+            privacyPreferences: {
+              showProfile: true,
+              showActivity: false,
+            },
+            emailNotifications: {
+              transactions: true,
+              dataRequests: true,
+              systemUpdates: true,
+            },
+            inAppNotifications: {
+              transactions: true,
+              dataRequests: true,
+              systemUpdates: true,
+            },
+          },
+        };
+      }
+
       // Handle user stats endpoint
       if (endpoint.includes("/user/stats")) {
         const mockData = mockDataUtils.getMockHealthData();

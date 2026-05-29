@@ -35,11 +35,12 @@ class UserService {
           await authService.ensureValidToken();
           const response = await apiService.get(`${this.basePath}/profile`);
 
-          // Server returns { success: true, profile: {...} } per
-          // server/routes/users.js — not { data: ... }. The previous code
-          // checked the wrong key and always fell through to the warning
-          // even when the API call succeeded.
-          const profileData = response?.profile ?? response?.data;
+          // apiService wraps the server body as response.data, so the
+          // server's { success, profile } lives at response.data.profile.
+          // Fall back to response.profile (mock path) then response.data
+          // (legacy shape) so all three shapes are covered.
+          const profileData =
+            response?.data?.profile ?? response?.profile ?? response?.data;
           if (profileData && Object.keys(profileData).length > 0) {
             localStorage.setItem(
               this.userProfileKey,

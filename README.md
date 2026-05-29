@@ -23,14 +23,14 @@ found six real vulnerabilities, and fixed each in a focused commit.
 - Set detailed access controls
 - Share anonymized data
 - Monetize data access
-- Track access history
+- Track access history with full audit log
 
 ### Researchers 🔬
 
-- Discover and filter health datasets
-- Purchase data with ETH
-- Showcase credentials
-- Follow research ethics guidelines
+- Discover, filter, and preview health datasets
+- Purchase data with ETH via on-chain contract
+- Showcase credentials and research profile
+- Follow research ethics and citation guidelines
 
 ### Security 🔐
 
@@ -41,13 +41,21 @@ found six real vulnerabilities, and fixed each in a focused commit.
 - Explicit consent management
 - Persistent, indexed audit log
 
+### Accessibility
+
+- WCAG-oriented: keyboard navigation, skip links, focus trap in modals
+- `aria-live` regions on search results and paginated tables
+- `<caption>` on all data tables; semantic landmark structure
+- Zero `eslint-plugin-jsx-a11y` violations enforced in CI
+
 ## Technology Stack
 
-- **Frontend**: React.js, Redux, Tailwind CSS, Web3.js/Ethers.js, MetaMask
+- **Frontend**: React 18, Redux Toolkit, Tailwind CSS (design token layer), Web3.js/Ethers.js, MetaMask
 - **Backend**: Node.js, Express, MongoDB Atlas, Pinata (IPFS), JWT, Winston
 - **Blockchain**: Ethereum (Sepolia), Solidity, Truffle, OpenZeppelin
 - **Storage**: Pinata (IPFS pinning) + MongoDB Atlas metadata
 - **Auth**: Signed-nonce (EIP-191), JWT
+- **UI Quality**: `eslint-plugin-jsx-a11y`, Inter + JetBrains Mono fonts, CSS custom property design tokens
 
 ## Project Structure
 
@@ -137,17 +145,24 @@ git push origin feature/my-feature
 
 ## What I'd do next
 
-This was a deliberately surgical hardening pass. Done so far: six security
-fixes (W1), security write-up + README rewrite (W2), contract + backend tests
-and CI (W3), server Winston sweep + client logger shim + dead-code removal (W4),
-IPFS provider migration to Pinata (W5). Remaining:
+Done so far across focused passes:
 
-- **Sepolia redeploy** (W6) — update `contractInfo.json` and re-verify artifacts
-  against the live Pinata-backed deployment.
-- **Harden key custody** — threshold/Shamir or a managed KMS instead of a
-  single server-held KEK (see [SECURITY.md](./SECURITY.md)).
-- **Modernize pinned deps** (`ethers` v5→v6, `web3.js`, `crypto-js`) — out of
-  scope for a surgical pass, intentionally deferred.
+| Pass | Work |
+| ---- | ---- |
+| W1 | Six security fixes (self-audit) |
+| W2 | Security write-up + README rewrite |
+| W3 | Contract + backend tests and CI |
+| W4 | Server Winston sweep, client logger shim, dead-code removal |
+| W5 | IPFS provider migration to Pinata |
+| W6 | Frontend redesign — design token system, UI component overhaul, auth surfaces, Redux consolidation, code splitting |
+| W7 | A11y polish — gray token sweep, `aria-live` regions, table captions, `eslint-plugin-jsx-a11y` (0 violations) |
+
+Still remaining:
+
+- **Sepolia redeploy** — update `contractInfo.json` and re-verify artifacts against the live Pinata-backed deployment.
+- **Harden key custody** — threshold/Shamir or a managed KMS instead of a single server-held KEK (see [SECURITY.md](./SECURITY.md)).
+- **Modernize pinned deps** (`ethers` v5→v6, `web3.js`, `crypto-js`) — out of scope for a surgical pass, intentionally deferred.
+- **Dark mode** — design token layer is structured for it; needs a `prefers-color-scheme` media query pass and a toggled `.dark` class on `<html>`.
 
 ### License
 
