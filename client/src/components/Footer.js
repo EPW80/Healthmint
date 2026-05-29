@@ -47,7 +47,7 @@ const Footer = ({
 
   return (
     <footer
-      className="fixed bottom-0 w-full bg-surface border-t border-line py-3 z-10"
+      className="fixed bottom-0 w-full bg-surface border-t border-line py-3 z-10 transition-all duration-300 hover:bg-surface/40 hover:backdrop-blur-md"
       role="contentinfo"
       aria-label="Site footer"
     >
