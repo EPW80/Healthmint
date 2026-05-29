@@ -21,7 +21,6 @@ import {
   Share2,
   Eye,
   Lock,
-  Settings,
   Activity,
   Briefcase,
   Clipboard,
