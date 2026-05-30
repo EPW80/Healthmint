@@ -35,10 +35,7 @@ const registryAbi = loadContractAbi(
   path.resolve(__dirname, "../contracts/HealthDataRegistry.json")
 );
 const marketplaceAbi = loadContractAbi(
-  path.resolve(
-    __dirname,
-    "../../client/src/contracts/HealthDataMarketplace.json"
-  )
+  path.resolve(__dirname, "../contracts/HealthDataMarketplace.json")
 );
 
 // Contract addresses from environment

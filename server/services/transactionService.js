@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const contractJsonPath = path.resolve(
   __dirname,
-  "../../client/src/contracts/HealthDataMarketplace.json"
+  "../contracts/HealthDataMarketplace.json"
 );
 let contractABI = null;
 try {

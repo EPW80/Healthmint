@@ -111,10 +111,7 @@ class BlockchainService {
 
       if (this.wallet && this.contractAddresses.HEALTH_DATA_MARKETPLACE) {
         const marketplaceAbi = loadContractAbi(
-          path.resolve(
-            __dirname,
-            "../../client/src/contracts/HealthDataMarketplace.json"
-          )
+          path.resolve(__dirname, "../contracts/HealthDataMarketplace.json")
         );
         this.contracts.HealthDataMarketplace = new ethers.Contract(
           this.contractAddresses.HEALTH_DATA_MARKETPLACE,
