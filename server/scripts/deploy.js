@@ -5,8 +5,8 @@ import { ethers } from "ethers";
 import dotenv from "dotenv";
 import { logger } from "../config/loggerConfig.js";
 
-// Initialize environment variables
-dotenv.config();
+// Initialize environment variables — secrets live in server/.env
+dotenv.config({ path: "./server/.env" });
 
 // Check if the script is running in a Node.js environment
 async function main() {
@@ -51,15 +51,17 @@ async function main() {
 
 // Validate required environment variables
 function validateEnvironment() {
-  if (!process.env.PRIVATE_KEY || !process.env.INFURA_API_KEY) {
-    throw new Error("Please set PRIVATE_KEY and INFURA_API_KEY in .env file");
+  if (!process.env.PRIVATE_KEY || !process.env.SEPOLIA_RPC_URL) {
+    throw new Error("Please set PRIVATE_KEY and SEPOLIA_RPC_URL in server/.env");
   }
 }
 
-// Log Infura API key (masked)
+// Log Infura API key (masked) — optional, the RPC connection uses SEPOLIA_RPC_URL
 function logInfuraKey() {
   const apiKey = process.env.INFURA_API_KEY;
-  logger.info("Infura API Key:", `${apiKey.slice(0, 6)}...`);
+  if (apiKey) {
+    logger.info("Infura API Key:", `${apiKey.slice(0, 6)}...`);
+  }
 }
 
 // Set up wallet and provider
@@ -93,15 +95,20 @@ function prepareBuildDirectory() {
 // Compile contracts
 function compileContracts() {
   logger.info("Compiling contracts...");
-  execSync("npx truffle compile", { stdio: "inherit" });
+  execSync("npx truffle compile --config truffle-config.cjs", {
+    stdio: "inherit",
+  });
 }
 
 // Deploy contracts to Sepolia
 function deployToSepolia() {
   logger.info("Deploying to Sepolia...");
-  execSync("npx truffle migrate --network sepolia --reset", {
-    stdio: "inherit",
-  });
+  execSync(
+    "npx truffle migrate --network sepolia --reset --config truffle-config.cjs",
+    {
+      stdio: "inherit",
+    }
+  );
 }
 
 // Process deployment artifacts
@@ -157,7 +164,7 @@ function saveDeploymentInfo(
 
 // Update .env file with the deployed contract address
 function updateEnvFile(deployedAddress) {
-  const envPath = "./.env";
+  const envPath = "./server/.env";
   let envContent = fs.readFileSync(envPath, "utf8");
 
   if (envContent.includes("CONTRACT_ADDRESS=")) {
@@ -213,7 +220,7 @@ function verifyContract() {
     logger.info("Verifying contract on Etherscan...");
     try {
       execSync(
-        `npx truffle run verify HealthDataMarketplace --network sepolia`,
+        `npx truffle run verify HealthDataMarketplace --network sepolia --config truffle-config.cjs`,
         { stdio: "inherit" }
       );
       logger.info("Contract verified successfully!");

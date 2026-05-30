@@ -24,6 +24,7 @@ package-lock.json
 /client/src/contracts
 cache
 artifacts
+deployment-info.json
 
 # Logs
 *.log
