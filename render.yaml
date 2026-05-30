@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: healthmint-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        generateValue: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: HEALTHMINT_KEK
+        sync: false
+      - key: PINATA_JWT
+        sync: false
+      - key: PINATA_GATEWAY
+        sync: false
+      - key: SEPOLIA_RPC_URL
+        sync: false
+      - key: CONTRACT_ADDRESS
+        sync: false
+      - key: CONTRACT_HEALTH_DATA_MARKETPLACE
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
