@@ -3,6 +3,8 @@ import axios from "axios";
 import config from "../config/config.js";
 import { logger } from "../config/loggerConfig.js";
 
+let secureStorageServiceModulePromise = null;
+
 // API service for making HTTP requests
 class ApiService {
   constructor(options = {}) {
@@ -465,9 +467,11 @@ class ApiService {
 
     // Lazily load secureStorageService to avoid circular-import initialization
     // issues during test/app bootstrap.
-    const { default: secureStorageService } = await import(
-      "./secureStorageService.js"
-    );
+    secureStorageServiceModulePromise =
+      secureStorageServiceModulePromise ||
+      import("./secureStorageService.js");
+    const { default: secureStorageService } =
+      await secureStorageServiceModulePromise;
 
     if (!secureStorageService.initialized) {
       await secureStorageService.initialize();
