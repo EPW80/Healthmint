@@ -1,7 +1,6 @@
 // apiService.js
 import axios from "axios";
 import config from "../config/config.js";
-import secureStorageService from "./secureStorageService.js";
 import { logger } from "../config/loggerConfig.js";
 
 // API service for making HTTP requests
@@ -464,12 +463,16 @@ class ApiService {
       `[API] ${process.env.NODE_ENV !== "production" ? "Mock " : ""}file upload: ${file.originalname} (${file.size} bytes)`
     );
 
-    // Use local storage service instead of mocks
+    // Lazily load secureStorageService to avoid circular-import initialization
+    // issues during test/app bootstrap.
+    const { default: secureStorageService } = await import(
+      "./secureStorageService.js"
+    );
+
     if (!secureStorageService.initialized) {
       await secureStorageService.initialize();
     }
 
-    // Use the correct method name that exists in secureStorageService
     return secureStorageService.uploadToIPFS(file);
   }
 
