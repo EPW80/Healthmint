@@ -52,13 +52,27 @@ if (missingVars.length > 0) {
 
 // Configure environment variables
 const NODE_ENV = process.env.NODE_ENV || "development";
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-  : [
+// Merge built-in defaults with FRONTEND_URL and any comma-separated
+// ALLOWED_ORIGINS override so a custom value never silently drops localhost or
+// the production frontend. Browser requests are proxied same-origin via the
+// Vercel rewrite, but Vercel forwards the original Origin header, so the
+// deployed frontend domain must be allow-listed here.
+const ALLOWED_ORIGINS = [
+  ...new Set(
+    [
       "http://localhost:3000",
       "http://localhost:5000",
       "https://healthmint.com",
-    ];
+      "https://healthmint-alpha.vercel.app",
+      process.env.FRONTEND_URL,
+      ...(process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(",")
+        : []),
+    ]
+      .filter(Boolean)
+      .map((o) => o.trim())
+  ),
+];
 
 // Setup logging directory
 const logDir = path.join(__dirname, "logs");
@@ -117,19 +131,10 @@ mongoose.connection.on("reconnected", () => {
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
-// Add this to your server.js or app.js file
-const frontendURL =
-  process.env.FRONTEND_URL || "https://healthmint-copyone.vercel.app";
-
-// Configure CORS
-app.use(
-  cors({
-    origin: [frontendURL, "http://localhost:3000"],
-    credentials: true,
-  })
-);
-
-// CORS Configuration - Make sure this is properly set up
+// CORS Configuration - a single source of truth. (A second, redundant
+// cors() middleware used to run here and could emit a duplicate
+// Access-Control-Allow-Origin header; the function-based config below is the
+// only CORS layer.)
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, Postman)
