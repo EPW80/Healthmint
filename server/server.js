@@ -131,6 +131,23 @@ mongoose.connection.on("reconnected", () => {
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
 
+// Vercel issues a unique per-deployment URL on every deploy
+// (e.g. healthmint-<hash>-erik-williams-projects.vercel.app) in addition to
+// the stable production domain. Allow the whole team scope so preview and
+// deployment URLs work without re-listing each one.
+const VERCEL_TEAM_SUFFIX = "-erik-williams-projects.vercel.app";
+
+const isOriginAllowed = (origin) => {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname.endsWith(VERCEL_TEAM_SUFFIX)) return true;
+  } catch {
+    // Malformed Origin header — treat as not allowed.
+  }
+  return false;
+};
+
 // CORS Configuration - a single source of truth. (A second, redundant
 // cors() middleware used to run here and could emit a duplicate
 // Access-Control-Allow-Origin header; the function-based config below is the
@@ -140,8 +157,7 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
 
-    // Check if origin is allowed
-    if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || NODE_ENV === "development") {
+    if (isOriginAllowed(origin) || NODE_ENV === "development") {
       callback(null, true);
     } else {
       logger.warn(`⚠️ Origin denied access: ${origin}`);

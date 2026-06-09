@@ -17,16 +17,11 @@ import WalletNonce from "../models/WalletNonce.js";
 import { ERROR_CODES } from "../config/networkConfig.js";
 
 const router = express.Router();
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
-const applyCorsHeaders = (res) => {
-  res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN);
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Request-ID"
-  );
-};
+
+// CORS is handled globally by the cors() middleware in server.js, which echoes
+// the correct per-request origin. Routes must not set Access-Control-* headers
+// manually — doing so previously pinned the origin to localhost and overrode
+// the middleware.
 
 const validateAndNormalizeAddress = (address) => {
   const result = validateAddress(address);
@@ -62,7 +57,6 @@ const generateTokens = (user) => {
   };
 };
 router.options("*", (req, res) => {
-  applyCorsHeaders(res);
   return res.sendStatus(204);
 });
 
@@ -74,7 +68,6 @@ router.options("*", (req, res) => {
 // or scraped from chain. Clients must now use the two-step challenge /
 // authenticate flow below.
 router.post("/wallet/connect", rateLimiters.auth, (req, res) => {
-  applyCorsHeaders(res);
   return res.status(410).json({
     success: false,
     code: "ENDPOINT_REMOVED",
@@ -92,7 +85,6 @@ router.post(
     const requestLogger = logger.child({
       requestId: req.id || "req_" + Date.now(),
     });
-    applyCorsHeaders(res);
 
     const { address, name, role, email, age } = req.body;
 
@@ -217,7 +209,6 @@ router.get(
     const requestLogger = logger.child({
       requestId: req.id || "req_" + Date.now(),
     });
-    applyCorsHeaders(res);
 
     const { address } = req.query;
 
@@ -264,7 +255,6 @@ router.get(
 router.post(
   "/logout",
   asyncHandler(async (req, res) => {
-    applyCorsHeaders(res);
 
     // Get token from authorization header or cookie
     const token =
@@ -301,7 +291,6 @@ router.post(
   "/refresh",
   rateLimiters.auth,
   asyncHandler(async (req, res) => {
-    applyCorsHeaders(res);
 
     const { refreshToken } = req.body;
 
@@ -380,7 +369,6 @@ router.post(
   "/wallet/challenge",
   rateLimiters.auth,
   asyncHandler(async (req, res) => {
-    applyCorsHeaders(res);
     const { address } = req.body;
 
     if (!address) {
@@ -421,7 +409,6 @@ router.post(
   "/wallet/authenticate",
   rateLimiters.auth,
   asyncHandler(async (req, res) => {
-    applyCorsHeaders(res);
     const { address, signature, message } = req.body;
 
     if (!address || !signature || !message) {
