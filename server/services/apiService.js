@@ -1,7 +1,6 @@
 // apiService.js
 import axios from "axios";
 import config from "../config/config.js";
-import secureStorageService from "./secureStorageService.js";
 import { logger } from "../config/loggerConfig.js";
 
 // API service for making HTTP requests
@@ -462,6 +461,12 @@ class ApiService {
     // Log for debugging purposes
     logger.info(
       `[API] ${process.env.NODE_ENV !== "production" ? "Mock " : ""}file upload: ${file.originalname} (${file.size} bytes)`
+    );
+
+    // Lazy-load to avoid module initialization cycle:
+    // apiService -> secureStorageService -> hipaaComplianceService -> apiService
+    const { default: secureStorageService } = await import(
+      "./secureStorageService.js"
     );
 
     // Use local storage service instead of mocks
