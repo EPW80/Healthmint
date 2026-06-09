@@ -3,6 +3,8 @@ import axios from "axios";
 import config from "../config/config.js";
 import { logger } from "../config/loggerConfig.js";
 
+let secureStorageServicePromise;
+
 // API service for making HTTP requests
 class ApiService {
   constructor(options = {}) {
@@ -465,9 +467,15 @@ class ApiService {
 
     // Lazy-load to avoid module initialization cycle:
     // apiService -> secureStorageService -> hipaaComplianceService -> apiService
-    const { default: secureStorageService } = await import(
-      "./secureStorageService.js"
-    );
+    if (!secureStorageServicePromise) {
+      secureStorageServicePromise = import("./secureStorageService.js").then(
+        ({ default: service }) => service
+      ).catch((error) => {
+        secureStorageServicePromise = null;
+        throw error;
+      });
+    }
+    const secureStorageService = await secureStorageServicePromise;
 
     // Use local storage service instead of mocks
     if (!secureStorageService.initialized) {
