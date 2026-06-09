@@ -467,9 +467,9 @@ class ApiService {
 
     // Lazily load secureStorageService to avoid circular-import initialization
     // issues during test/app bootstrap.
-    secureStorageServiceModulePromise =
-      secureStorageServiceModulePromise ||
-      import("./secureStorageService.js");
+    if (!secureStorageServiceModulePromise) {
+      secureStorageServiceModulePromise = import("./secureStorageService.js");
+    }
     const { default: secureStorageService } =
       await secureStorageServiceModulePromise;
 
