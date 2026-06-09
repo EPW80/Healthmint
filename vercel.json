@@ -1,5 +1,15 @@
 {
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://healthmint-api.onrender.com/api/$1"
+    },
+    {
+      "source": "/health",
+      "destination": "https://healthmint-api.onrender.com/health"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

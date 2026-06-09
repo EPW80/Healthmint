@@ -6,7 +6,7 @@ const DEFAULT_RETRY_DELAY = 1000;
 // Environment configuration
 export const ENV = {
   NODE_ENV: process.env.REACT_APP_ENV || "development",
-  API_URL: process.env.REACT_APP_API_URL || "http://localhost:5000",
+  API_URL: process.env.REACT_APP_API_URL || "/api",
   IPFS_HOST: process.env.REACT_APP_IPFS_HOST || "ipfs.infura.io",
   IPFS_PORT: parseInt(process.env.REACT_APP_IPFS_PORT || "5001", 10),
   IPFS_PROTOCOL: process.env.REACT_APP_IPFS_PROTOCOL || "https",

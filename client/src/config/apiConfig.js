@@ -4,9 +4,10 @@
 const ENV = {
   NODE_ENV: process.env.NODE_ENV || "development",
   // Handle both standalone API and integrated API paths
-  API_URL:
-    process.env.REACT_APP_API_URL ||
-    (process.env.NODE_ENV === "production" ? "" : "http://localhost:5000"),
+  // Relative base by default: dev proxy forwards /api to the backend, the
+  // Vercel rewrite forwards /api to Render in prod. Never defaults to a
+  // hard-coded localhost host that would ship in a production bundle.
+  API_URL: process.env.REACT_APP_API_URL || "/api",
   // Enhanced mock data control
   USE_MOCK_DATA:
     process.env.REACT_APP_USE_MOCK_DATA === "true" ||
@@ -74,9 +75,10 @@ const shouldUseMockData = (forceMock = false) => {
   // Always use mock if explicitly forced
   if (forceMock) return true;
 
-  // Always use real data in production unless no API URL is set
+  // Production always hits the real API. Mock data must never leak into a
+  // production build, regardless of how REACT_APP_API_URL is (mis)configured.
   if (ENV.NODE_ENV === "production") {
-    return !ENV.API_URL;
+    return false;
   }
 
   // Use environment variable or default to true in development

@@ -163,7 +163,9 @@ async function _checkBackendConnectivity() {
     );
 
     // Make a simple request to check connectivity
-    const response = await fetch(`${apiConfig.ENV.API_URL}/api/health`, {
+    // The backend exposes /health at the root (not under /api). The dev proxy
+    // and the Vercel /health rewrite both forward this to the backend.
+    const response = await fetch(`/health`, {
       method: "GET",
       headers: {
         Accept: "application/json",

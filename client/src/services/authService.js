@@ -15,8 +15,9 @@ class AuthService {
     this.isNewUserKey = STORAGE_KEYS.IS_NEW_USER;
 
     this.apiBaseUrl = process.env.REACT_APP_API_URL || "/api";
-    this.mockMode =
-      process.env.NODE_ENV !== "production" || !process.env.REACT_APP_API_URL;
+    // Production always uses the real backend; a missing REACT_APP_API_URL must
+    // never silently enable mock mode in a production bundle.
+    this.mockMode = process.env.NODE_ENV !== "production";
 
     // Add mock users for testing
     if (this.mockMode) {
@@ -65,14 +66,24 @@ class AuthService {
       return buildResult();
     }
 
+    const address =
+      this.walletAddress || localStorage.getItem(this.walletAddressKey);
+    if (!address) {
+      return buildResult();
+    }
+
     try {
-      const response = await fetch(`${this.apiBaseUrl}/auth/verify`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.token}`,
-        },
-      });
+      // The server exposes GET /api/auth/verify?address=… (it reports whether
+      // a user exists for the address — it is NOT a token verifier). Use the
+      // same relative /api base the wallet login flow uses so a single Vercel
+      // rewrite routes everything to the backend.
+      const response = await fetch(
+        `/api/auth/verify?address=${encodeURIComponent(address)}`,
+        {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        }
+      );
 
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
@@ -87,13 +98,17 @@ class AuthService {
       }
 
       const data = await response.json();
-      // Normalise server response to the shape useAuth expects
+      // Server shape: { success, data: { exists, user } }
+      const exists = data?.data?.exists ?? false;
+      const serverUser = data?.data?.user ?? null;
+
+      // Authentication itself still hinges on the in-memory JWT; the server
+      // call only tells us whether the wallet maps to a known profile.
       return {
-        isAuthenticated: data.isAuthenticated ?? data.authenticated ?? true,
-        isNewUser: data.isNewUser ?? this._isNewUser,
-        isRegistrationComplete:
-          data.isRegistrationComplete ?? this.isRegistrationComplete(),
-        userProfile: data.userProfile ?? data.user ?? this.userProfile,
+        isAuthenticated: this.isAuthenticated(),
+        isNewUser: serverUser ? false : !exists,
+        isRegistrationComplete: exists,
+        userProfile: serverUser ?? this.userProfile,
       };
     } catch (error) {
       logger.error("Auth verification error:", error);

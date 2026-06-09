@@ -149,7 +149,7 @@ export const ROUTES = Object.entries(ROUTE_CONFIG).reduce(
 
 // api configuration for base URL and timeout duration
 const API_CONFIG = {
-  DEFAULT_BASE_URL: "http://localhost:5000",
+  DEFAULT_BASE_URL: "",
   API_PREFIX: "/api",
   TIMEOUT: 30000,
   VERSION: "v1",

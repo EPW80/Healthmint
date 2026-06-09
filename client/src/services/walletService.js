@@ -1,8 +1,9 @@
 class WalletService {
   constructor() {
     this.apiBaseUrl = process.env.REACT_APP_API_URL || "/api";
-    this.mockMode =
-      process.env.NODE_ENV !== "production" || !process.env.REACT_APP_API_URL;
+    // Production always uses the real backend; a missing REACT_APP_API_URL must
+    // never silently enable mock mode in a production bundle.
+    this.mockMode = process.env.NODE_ENV !== "production";
   }
 
   async connectWallet(address, signature, message) {
