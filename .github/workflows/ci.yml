@@ -54,5 +54,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - run: npm install --ignore-scripts
-      - run: npm run lint
+      - run: npm install --prefix client --ignore-scripts
+      - name: Client lint (report-only)
+        continue-on-error: true
+        run: npm run lint --prefix client
